@@ -20,7 +20,7 @@ type Class = Database["public"]["Tables"]["classes"]["Row"] & {
 
 type Note = Database["public"]["Tables"]["notes"]["Row"] & {
   className: string;
-  classes?: { name: string };
+  classes?: { name: string } | null;
 };
 
 export default function DashboardPage() {
@@ -82,6 +82,7 @@ export default function DashboardPage() {
         const formattedNotes = (notesData || []).map((note) => ({
           ...note,
           className: note.classes?.name || "No Class",
+          classes: note.classes || undefined,
           createdAt: new Date(note.created_at!),
           updatedAt: new Date(note.updated_at!),
         }));

@@ -433,7 +433,7 @@ const AIChatSidebar = ({
                       {problem.question}
                     </p>
                     <div className="flex flex-col gap-2">
-                      {problem.options.map((option, index) => (
+                      {problem.options.map((option: string, index: number) => (
                         <Button
                           key={index}
                           variant={

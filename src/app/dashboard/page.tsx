@@ -496,7 +496,7 @@ export default function DashboardPage() {
               noteId={currentNote?.id}
               initialTitle={currentNote?.title}
               initialContent={currentNote?.content}
-              classId={selectedClassId || currentNote?.class_id}
+              classId={selectedClassId || currentNote?.class_id || undefined}
               onSave={handleSaveNote}
             />
           </>

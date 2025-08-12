@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
@@ -10,7 +16,14 @@ import AIChatSidebar from "@/components/ai/AIChatSidebar";
 import NoteEditor from "@/components/notes/NoteEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, BookOpen, Clock, ArrowLeft } from "lucide-react";
+import {
+  PlusCircle,
+  BookOpen,
+  Clock,
+  ArrowLeft,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
 
@@ -24,7 +37,7 @@ type Note = Database["public"]["Tables"]["notes"]["Row"] & {
 };
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, error } = useAuth();
   const router = useRouter();
 
   // Memoize supabase client to prevent recreation on every render
@@ -40,6 +53,8 @@ export default function DashboardPage() {
   >("dashboard");
 
   const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const dataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Memoize loadUserData to prevent recreation on every render
   const loadUserData = useCallback(async () => {
@@ -50,6 +65,16 @@ export default function DashboardPage() {
 
     try {
       setDataLoading(true);
+      setDataError(null);
+
+      // Set a timeout to prevent infinite loading
+      dataTimeoutRef.current = setTimeout(() => {
+        console.warn("Data loading timeout");
+        setDataError("Loading timeout - please try again");
+        setDataLoading(false);
+      }, 15000); // 15 second timeout
+
+      console.log("Loading user data for user:", user.id);
 
       // Load classes
       const { data: classesData, error: classesError } = await supabase
@@ -60,7 +85,9 @@ export default function DashboardPage() {
 
       if (classesError) {
         console.error("Error loading classes:", classesError);
+        setDataError(`Failed to load classes: ${classesError.message}`);
       } else {
+        console.log("Loaded classes:", classesData?.length || 0);
         setClasses(classesData || []);
       }
 
@@ -78,7 +105,9 @@ export default function DashboardPage() {
 
       if (notesError) {
         console.error("Error loading notes:", notesError);
+        setDataError(`Failed to load notes: ${notesError.message}`);
       } else {
+        console.log("Loaded notes:", notesData?.length || 0);
         const formattedNotes = (notesData || []).map((note) => ({
           ...note,
           className: note.classes?.name || "No Class",
@@ -90,7 +119,14 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error loading user data:", error);
+      setDataError(
+        `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     } finally {
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+        dataTimeoutRef.current = null;
+      }
       setDataLoading(false);
     }
   }, [user, supabase]);
@@ -102,10 +138,20 @@ export default function DashboardPage() {
 
   // Handle authentication redirects
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !error) {
+      console.log("User not authenticated, redirecting to auth");
       router.push("/auth");
     }
-  }, [user, loading, router]);
+  }, [user, loading, error, router]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleAddClass = async (newClass: {
     name: string;
@@ -298,6 +344,20 @@ export default function DashboardPage() {
   const currentNote = getCurrentNote();
   const recentNotes = getRecentNotes();
 
+  // Show error screen for authentication errors
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Button onClick={() => router.push("/auth")}>Go to Sign In</Button>
+        </div>
+      </div>
+    );
+  }
+
   // Show loading screen while authentication is loading
   if (loading) {
     return (
@@ -305,6 +365,48 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Loading...</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/auth")}
+            className="mt-4"
+          >
+            Go to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if user is not authenticated (redirect will happen via useEffect)
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">
+            Redirecting to sign in...
+          </p>
+          <Button onClick={() => router.push("/auth")}>Go to Sign In</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error screen for data loading errors
+  if (dataError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Data Loading Error</h2>
+          <p className="text-muted-foreground mb-6">{dataError}</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={loadUserData} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={() => router.push("/auth")}>Sign Out</Button>
+          </div>
         </div>
       </div>
     );
@@ -317,14 +419,18 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Loading your data...</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadUserData}
+            className="mt-4"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </div>
     );
-  }
-
-  // Don't render anything if user is not authenticated (redirect will happen via useEffect)
-  if (!user) {
-    return null;
   }
 
   return (

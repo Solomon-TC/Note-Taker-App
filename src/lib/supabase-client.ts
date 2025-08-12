@@ -3,17 +3,7 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/types/supabase";
 
-// Create a singleton instance to prevent multiple clients
-let supabaseClient: ReturnType<
-  typeof createClientComponentClient<Database>
-> | null = null;
-
 export const createClient = () => {
-  // Return existing client if available
-  if (supabaseClient) {
-    return supabaseClient;
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -21,6 +11,7 @@ export const createClient = () => {
     console.error("Missing Supabase environment variables:", {
       url: !!supabaseUrl,
       key: !!supabaseAnonKey,
+      origin: typeof window !== "undefined" ? window.location.origin : "server",
     });
     throw new Error(
       "Missing environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required",
@@ -28,8 +19,14 @@ export const createClient = () => {
   }
 
   try {
-    supabaseClient = createClientComponentClient<Database>();
-    return supabaseClient;
+    // Always create a fresh client for serverless environments
+    const client = createClientComponentClient<Database>();
+    console.log("Supabase client created successfully", {
+      url: supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      origin: typeof window !== "undefined" ? window.location.origin : "server",
+    });
+    return client;
   } catch (error) {
     console.error("Failed to create Supabase client:", error);
     throw error;

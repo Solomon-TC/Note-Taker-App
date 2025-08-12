@@ -29,25 +29,52 @@ export default function SignInForm() {
     setMessage("");
 
     try {
+      // Create a fresh client for each auth attempt
+      const authClient = createClient();
+
+      console.log("Attempting authentication:", {
+        isSignUp,
+        email,
+        origin: window.location.origin,
+      });
+
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await authClient.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
+
+        console.log("Sign up result:", { data: !!data, error });
+
         if (error) throw error;
         setMessage("Check your email for the confirmation link!");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await authClient.auth.signInWithPassword({
           email,
           password,
         });
+
+        console.log("Sign in result:", {
+          hasSession: !!data.session,
+          hasUser: !!data.user,
+          error,
+        });
+
         if (error) throw error;
+
+        // Force a page reload to ensure proper session handling
+        if (data.session) {
+          console.log("Sign in successful, redirecting to dashboard");
+          window.location.href = "/dashboard";
+          return;
+        }
       }
     } catch (error: any) {
-      setMessage(error.message);
+      console.error("Authentication error:", error);
+      setMessage(error.message || "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }

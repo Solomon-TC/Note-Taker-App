@@ -19,24 +19,31 @@ export default function Page() {
 
     // Set a timeout to prevent infinite loading
     timeoutRef.current = setTimeout(() => {
-      console.warn("Redirect timeout - forcing navigation");
+      console.warn("Redirect timeout - forcing navigation to auth");
       if (!redirectAttempted.current) {
         redirectAttempted.current = true;
         setRedirecting(true);
-        router.push("/auth");
+        window.location.href = "/auth";
       }
-    }, 5000); // 5 second timeout
+    }, 3000); // 3 second timeout
 
-    if (!loading && !error) {
+    if (!loading) {
       redirectAttempted.current = true;
       setRedirecting(true);
 
-      console.log("Redirecting user:", user ? "to dashboard" : "to auth");
+      console.log("Redirecting user:", {
+        hasUser: !!user,
+        userEmail: user?.email,
+        hasError: !!error,
+        error: error,
+      });
 
-      if (user) {
-        router.push("/dashboard");
+      if (user && !error) {
+        console.log("User authenticated, redirecting to dashboard");
+        window.location.href = "/dashboard";
       } else {
-        router.push("/auth");
+        console.log("No user or error present, redirecting to auth");
+        window.location.href = "/auth";
       }
     }
 
@@ -45,7 +52,7 @@ export default function Page() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [user, loading, error, router, redirecting]);
+  }, [user, loading, error, redirecting]);
 
   const handleRetry = () => {
     window.location.reload();

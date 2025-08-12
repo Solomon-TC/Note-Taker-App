@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -46,6 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       supabase = createClient();
+      supabaseRef.current = supabase;
+      console.log("AuthProvider: Supabase client initialized");
     } catch (err) {
       console.error("Failed to initialize Supabase client:", err);
       setError("Failed to initialize authentication");
@@ -57,8 +60,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     timeoutRef.current = setTimeout(() => {
       console.warn("Authentication initialization timeout");
       setLoading(false);
-      setError("Authentication timeout - please refresh the page");
-    }, 10000); // 10 second timeout
+      if (!user && !session) {
+        console.log("No session found after timeout, continuing without auth");
+      }
+    }, 8000); // 8 second timeout
 
     const getSession = async () => {
       try {
@@ -70,15 +75,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (sessionError) {
           console.error("Session error:", sessionError);
-          setError(sessionError.message);
+          // Don't set error for session issues, just log them
+          console.log(
+            "Continuing without session due to error:",
+            sessionError.message,
+          );
         } else {
           console.log("Initial session:", session ? "Found" : "None");
+          if (session) {
+            console.log("Session details:", {
+              userId: session.user?.id,
+              email: session.user?.email,
+              expiresAt: session.expires_at,
+            });
+          }
           setSession(session);
           setUser(session?.user ?? null);
         }
       } catch (err) {
         console.error("Error getting session:", err);
-        setError("Failed to get authentication session");
+        // Don't set error state, just continue without session
+        console.log("Continuing without session due to error");
       } finally {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
@@ -97,6 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         "Auth state change:",
         event,
         session ? "Session exists" : "No session",
+        session
+          ? { userId: session.user?.id, email: session.user?.email }
+          : null,
       );
 
       try {
@@ -106,8 +126,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
 
         // Create user record in public.users table if it doesn't exist
-        if (session?.user && event === "SIGNED_IN") {
-          console.log("Creating/checking user record...");
+        if (
+          session?.user &&
+          (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
+        ) {
+          console.log("Creating/checking user record for event:", event);
           try {
             const { data: existingUser, error: selectError } = await supabase
               .from("users")
@@ -135,6 +158,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } else {
                 console.log("User record created successfully");
               }
+            } else {
+              console.log("User record already exists");
             }
           } catch (userError) {
             console.error("Error handling user record:", userError);
@@ -143,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error("Error in auth state change:", err);
-        setError("Authentication state error");
+        // Don't set error state for auth state changes
         setLoading(false);
       }
     });
@@ -159,11 +184,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const supabase = createClient();
+      const supabase = supabaseRef.current || createClient();
+      console.log("Signing out user...");
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Sign out error:", error);
         setError(error.message);
+      } else {
+        console.log("Sign out successful");
+        // Force redirect to auth page
+        window.location.href = "/auth";
       }
     } catch (err) {
       console.error("Error signing out:", err);

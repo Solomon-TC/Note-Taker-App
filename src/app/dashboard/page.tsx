@@ -346,7 +346,15 @@ export default function DashboardPage() {
               {/* Class Cards Section */}
               <div>
                 <ClassCards
-                  classes={classes}
+                  classes={classes.map((cls) => ({
+                    id: cls.id,
+                    name: cls.name,
+                    description: cls.description || "",
+                    progress: cls.progress || 0,
+                    noteCount: notes.filter((note) => note.class_id === cls.id)
+                      .length,
+                    onSelect: handleSelectClass,
+                  }))}
                   onSelectClass={handleSelectClass}
                   onAddClass={handleAddClass}
                 />

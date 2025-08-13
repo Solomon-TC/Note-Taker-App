@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -55,124 +55,293 @@ import {
 } from "lucide-react";
 
 interface NoteEditorProps {
-  noteId?: string;
+  pageId?: string;
   initialTitle?: string;
   initialContent?: string;
-  classId?: string;
+  sectionId?: string;
+  parentPageId?: string;
   className?: string;
-  onSave?: (note: {
+  onSave?: (page: {
     id: string;
     title: string;
     content: string;
-    classId?: string;
+    sectionId?: string;
+    parentPageId?: string;
   }) => void;
+  onTitleChange?: (title: string) => void;
 }
 
 const NoteEditor = ({
-  noteId = "",
-  initialTitle = "Untitled Note",
+  pageId = "",
+  initialTitle = "Untitled Page",
   initialContent = "",
-  classId = "",
+  sectionId = "",
+  parentPageId,
   className = "",
   onSave = () => {},
+  onTitleChange = () => {},
 }: NoteEditorProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("write");
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock tags for the note
+  // Mock tags for the page
   const [tags, setTags] = useState<string[]>(["Physics", "Lecture", "Week 3"]);
+
+  // Sync with props when page changes
+  React.useEffect(() => {
+    setTitle(initialTitle);
+    setContent(initialContent);
+  }, [initialTitle, initialContent, pageId]);
+
+  // Auto-title functionality
+  React.useEffect(() => {
+    if (content && (!title || title === "Untitled Page")) {
+      const firstLine = content.split("\n")[0].trim();
+      if (firstLine && firstLine.length > 0) {
+        const autoTitle = firstLine.substring(0, 100);
+        setTitle(autoTitle);
+        onTitleChange(autoTitle);
+      }
+    }
+  }, [content, title, onTitleChange]);
 
   const handleSave = () => {
     setIsSaving(true);
 
+    // Auto-generate title from first line if title is empty or default
+    let finalTitle = title;
+    if (!title || title === "Untitled Page") {
+      const firstLine = content.split("\n")[0].trim();
+      if (firstLine) {
+        finalTitle = firstLine.substring(0, 100); // Limit title length
+      }
+    }
+
     // Simulate saving delay
     setTimeout(() => {
       onSave({
-        id: noteId || `note-${Date.now()}`,
-        title,
+        id: pageId || `page-${Date.now()}`,
+        title: finalTitle,
         content,
-        classId,
+        sectionId,
+        parentPageId,
       });
 
       setIsSaving(false);
     }, 800);
   };
 
-  const handleFormatText = (format: string) => {
-    if (!editorRef.current) return;
+  const handleFormatText = useCallback(
+    (format: string) => {
+      if (!editorRef.current) return;
 
-    const textarea = editorRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end);
+      const textarea = editorRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = content.substring(start, end);
 
-    let formattedText = "";
-    let cursorOffset = 0;
+      let formattedText = "";
+      let newCursorStart = start;
+      let newCursorEnd = start;
 
-    switch (format) {
-      case "bold":
-        formattedText = `**${selectedText}**`;
-        cursorOffset = 2;
-        break;
-      case "italic":
-        formattedText = `*${selectedText}*`;
-        cursorOffset = 1;
-        break;
-      case "underline":
-        formattedText = `_${selectedText}_`;
-        cursorOffset = 1;
-        break;
-      case "list":
-        formattedText = `\n- ${selectedText}`;
-        cursorOffset = 3;
-        break;
-      case "ordered-list":
-        formattedText = `\n1. ${selectedText}`;
-        cursorOffset = 4;
-        break;
-      case "h1":
-        formattedText = `\n# ${selectedText}`;
-        cursorOffset = 3;
-        break;
-      case "h2":
-        formattedText = `\n## ${selectedText}`;
-        cursorOffset = 4;
-        break;
-      case "h3":
-        formattedText = `\n### ${selectedText}`;
-        cursorOffset = 5;
-        break;
-      default:
-        return;
+      switch (format) {
+        case "bold":
+          if (selectedText) {
+            formattedText = `**${selectedText}**`;
+            newCursorStart = start + 2;
+            newCursorEnd = start + 2 + selectedText.length;
+          } else {
+            formattedText = "****";
+            newCursorStart = newCursorEnd = start + 2;
+          }
+          break;
+        case "italic":
+          if (selectedText) {
+            formattedText = `*${selectedText}*`;
+            newCursorStart = start + 1;
+            newCursorEnd = start + 1 + selectedText.length;
+          } else {
+            formattedText = "**";
+            newCursorStart = newCursorEnd = start + 1;
+          }
+          break;
+        case "underline":
+          if (selectedText) {
+            formattedText = `_${selectedText}_`;
+            newCursorStart = start + 1;
+            newCursorEnd = start + 1 + selectedText.length;
+          } else {
+            formattedText = "__";
+            newCursorStart = newCursorEnd = start + 1;
+          }
+          break;
+        case "list":
+          const listText = selectedText || "List item";
+          // Check if we're at the beginning of a line
+          const beforeCursor = content.substring(0, start);
+          const needsNewline =
+            beforeCursor.length > 0 && !beforeCursor.endsWith("\n");
+          formattedText = `${needsNewline ? "\n" : ""}- ${listText}`;
+          newCursorStart = start + (needsNewline ? 3 : 2);
+          newCursorEnd = newCursorStart + listText.length;
+          break;
+        case "ordered-list":
+          const orderedText = selectedText || "List item";
+          const beforeCursorOrdered = content.substring(0, start);
+          const needsNewlineOrdered =
+            beforeCursorOrdered.length > 0 &&
+            !beforeCursorOrdered.endsWith("\n");
+          formattedText = `${needsNewlineOrdered ? "\n" : ""}1. ${orderedText}`;
+          newCursorStart = start + (needsNewlineOrdered ? 4 : 3);
+          newCursorEnd = newCursorStart + orderedText.length;
+          break;
+        case "h1":
+          const h1Text = selectedText || "Heading 1";
+          const beforeCursorH1 = content.substring(0, start);
+          const needsNewlineH1 =
+            beforeCursorH1.length > 0 && !beforeCursorH1.endsWith("\n");
+          formattedText = `${needsNewlineH1 ? "\n" : ""}# ${h1Text}`;
+          newCursorStart = start + (needsNewlineH1 ? 3 : 2);
+          newCursorEnd = newCursorStart + h1Text.length;
+          break;
+        case "h2":
+          const h2Text = selectedText || "Heading 2";
+          const beforeCursorH2 = content.substring(0, start);
+          const needsNewlineH2 =
+            beforeCursorH2.length > 0 && !beforeCursorH2.endsWith("\n");
+          formattedText = `${needsNewlineH2 ? "\n" : ""}## ${h2Text}`;
+          newCursorStart = start + (needsNewlineH2 ? 4 : 3);
+          newCursorEnd = newCursorStart + h2Text.length;
+          break;
+        case "h3":
+          const h3Text = selectedText || "Heading 3";
+          const beforeCursorH3 = content.substring(0, start);
+          const needsNewlineH3 =
+            beforeCursorH3.length > 0 && !beforeCursorH3.endsWith("\n");
+          formattedText = `${needsNewlineH3 ? "\n" : ""}### ${h3Text}`;
+          newCursorStart = start + (needsNewlineH3 ? 5 : 4);
+          newCursorEnd = newCursorStart + h3Text.length;
+          break;
+        default:
+          return;
+      }
+
+      const newContent =
+        content.substring(0, start) + formattedText + content.substring(end);
+      setContent(newContent);
+
+      // Set cursor position after formatting
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorStart, newCursorEnd);
+      }, 0);
+    },
+    [content],
+  );
+
+  const handleInsertImage = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
+  }, []);
 
-    const newContent =
-      content.substring(0, start) + formattedText + content.substring(end);
-    setContent(newContent);
+  const handleFileUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const result = e.target?.result as string;
+            if (result) {
+              const imageMarkdown = `\n![${file.name}](${result})\n`;
+              setContent((prev) => prev + imageMarkdown);
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          alert("Please select an image file.");
+        }
+      }
+      // Reset the input
+      event.target.value = "";
+    },
+    [],
+  );
 
-    // Set cursor position after formatting
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(
-        start + cursorOffset,
-        start + formattedText.length - cursorOffset,
-      );
-    }, 0);
-  };
-
-  const handleInsertImage = () => {
-    // In a real implementation, this would open a file picker
+  const handleInsertImageUrl = useCallback(() => {
     const imageUrl = prompt("Enter image URL:");
     if (imageUrl) {
       const imageMarkdown = `\n![Image](${imageUrl})\n`;
-      setContent(content + imageMarkdown);
+      setContent((prev) => prev + imageMarkdown);
     }
-  };
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          if (result) {
+            const imageMarkdown = `\n![${file.name}](${result})\n`;
+            setContent((prev) => prev + imageMarkdown);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }, []);
+
+  const handleInsertLink = useCallback(() => {
+    const url = prompt("Enter URL:");
+    if (url) {
+      const linkText = prompt("Enter link text:") || url;
+      const linkMarkdown = `[${linkText}](${url})`;
+
+      if (editorRef.current) {
+        const textarea = editorRef.current;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newContent =
+          content.substring(0, start) + linkMarkdown + content.substring(end);
+        setContent(newContent);
+
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(
+            start + linkMarkdown.length,
+            start + linkMarkdown.length,
+          );
+        }, 0);
+      }
+    }
+  }, [content]);
 
   const toggleRecording = () => {
     // In a real implementation, this would use the Web Audio API
@@ -205,7 +374,7 @@ const NoteEditor = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="text-xl font-bold border-none focus-visible:ring-0 px-0 h-auto text-2xl"
-            placeholder="Note Title"
+            placeholder="Page Title"
           />
           <div className="flex space-x-2">
             <Button
@@ -464,16 +633,18 @@ const NoteEditor = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleInsertImage}
-                    >
-                      <Image className="h-4 w-4" />
-                    </Button>
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleInsertImage}
+                      >
+                        <Image className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Insert Image</p>
+                    <p>Upload Image from Computer</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -481,7 +652,11 @@ const NoteEditor = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => {}}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleInsertLink}
+                    >
                       <Link className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -494,12 +669,16 @@ const NoteEditor = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => {}}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleInsertImageUrl}
+                    >
                       <Paperclip className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Attach File</p>
+                    <p>Insert Image from URL</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -530,12 +709,37 @@ const NoteEditor = ({
               </TooltipProvider>
             </div>
 
-            <Textarea
-              ref={editorRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Start typing your notes here..."
-              className="min-h-[400px] font-mono text-sm"
+            <div
+              className={`relative ${isDragOver ? "border-2 border-dashed border-primary bg-primary/5" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <Textarea
+                ref={editorRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Start typing your page content here... You can also drag and drop images!"
+                className="min-h-[400px] font-mono text-sm resize-none"
+              />
+              {isDragOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-md">
+                  <div className="text-center">
+                    <Image className="h-12 w-12 mx-auto mb-2 text-primary" />
+                    <p className="text-primary font-medium">Drop images here</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              multiple={false}
             />
           </TabsContent>
 
@@ -562,31 +766,91 @@ const NoteEditor = ({
           {new Date().toLocaleString()}
         </div>
         <Button variant="default" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Note"}
+          {isSaving ? "Saving..." : "Save Page"}
         </Button>
       </CardFooter>
     </Card>
   );
 };
 
-// Simple markdown formatter for preview
+// Enhanced markdown formatter for preview
 const formatMarkdown = (text: string) => {
   let formatted = text
+    // Bold text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    // Italic text
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    // Underline text
     .replace(/_(.*?)_/g, "<u>$1</u>")
-    .replace(/# (.*?)\n/g, "<h1>$1</h1>")
-    .replace(/## (.*?)\n/g, "<h2>$1</h2>")
-    .replace(/### (.*?)\n/g, "<h3>$1</h3>")
-    .replace(/\n- (.*?)\n/g, "<ul><li>$1</li></ul>")
-    .replace(/\n\d+\. (.*?)\n/g, "<ol><li>$1</li></ol>")
+    // Headers
+    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+    // Images
     .replace(
       /!\[(.*?)\]\((.*?)\)/g,
-      '<img alt="$1" src="$2" style="max-width: 100%;" />',
+      '<img alt="$1" src="$2" style="max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0;" />',
+    )
+    // Links
+    .replace(
+      /\[([^\]]+)\]\(([^\)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: hsl(var(--primary)); text-decoration: underline;">$1</a>',
     );
 
-  // Replace newlines with <br>
-  formatted = formatted.replace(/\n/g, "<br>");
+  // Handle lists more carefully
+  const lines = formatted.split("\n");
+  const processedLines: string[] = [];
+  let inUnorderedList = false;
+  let inOrderedList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isUnorderedItem = /^- (.+)/.test(line);
+    const isOrderedItem = /^\d+\. (.+)/.test(line);
+
+    if (isUnorderedItem) {
+      if (!inUnorderedList) {
+        processedLines.push("<ul>");
+        inUnorderedList = true;
+      }
+      if (inOrderedList) {
+        processedLines.push("</ol>");
+        inOrderedList = false;
+      }
+      processedLines.push(`<li>${line.replace(/^- /, "")}</li>`);
+    } else if (isOrderedItem) {
+      if (!inOrderedList) {
+        processedLines.push("<ol>");
+        inOrderedList = true;
+      }
+      if (inUnorderedList) {
+        processedLines.push("</ul>");
+        inUnorderedList = false;
+      }
+      processedLines.push(`<li>${line.replace(/^\d+\. /, "")}</li>`);
+    } else {
+      if (inUnorderedList) {
+        processedLines.push("</ul>");
+        inUnorderedList = false;
+      }
+      if (inOrderedList) {
+        processedLines.push("</ol>");
+        inOrderedList = false;
+      }
+      processedLines.push(line);
+    }
+  }
+
+  // Close any remaining lists
+  if (inUnorderedList) {
+    processedLines.push("</ul>");
+  }
+  if (inOrderedList) {
+    processedLines.push("</ol>");
+  }
+
+  // Join lines and replace remaining newlines with <br>
+  formatted = processedLines.join("\n").replace(/\n/g, "<br>");
 
   return formatted;
 };

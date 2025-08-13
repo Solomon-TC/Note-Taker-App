@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Send, Brain, FileText, BookOpen, Award } from "lucide-react";
+import { Send, Brain, FileText, BookOpen, Award, X } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Database } from "@/types/supabase";
@@ -30,6 +30,8 @@ interface AIChatSidebarProps {
   onAnalyzeNote?: () => void;
   onGenerateSummary?: () => void;
   onCreatePracticeProblems?: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const AIChatSidebar = ({
@@ -41,6 +43,8 @@ const AIChatSidebar = ({
   onAnalyzeNote = () => {},
   onGenerateSummary = () => {},
   onCreatePracticeProblems = () => {},
+  isOpen = false,
+  onClose = () => {},
 }: AIChatSidebarProps) => {
   const { user } = useAuth();
   const supabase = createClient();
@@ -257,8 +261,10 @@ const AIChatSidebar = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="h-full w-[350px] border-l bg-background flex flex-col">
+    <div className="fixed top-0 right-0 h-full w-[400px] bg-background border-l shadow-lg z-50 flex flex-col">
       <div className="p-4 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Avatar>
@@ -272,10 +278,15 @@ const AIChatSidebar = ({
             </p>
           </div>
         </div>
-        <Badge variant="secondary" className="gap-1">
-          <Brain size={14} />
-          <span>Smart AI</span>
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <Brain size={14} />
+            <span>Smart AI</span>
+          </Badge>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <Tabs

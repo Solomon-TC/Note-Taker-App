@@ -10,31 +10,19 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import UserMenu from "@/components/auth/UserMenu";
-import ClassCards from "@/components/dashboard/ClassCards";
-import AIChatSidebar from "@/components/ai/AIChatSidebar";
-
+import NotebookDropdown from "@/components/navigation/NotebookDropdown";
+import SectionTabs from "@/components/navigation/SectionTabs";
+import PageList from "@/components/navigation/PageList";
 import NoteEditor from "@/components/notes/NoteEditor";
+import AIChatSidebar from "@/components/ai/AIChatSidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  PlusCircle,
-  BookOpen,
-  Clock,
-  ArrowLeft,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
+import { AlertCircle, RefreshCw, Brain, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
 
-type Class = Database["public"]["Tables"]["classes"]["Row"] & {
-  noteCount?: number;
-};
-
-type Note = Database["public"]["Tables"]["notes"]["Row"] & {
-  className: string;
-  classes?: { name: string } | null;
-};
+type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
+type Section = Database["public"]["Tables"]["sections"]["Row"];
+type Page = Database["public"]["Tables"]["pages"]["Row"];
 
 export default function DashboardPage() {
   const { user, loading, error } = useAuth();
@@ -43,14 +31,19 @@ export default function DashboardPage() {
   // Memoize supabase client to prevent recreation on every render
   const supabase = useMemo(() => createClient(), []);
 
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const [isCreatingNote, setIsCreatingNote] = useState(false);
-  const [currentView, setCurrentView] = useState<
-    "dashboard" | "class-notes" | "note-editor"
-  >("dashboard");
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(
+    null,
+  );
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
+    null,
+  );
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [isCreatingPage, setIsCreatingPage] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [showPageList, setShowPageList] = useState(false);
 
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -76,46 +69,54 @@ export default function DashboardPage() {
 
       console.log("Loading user data for user:", user.id);
 
-      // Load classes
-      const { data: classesData, error: classesError } = await supabase
-        .from("classes")
+      // Load notebooks
+      const { data: notebooksData, error: notebooksError } = await supabase
+        .from("notebooks")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true });
 
-      if (classesError) {
-        console.error("Error loading classes:", classesError);
-        setDataError(`Failed to load classes: ${classesError.message}`);
+      if (notebooksError) {
+        console.error("Error loading notebooks:", notebooksError);
+        setDataError(`Failed to load notebooks: ${notebooksError.message}`);
       } else {
-        console.log("Loaded classes:", classesData?.length || 0);
-        setClasses(classesData || []);
+        console.log("Loaded notebooks:", notebooksData?.length || 0);
+        setNotebooks(notebooksData || []);
+
+        // Auto-select first notebook if none selected
+        if (notebooksData && notebooksData.length > 0 && !selectedNotebookId) {
+          setSelectedNotebookId(notebooksData[0].id);
+        }
       }
 
-      // Load notes with class names
-      const { data: notesData, error: notesError } = await supabase
-        .from("notes")
-        .select(
-          `
-          *,
-          classes(name)
-        `,
-        )
+      // Load sections
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from("sections")
+        .select("*")
         .eq("user_id", user.id)
-        .order("updated_at", { ascending: false });
+        .order("sort_order", { ascending: true });
 
-      if (notesError) {
-        console.error("Error loading notes:", notesError);
-        setDataError(`Failed to load notes: ${notesError.message}`);
+      if (sectionsError) {
+        console.error("Error loading sections:", sectionsError);
+        setDataError(`Failed to load sections: ${sectionsError.message}`);
       } else {
-        console.log("Loaded notes:", notesData?.length || 0);
-        const formattedNotes = (notesData || []).map((note) => ({
-          ...note,
-          className: note.classes?.name || "No Class",
-          classes: note.classes || undefined,
-          createdAt: new Date(note.created_at!),
-          updatedAt: new Date(note.updated_at!),
-        }));
-        setNotes(formattedNotes);
+        console.log("Loaded sections:", sectionsData?.length || 0);
+        setSections(sectionsData || []);
+      }
+
+      // Load pages
+      const { data: pagesData, error: pagesError } = await supabase
+        .from("pages")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("sort_order", { ascending: true });
+
+      if (pagesError) {
+        console.error("Error loading pages:", pagesError);
+        setDataError(`Failed to load pages: ${pagesError.message}`);
+      } else {
+        console.log("Loaded pages:", pagesData?.length || 0);
+        setPages(pagesData || []);
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -138,11 +139,11 @@ export default function DashboardPage() {
 
   // Handle authentication redirects
   useEffect(() => {
-    if (!loading && !user && !error) {
+    if (!loading && !user) {
       console.log("User not authenticated, redirecting to auth");
       router.push("/auth");
     }
-  }, [user, loading, error, router]);
+  }, [user, loading, router]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -153,196 +154,416 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const handleAddClass = async (newClass: {
+  // Notebook handlers
+  const handleCreateNotebook = async (notebook: {
     name: string;
     description: string;
-    progress?: number;
+    color: string;
   }) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
-        .from("classes")
+        .from("notebooks")
         .insert({
           user_id: user.id,
-          name: newClass.name,
-          description: newClass.description,
-          progress: newClass.progress || 0,
+          name: notebook.name,
+          description: notebook.description,
+          color: notebook.color,
+          sort_order: notebooks.length,
         })
         .select()
         .single();
 
       if (error) {
-        console.error("Error creating class:", error);
+        console.error("Error creating notebook:", error);
         return;
       }
 
       if (data) {
-        setClasses([data, ...classes]);
+        setNotebooks([...notebooks, data]);
+        if (!selectedNotebookId) {
+          setSelectedNotebookId(data.id);
+        }
       }
     } catch (error) {
-      console.error("Error creating class:", error);
+      console.error("Error creating notebook:", error);
     }
   };
 
-  const handleSelectClass = (classId: string) => {
-    setSelectedClassId(classId);
-    setCurrentView("class-notes");
+  const handleUpdateNotebook = async (
+    notebookId: string,
+    updates: Partial<Notebook>,
+  ) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("notebooks")
+        .update(updates)
+        .eq("id", notebookId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating notebook:", error);
+        return;
+      }
+
+      if (data) {
+        setNotebooks(notebooks.map((nb) => (nb.id === notebookId ? data : nb)));
+      }
+    } catch (error) {
+      console.error("Error updating notebook:", error);
+    }
   };
 
-  const handleCreateNote = (classId?: string) => {
-    setSelectedClassId(classId || null);
-    setSelectedNoteId(null);
-    setIsCreatingNote(true);
-    setCurrentView("note-editor");
+  const handleDeleteNotebook = async (notebookId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("notebooks")
+        .delete()
+        .eq("id", notebookId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error deleting notebook:", error);
+        return;
+      }
+
+      setNotebooks(notebooks.filter((nb) => nb.id !== notebookId));
+      if (selectedNotebookId === notebookId) {
+        const remaining = notebooks.filter((nb) => nb.id !== notebookId);
+        setSelectedNotebookId(remaining.length > 0 ? remaining[0].id : null);
+        setSelectedSectionId(null);
+        setSelectedPageId(null);
+      }
+    } catch (error) {
+      console.error("Error deleting notebook:", error);
+    }
   };
 
-  const handleEditNote = (noteId: string) => {
-    setSelectedNoteId(noteId);
-    setIsCreatingNote(false);
-    setCurrentView("note-editor");
+  // Section handlers
+  const handleCreateSection = async (section: {
+    name: string;
+    color: string;
+  }) => {
+    if (!user || !selectedNotebookId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("sections")
+        .insert({
+          user_id: user.id,
+          notebook_id: selectedNotebookId,
+          name: section.name,
+          color: section.color,
+          sort_order: sections.filter(
+            (s) => s.notebook_id === selectedNotebookId,
+          ).length,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating section:", error);
+        return;
+      }
+
+      if (data) {
+        setSections([...sections, data]);
+        setSelectedSectionId(data.id);
+      }
+    } catch (error) {
+      console.error("Error creating section:", error);
+    }
   };
 
-  const handleSaveNote = async (noteData: {
+  const handleUpdateSection = async (
+    sectionId: string,
+    updates: Partial<Section>,
+  ) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("sections")
+        .update(updates)
+        .eq("id", sectionId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating section:", error);
+        return;
+      }
+
+      if (data) {
+        setSections(sections.map((s) => (s.id === sectionId ? data : s)));
+      }
+    } catch (error) {
+      console.error("Error updating section:", error);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("sections")
+        .delete()
+        .eq("id", sectionId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error deleting section:", error);
+        return;
+      }
+
+      setSections(sections.filter((s) => s.id !== sectionId));
+      if (selectedSectionId === sectionId) {
+        const remaining = sections.filter(
+          (s) => s.id !== sectionId && s.notebook_id === selectedNotebookId,
+        );
+        setSelectedSectionId(remaining.length > 0 ? remaining[0].id : null);
+        setSelectedPageId(null);
+      }
+    } catch (error) {
+      console.error("Error deleting section:", error);
+    }
+  };
+
+  const handleReorderSections = async (reorderedSections: Section[]) => {
+    setSections(
+      sections.map((s) => {
+        const reordered = reorderedSections.find((rs) => rs.id === s.id);
+        return reordered || s;
+      }),
+    );
+  };
+
+  // Page handlers
+  const handleCreatePage = async (parentPageId?: string) => {
+    if (!user || !selectedSectionId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("pages")
+        .insert({
+          user_id: user.id,
+          section_id: selectedSectionId,
+          parent_page_id: parentPageId || null,
+          title: "Untitled Page",
+          content: "",
+          sort_order: pages.filter(
+            (p) =>
+              p.section_id === selectedSectionId &&
+              p.parent_page_id === parentPageId,
+          ).length,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating page:", error);
+        return;
+      }
+
+      if (data) {
+        setPages([...pages, data]);
+        setSelectedPageId(data.id);
+        setIsCreatingPage(true);
+      }
+    } catch (error) {
+      console.error("Error creating page:", error);
+    }
+  };
+
+  const handleUpdatePage = async (pageId: string, updates: Partial<Page>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("pages")
+        .update(updates)
+        .eq("id", pageId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating page:", error);
+        return;
+      }
+
+      if (data) {
+        setPages(pages.map((p) => (p.id === pageId ? data : p)));
+      }
+    } catch (error) {
+      console.error("Error updating page:", error);
+    }
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("pages")
+        .delete()
+        .eq("id", pageId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error deleting page:", error);
+        return;
+      }
+
+      setPages(pages.filter((p) => p.id !== pageId));
+      if (selectedPageId === pageId) {
+        setSelectedPageId(null);
+        setIsCreatingPage(false);
+      }
+    } catch (error) {
+      console.error("Error deleting page:", error);
+    }
+  };
+
+  const handleReorderPages = async (reorderedPages: Page[]) => {
+    setPages(
+      pages.map((p) => {
+        const reordered = reorderedPages.find((rp) => rp.id === p.id);
+        return reordered || p;
+      }),
+    );
+  };
+
+  const handleSavePage = async (pageData: {
     id: string;
     title: string;
     content: string;
-    classId?: string;
+    sectionId?: string;
+    parentPageId?: string;
   }) => {
     if (!user) return;
 
-    const selectedClass = classes.find((c) => c.id === noteData.classId);
-
     try {
-      if (isCreatingNote) {
-        // Create new note
-        const { data, error } = await supabase
-          .from("notes")
-          .insert({
-            user_id: user.id,
-            title: noteData.title,
-            content: noteData.content,
-            class_id: noteData.classId || null,
-          })
-          .select(
-            `
-            *,
-            classes(name)
-          `,
-          )
-          .single();
+      const { data, error } = await supabase
+        .from("pages")
+        .update({
+          title: pageData.title,
+          content: pageData.content,
+        })
+        .eq("id", pageData.id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
 
-        if (error) {
-          console.error("Error creating note:", error);
-          return;
-        }
-
-        if (data) {
-          const newNote = {
-            ...data,
-            className: data.classes?.name || "No Class",
-            createdAt: new Date(data.created_at!),
-            updatedAt: new Date(data.updated_at!),
-          };
-          setNotes([newNote, ...notes]);
-        }
-      } else {
-        // Update existing note
-        const { data, error } = await supabase
-          .from("notes")
-          .update({
-            title: noteData.title,
-            content: noteData.content,
-            class_id: noteData.classId || null,
-          })
-          .eq("id", noteData.id)
-          .eq("user_id", user.id)
-          .select(
-            `
-            *,
-            classes(name)
-          `,
-          )
-          .single();
-
-        if (error) {
-          console.error("Error updating note:", error);
-          return;
-        }
-
-        if (data) {
-          const updatedNote = {
-            ...data,
-            className: data.classes?.name || "No Class",
-            createdAt: new Date(data.created_at!),
-            updatedAt: new Date(data.updated_at!),
-          };
-          setNotes(
-            notes.map((note) => (note.id === noteData.id ? updatedNote : note)),
-          );
-        }
+      if (error) {
+        console.error("Error saving page:", error);
+        return;
       }
 
-      setCurrentView("dashboard");
-      setIsCreatingNote(false);
-      setSelectedNoteId(null);
+      if (data) {
+        setPages(pages.map((p) => (p.id === pageData.id ? data : p)));
+        setIsCreatingPage(false);
+      }
     } catch (error) {
-      console.error("Error saving note:", error);
+      console.error("Error saving page:", error);
     }
   };
 
-  const handleBackToDashboard = () => {
-    setCurrentView("dashboard");
-    setSelectedClassId(null);
-    setSelectedNoteId(null);
-    setIsCreatingNote(false);
+  // Helper functions
+  const getCurrentNotebookSections = () => {
+    return sections.filter((s) => s.notebook_id === selectedNotebookId);
   };
 
-  const getClassNotes = (classId: string) => {
-    return notes.filter((note) => note.class_id === classId);
+  const getCurrentSectionPages = () => {
+    return pages.filter((p) => p.section_id === selectedSectionId);
   };
 
-  const getRecentNotes = () => {
-    return notes
-      .sort(
-        (a, b) =>
-          new Date(b.updated_at!).getTime() - new Date(a.updated_at!).getTime(),
-      )
-      .slice(0, 3)
-      .map((note) => ({
-        id: note.id,
-        title: note.title,
-        class: note.className,
-        date: getRelativeTime(new Date(note.updated_at!)),
-      }));
+  const getCurrentPage = () => {
+    return pages.find((p) => p.id === selectedPageId) || null;
   };
 
-  const getRelativeTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60),
-    );
+  // Auto-select first section when notebook changes
+  useEffect(() => {
+    if (selectedNotebookId) {
+      const notebookSections = sections.filter(
+        (s) => s.notebook_id === selectedNotebookId,
+      );
+      if (notebookSections.length > 0) {
+        // If no section is selected or current section doesn't belong to this notebook
+        const currentSectionBelongsToNotebook =
+          selectedSectionId &&
+          notebookSections.some((s) => s.id === selectedSectionId);
 
-    if (diffInHours < 1) return "Just now";
-    if (diffInHours < 24)
-      return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
-  };
-
-  const getCurrentNote = () => {
-    if (selectedNoteId) {
-      return notes.find((note) => note.id === selectedNoteId);
+        if (!currentSectionBelongsToNotebook) {
+          setSelectedSectionId(notebookSections[0].id);
+          setSelectedPageId(null); // Reset page when changing sections
+        }
+      } else {
+        setSelectedSectionId(null);
+        setSelectedPageId(null);
+      }
+    } else {
+      setSelectedSectionId(null);
+      setSelectedPageId(null);
     }
-    return null;
-  };
+  }, [selectedNotebookId, sections, selectedSectionId]);
 
-  const selectedClass = selectedClassId
-    ? classes.find((c) => c.id === selectedClassId)
-    : null;
-  const currentNote = getCurrentNote();
-  const recentNotes = getRecentNotes();
+  // Auto-select first page when section changes
+  useEffect(() => {
+    if (selectedSectionId) {
+      const sectionPages = pages.filter(
+        (p) => p.section_id === selectedSectionId,
+      );
+      if (sectionPages.length > 0) {
+        // If no page is selected or current page doesn't belong to this section
+        const currentPageBelongsToSection =
+          selectedPageId && sectionPages.some((p) => p.id === selectedPageId);
+
+        if (!currentPageBelongsToSection) {
+          setSelectedPageId(sectionPages[0].id);
+          setShowPageList(true); // Show page list when there are pages
+        }
+      } else {
+        setSelectedPageId(null);
+      }
+    } else {
+      setSelectedPageId(null);
+    }
+  }, [selectedSectionId, pages, selectedPageId]);
+
+  // Enhanced notebook selection handler
+  const handleSelectNotebook = useCallback((notebookId: string) => {
+    console.log("Selecting notebook:", notebookId);
+    setSelectedNotebookId(notebookId);
+    // Reset dependent selections - they will be auto-selected by useEffect
+    setSelectedSectionId(null);
+    setSelectedPageId(null);
+  }, []);
+
+  // Enhanced section selection handler
+  const handleSelectSection = useCallback((sectionId: string) => {
+    console.log("Selecting section:", sectionId);
+    setSelectedSectionId(sectionId);
+    // Reset page selection - it will be auto-selected by useEffect
+    setSelectedPageId(null);
+  }, []);
+
+  // Enhanced page selection handler
+  const handleSelectPage = useCallback((pageId: string) => {
+    console.log("Selecting page:", pageId);
+    setSelectedPageId(pageId);
+  }, []);
+
+  const currentPage = getCurrentPage();
 
   // Show error screen for authentication errors
   if (error) {
@@ -365,14 +586,6 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Loading...</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/auth")}
-            className="mt-4"
-          >
-            Go to Sign In
-          </Button>
         </div>
       </div>
     );
@@ -380,16 +593,7 @@ export default function DashboardPage() {
 
   // Don't render anything if user is not authenticated (redirect will happen via useEffect)
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">
-            Redirecting to sign in...
-          </p>
-          <Button onClick={() => router.push("/auth")}>Go to Sign In</Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Show error screen for data loading errors
@@ -435,194 +639,121 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen bg-background">
-      <div className="flex-1 overflow-auto p-6">
-        {currentView === "dashboard" && (
-          <>
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-3xl font-bold">Dashboard</h1>
-              <div className="flex items-center gap-4">
-                <Button onClick={() => handleCreateNote()}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> New Note
-                </Button>
-                <UserMenu />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8">
-              {/* Class Cards Section */}
-              <div>
-                <ClassCards
-                  classes={classes.map((cls) => ({
-                    id: cls.id,
-                    name: cls.name,
-                    description: cls.description || "",
-                    progress: cls.progress || 0,
-                    noteCount: notes.filter((note) => note.class_id === cls.id)
-                      .length,
-                    onSelect: handleSelectClass,
-                  }))}
-                  onSelectClass={handleSelectClass}
-                  onAddClass={handleAddClass}
-                />
-              </div>
-
-              {/* Recent Notes Section */}
-              <div>
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl font-semibold">
-                        Recent Notes
-                      </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCurrentView("class-notes")}
-                      >
-                        View All
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {recentNotes.length > 0 ? (
-                        recentNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
-                            onClick={() => handleEditNote(note.id.toString())}
-                          >
-                            <div className="flex items-center">
-                              <div className="bg-primary/10 p-2 rounded-md mr-3">
-                                <BookOpen className="h-5 w-5 text-primary" />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">{note.title}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {note.class}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {note.date}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>
-                            No notes yet. Create your first note to get started!
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </>
-        )}
-
-        {currentView === "class-notes" && selectedClass && (
-          <>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToDashboard}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <div>
-                  <h1 className="text-3xl font-bold">{selectedClass.name}</h1>
-                  <p className="text-muted-foreground">
-                    {selectedClass.description}
-                  </p>
-                </div>
-              </div>
-              <Button onClick={() => handleCreateNote(selectedClassId!)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> New Note
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h1 className="text-2xl font-bold">StudyMate</h1>
+          <div className="flex items-center gap-3">
+            {selectedSectionId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPageList(!showPageList)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                {showPageList ? "Hide Pages" : "Show Pages"}
               </Button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {getClassNotes(selectedClassId!).map((note) => (
-                <Card
-                  key={note.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => handleEditNote(note.id)}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{note.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Last updated:
-                      {getRelativeTime(new Date(note.updated_at!))}
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {note.content.substring(0, 150)}...
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {getClassNotes(selectedClassId!).length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">
-                    No notes in this class yet
-                  </h3>
-                  <p className="mb-4">
-                    Start taking notes to track your learning progress!
-                  </p>
-                  <Button onClick={() => handleCreateNote(selectedClassId!)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create First Note
-                  </Button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {currentView === "note-editor" && (
-          <>
-            <div className="flex items-center justify-between mb-8">
-              <Button variant="ghost" size="sm" onClick={handleBackToDashboard}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </div>
-
-            <NoteEditor
-              noteId={currentNote?.id}
-              initialTitle={currentNote?.title}
-              initialContent={currentNote?.content}
-              classId={selectedClassId || currentNote?.class_id || undefined}
-              onSave={handleSaveNote}
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+              className="flex items-center gap-2"
+            >
+              <Brain className="h-4 w-4" />
+              AI Assistant
+            </Button>
+            <NotebookDropdown
+              notebooks={notebooks}
+              selectedNotebookId={selectedNotebookId}
+              onSelectNotebook={handleSelectNotebook}
+              onCreateNotebook={handleCreateNotebook}
+              onUpdateNotebook={handleUpdateNotebook}
+              onDeleteNotebook={handleDeleteNotebook}
             />
-          </>
+            <UserMenu />
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 flex">
+          {/* Note Editor */}
+          <div className="flex-1">
+            {selectedPageId && currentPage ? (
+              <NoteEditor
+                pageId={currentPage.id}
+                initialTitle={currentPage.title}
+                initialContent={currentPage.content || ""}
+                sectionId={selectedSectionId || undefined}
+                parentPageId={currentPage.parent_page_id || undefined}
+                onSave={handleSavePage}
+                onTitleChange={(title) =>
+                  handleUpdatePage(currentPage.id, { title })
+                }
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">No page selected</h3>
+                  <p className="mb-4">
+                    {selectedSectionId
+                      ? "Select a page from the list or create a new one"
+                      : "Select a section to view pages"}
+                  </p>
+                  {selectedSectionId && (
+                    <Button onClick={() => handleCreatePage()}>
+                      Create New Page
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Page List - Right Side */}
+          {selectedSectionId && showPageList && (
+            <PageList
+              pages={getCurrentSectionPages()}
+              selectedPageId={selectedPageId}
+              onSelectPage={handleSelectPage}
+              onCreatePage={handleCreatePage}
+              onUpdatePage={handleUpdatePage}
+              onDeletePage={handleDeletePage}
+              onReorderPages={handleReorderPages}
+            />
+          )}
+        </div>
+
+        {/* Section Tabs at Bottom */}
+        {selectedNotebookId && (
+          <SectionTabs
+            sections={getCurrentNotebookSections()}
+            selectedSectionId={selectedSectionId}
+            onSelectSection={handleSelectSection}
+            onCreateSection={handleCreateSection}
+            onUpdateSection={handleUpdateSection}
+            onDeleteSection={handleDeleteSection}
+            onReorderSections={handleReorderSections}
+          />
         )}
       </div>
 
-      {/* AI Chat Sidebar */}
-      <div className="w-[350px] border-l">
-        <AIChatSidebar
-          currentNote={
-            currentNote
-              ? {
-                  id: currentNote.id,
-                  title: currentNote.title,
-                  content: currentNote.content,
-                }
-              : undefined
-          }
-        />
-      </div>
+      {/* AI Chat Sidebar - Popup */}
+      <AIChatSidebar
+        currentNote={
+          currentPage
+            ? {
+                id: currentPage.id,
+                title: currentPage.title,
+                content: currentPage.content || "",
+              }
+            : undefined
+        }
+        isOpen={isAIAssistantOpen}
+        onClose={() => setIsAIAssistantOpen(false)}
+      />
     </div>
   );
 }

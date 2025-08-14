@@ -466,7 +466,7 @@ export default function DashboardPage() {
 
       if (error) {
         console.error("Error saving page:", error);
-        return;
+        throw error; // Re-throw to let the component handle the error
       }
 
       if (data) {
@@ -475,6 +475,43 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error saving page:", error);
+      throw error; // Re-throw to let the component handle the error
+    }
+  };
+
+  const handleAutoSavePage = async (pageData: {
+    id: string;
+    title: string;
+    content: string;
+    sectionId?: string;
+    parentPageId?: string;
+  }) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("pages")
+        .update({
+          title: pageData.title,
+          content: pageData.content,
+        })
+        .eq("id", pageData.id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error auto-saving page:", error);
+        throw error;
+      }
+
+      if (data) {
+        // Update the pages state silently for autosave
+        setPages(pages.map((p) => (p.id === pageData.id ? data : p)));
+      }
+    } catch (error) {
+      console.error("Error auto-saving page:", error);
+      throw error;
     }
   };
 
@@ -641,30 +678,10 @@ export default function DashboardPage() {
     <div className="flex h-screen bg-background">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h1 className="text-2xl font-bold">StudyMate</h1>
-          <div className="flex items-center gap-3">
-            {selectedSectionId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPageList(!showPageList)}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                {showPageList ? "Hide Pages" : "Show Pages"}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
-              className="flex items-center gap-2"
-            >
-              <Brain className="h-4 w-4" />
-              AI Assistant
-            </Button>
+        {/* Top Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+          {/* Left side - Notebook Dropdown */}
+          <div className="flex items-center gap-4">
             <NotebookDropdown
               notebooks={notebooks}
               selectedNotebookId={selectedNotebookId}
@@ -673,14 +690,64 @@ export default function DashboardPage() {
               onUpdateNotebook={handleUpdateNotebook}
               onDeleteNotebook={handleDeleteNotebook}
             />
+            <div className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              •{" "}
+              {new Date().toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })}
+            </div>
+          </div>
+
+          {/* Right side - Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+              className="sleek-button"
+            >
+              <Brain className="h-4 w-4" />
+            </Button>
+            {selectedSectionId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleCreatePage()}
+                className="sleek-button flex items-center gap-1"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-xs">Add Page</span>
+              </Button>
+            )}
             <UserMenu />
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 flex">
-          {/* Note Editor */}
-          <div className="flex-1">
+        {/* Section Tabs - Top */}
+        {selectedNotebookId && (
+          <SectionTabs
+            sections={getCurrentNotebookSections()}
+            selectedSectionId={selectedSectionId}
+            onSelectSection={handleSelectSection}
+            onCreateSection={handleCreateSection}
+            onUpdateSection={handleUpdateSection}
+            onDeleteSection={handleDeleteSection}
+            onReorderSections={handleReorderSections}
+          />
+        )}
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Note Editor - Takes most space */}
+          <div className="flex-1 overflow-hidden">
             {selectedPageId && currentPage ? (
               <NoteEditor
                 pageId={currentPage.id}
@@ -689,6 +756,7 @@ export default function DashboardPage() {
                 sectionId={selectedSectionId || undefined}
                 parentPageId={currentPage.parent_page_id || undefined}
                 onSave={handleSavePage}
+                onAutoSave={handleAutoSavePage}
                 onTitleChange={(title) =>
                   handleUpdatePage(currentPage.id, { title })
                 }
@@ -712,32 +780,46 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Page List - Right Side */}
-          {selectedSectionId && showPageList && (
-            <PageList
-              pages={getCurrentSectionPages()}
-              selectedPageId={selectedPageId}
-              onSelectPage={handleSelectPage}
-              onCreatePage={handleCreatePage}
-              onUpdatePage={handleUpdatePage}
-              onDeletePage={handleDeletePage}
-              onReorderPages={handleReorderPages}
-            />
+          {/* Pages List - Right Sidebar */}
+          {selectedSectionId && (
+            <div className="w-64 border-l border-border/50 bg-background/50">
+              <div className="p-3 border-b border-border/50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground">Pages</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCreatePage()}
+                    className="h-6 w-6 p-0 sleek-button"
+                  >
+                    <FileText className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-2">
+                {getCurrentSectionPages().length > 0 ? (
+                  getCurrentSectionPages().map((page) => (
+                    <div
+                      key={page.id}
+                      onClick={() => handleSelectPage(page.id)}
+                      className={`p-2 rounded text-sm cursor-pointer transition-colors ${
+                        selectedPageId === page.id
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      }`}
+                    >
+                      {page.title || "Untitled page"}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground p-2">
+                    No pages yet
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Section Tabs at Bottom */}
-        {selectedNotebookId && (
-          <SectionTabs
-            sections={getCurrentNotebookSections()}
-            selectedSectionId={selectedSectionId}
-            onSelectSection={handleSelectSection}
-            onCreateSection={handleCreateSection}
-            onUpdateSection={handleUpdateSection}
-            onDeleteSection={handleDeleteSection}
-            onReorderSections={handleReorderSections}
-          />
-        )}
       </div>
 
       {/* AI Chat Sidebar - Popup */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -52,6 +52,10 @@ import {
   Heading3,
   Check,
   X,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface NoteEditorProps {
@@ -67,8 +71,15 @@ interface NoteEditorProps {
     content: string;
     sectionId?: string;
     parentPageId?: string;
-  }) => void;
+  }) => Promise<void>;
   onTitleChange?: (title: string) => void;
+  onAutoSave?: (page: {
+    id: string;
+    title: string;
+    content: string;
+    sectionId?: string;
+    parentPageId?: string;
+  }) => Promise<void>;
 }
 
 const NoteEditor = ({
@@ -78,8 +89,9 @@ const NoteEditor = ({
   sectionId = "",
   parentPageId,
   className = "",
-  onSave = () => {},
+  onSave = async () => {},
   onTitleChange = () => {},
+  onAutoSave,
 }: NoteEditorProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
@@ -87,21 +99,33 @@ const NoteEditor = ({
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("write");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<
+    "saved" | "saving" | "error" | "unsaved"
+  >("saved");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Mock tags for the page
-  const [tags, setTags] = useState<string[]>(["Physics", "Lecture", "Week 3"]);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialDataRef = useRef({
+    title: initialTitle,
+    content: initialContent,
+  });
 
   // Sync with props when page changes
-  React.useEffect(() => {
+  useEffect(() => {
     setTitle(initialTitle);
     setContent(initialContent);
+    initialDataRef.current = { title: initialTitle, content: initialContent };
+    setSaveStatus("saved");
+    setHasUnsavedChanges(false);
+    setLastSaved(new Date());
   }, [initialTitle, initialContent, pageId]);
 
   // Auto-title functionality
-  React.useEffect(() => {
+  useEffect(() => {
     if (content && (!title || title === "Untitled Page")) {
       const firstLine = content.split("\n")[0].trim();
       if (firstLine && firstLine.length > 0) {
@@ -112,30 +136,145 @@ const NoteEditor = ({
     }
   }, [content, title, onTitleChange]);
 
-  const handleSave = () => {
-    setIsSaving(true);
+  // Track unsaved changes
+  useEffect(() => {
+    const hasChanges =
+      title !== initialDataRef.current.title ||
+      content !== initialDataRef.current.content;
 
-    // Auto-generate title from first line if title is empty or default
-    let finalTitle = title;
-    if (!title || title === "Untitled Page") {
-      const firstLine = content.split("\n")[0].trim();
-      if (firstLine) {
-        finalTitle = firstLine.substring(0, 100); // Limit title length
+    if (hasChanges !== hasUnsavedChanges) {
+      setHasUnsavedChanges(hasChanges);
+      if (hasChanges && saveStatus === "saved") {
+        setSaveStatus("unsaved");
       }
     }
+  }, [title, content, hasUnsavedChanges, saveStatus]);
 
-    // Simulate saving delay
-    setTimeout(() => {
-      onSave({
-        id: pageId || `page-${Date.now()}`,
+  // Autosave functionality
+  useEffect(() => {
+    if (!hasUnsavedChanges || !pageId || !onAutoSave) return;
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout for autosave (3 seconds after last change)
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      handleAutoSave();
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [title, content, hasUnsavedChanges, pageId, onAutoSave]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Warn user about unsaved changes before leaving
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleAutoSave = async () => {
+    if (!pageId || !onAutoSave || !hasUnsavedChanges) return;
+
+    try {
+      setSaveStatus("saving");
+
+      // Auto-generate title from first line if title is empty or default
+      let finalTitle = title;
+      if (!title || title === "Untitled Page") {
+        const firstLine = content.split("\n")[0].trim();
+        if (firstLine) {
+          finalTitle = firstLine.substring(0, 100);
+        }
+      }
+
+      await onAutoSave({
+        id: pageId,
         title: finalTitle,
         content,
         sectionId,
         parentPageId,
       });
 
+      // Update initial data reference
+      initialDataRef.current = { title: finalTitle, content };
+      setSaveStatus("saved");
+      setHasUnsavedChanges(false);
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+      setSaveStatus("error");
+
+      // Retry after 10 seconds
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      retryTimeoutRef.current = setTimeout(() => {
+        handleAutoSave();
+      }, 10000);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!pageId) return;
+
+    setIsSaving(true);
+    setSaveStatus("saving");
+
+    try {
+      // Auto-generate title from first line if title is empty or default
+      let finalTitle = title;
+      if (!title || title === "Untitled Page") {
+        const firstLine = content.split("\n")[0].trim();
+        if (firstLine) {
+          finalTitle = firstLine.substring(0, 100); // Limit title length
+        }
+      }
+
+      await onSave({
+        id: pageId,
+        title: finalTitle,
+        content,
+        sectionId,
+        parentPageId,
+      });
+
+      // Update initial data reference
+      initialDataRef.current = { title: finalTitle, content };
+      setSaveStatus("saved");
+      setHasUnsavedChanges(false);
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Save failed:", error);
+      setSaveStatus("error");
+    } finally {
       setIsSaving(false);
-    }, 800);
+    }
   };
 
   const handleFormatText = useCallback(
@@ -355,421 +494,323 @@ const NoteEditor = ({
     }
   };
 
-  const addTag = (tag: string) => {
-    if (tag && !tags.includes(tag)) {
-      setTags([...tags, tag]);
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
   return (
-    <Card className={`w-full bg-background ${className}`}>
-      <CardHeader className="space-y-2">
-        <div className="flex items-center justify-between">
+    <div className={`w-full h-full flex flex-col bg-background ${className}`}>
+      {/* Sleek Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+        <div className="flex-1">
           <Input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-xl font-bold border-none focus-visible:ring-0 px-0 h-auto text-2xl"
-            placeholder="Page Title"
+            className="text-2xl font-bold border-none focus-visible:ring-0 px-0 h-auto bg-transparent"
+            placeholder="Untitled page"
           />
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Saving
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <Save className="h-4 w-4 mr-1" />
-                  Save
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="flex items-center gap-1"
-            >
-              {tag}
-              <button
-                onClick={() => removeTag(tag)}
-                className="ml-1 hover:text-destructive"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="h-6">
-                + Add Tag
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Add a new tag</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Enter a tag to help organize your notes.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Input
-                id="new-tag"
-                placeholder="Enter tag name"
-                className="mt-2"
-              />
-              <AlertDialogFooter className="mt-4">
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    const input = document.getElementById(
-                      "new-tag",
-                    ) as HTMLInputElement;
-                    if (input) addTag(input.value);
-                  }}
-                >
-                  Add Tag
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <Tabs
-          defaultValue="write"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="mb-4">
-            <TabsTrigger value="write" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Write
-            </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="write" className="space-y-4">
-            <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-muted/20">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("bold")}
-                    >
-                      <Bold className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Bold</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("italic")}
-                    >
-                      <Italic className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Italic</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("underline")}
-                    >
-                      <Underline className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Underline</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Separator orientation="vertical" className="h-6" />
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("h1")}
-                    >
-                      <Heading1 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Heading 1</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("h2")}
-                    >
-                      <Heading2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Heading 2</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("h3")}
-                    >
-                      <Heading3 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Heading 3</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Separator orientation="vertical" className="h-6" />
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("list")}
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Bullet List</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleFormatText("ordered-list")}
-                    >
-                      <ListOrdered className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Numbered List</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Separator orientation="vertical" className="h-6" />
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleInsertImage}
-                      >
-                        <Image className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Upload Image from Computer</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleInsertLink}
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Insert Link</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleInsertImageUrl}
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Insert Image from URL</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Separator orientation="vertical" className="h-6" />
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isRecording ? "destructive" : "ghost"}
-                      size="sm"
-                      onClick={toggleRecording}
-                      className={isRecording ? "animate-pulse" : ""}
-                    >
-                      <Mic className="h-4 w-4" />
-                      {isRecording && (
-                        <span className="ml-1">Recording...</span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {isRecording ? "Stop Recording" : "Start Voice Recording"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            <div
-              className={`relative ${isDragOver ? "border-2 border-dashed border-primary bg-primary/5" : ""}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <Textarea
-                ref={editorRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Start typing your page content here... You can also drag and drop images!"
-                className="min-h-[400px] font-mono text-sm resize-none"
-              />
-              {isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-md">
-                  <div className="text-center">
-                    <Image className="h-12 w-12 mx-auto mb-2 text-primary" />
-                    <p className="text-primary font-medium">Drop images here</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="hidden"
-              multiple={false}
-            />
-          </TabsContent>
-
-          <TabsContent
-            value="preview"
-            className="min-h-[400px] border rounded-md p-4 prose dark:prose-invert max-w-none"
-          >
-            {content ? (
-              <div
-                dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }}
-              />
-            ) : (
-              <div className="text-muted-foreground italic">
-                No content to preview
+          {/* Save Status Indicator */}
+          <div className="flex items-center gap-2 mt-1">
+            {saveStatus === "saving" && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Saving...</span>
               </div>
             )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          {content.length} characters • Last edited:{" "}
-          {new Date().toLocaleString()}
+            {saveStatus === "saved" && lastSaved && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                <span>
+                  Saved{" "}
+                  {lastSaved.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            )}
+            {saveStatus === "error" && (
+              <div className="flex items-center gap-1 text-xs text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                <span>Save failed - retrying...</span>
+              </div>
+            )}
+            {saveStatus === "unsaved" && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Unsaved changes</span>
+              </div>
+            )}
+          </div>
         </div>
-        <Button variant="default" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Page"}
-        </Button>
-      </CardFooter>
-    </Card>
+        <div className="flex items-center gap-2">
+          {hasUnsavedChanges && (
+            <span className="text-xs text-muted-foreground">
+              Auto-saving enabled
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving || saveStatus === "saving"}
+            className="sleek-button"
+          >
+            {isSaving || saveStatus === "saving" ? (
+              <span className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </span>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-1 px-6 py-3 border-b border-border/50 bg-background/50">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("bold")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Bold className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Bold</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("italic")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Italic className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Italic</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("underline")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Underline className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Underline</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <Separator orientation="vertical" className="h-6 mx-2" />
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("h1")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Heading1 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Heading 1</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("h2")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Heading2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Heading 2</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("h3")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Heading3 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Heading 3</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <Separator orientation="vertical" className="h-6 mx-2" />
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("list")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Bullet List</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFormatText("ordered-list")}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <ListOrdered className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Numbered List</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <Separator orientation="vertical" className="h-6 mx-2" />
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleInsertImage}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Image className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Upload Image</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleInsertLink}
+                className="sleek-button h-8 w-8 p-0"
+              >
+                <Link className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Insert Link</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isRecording ? "destructive" : "ghost"}
+                size="sm"
+                onClick={toggleRecording}
+                className={`sleek-button h-8 w-8 p-0 ${isRecording ? "animate-pulse" : ""}`}
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isRecording ? "Stop Recording" : "Start Voice Recording"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      {/* Editor Area */}
+      <div className="flex-1 p-6 overflow-hidden">
+        <div
+          className={`h-full relative ${isDragOver ? "border-2 border-dashed border-primary bg-primary/5 rounded" : ""}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <Textarea
+            ref={editorRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Start typing your page content here... You can also drag and drop images!"
+            className="h-full w-full border-none focus-visible:ring-0 resize-none bg-transparent text-base leading-relaxed"
+          />
+          {isDragOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded">
+              <div className="text-center">
+                <Image className="h-12 w-12 mx-auto mb-2 text-primary" />
+                <p className="text-primary font-medium">Drop images here</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileUpload}
+          className="hidden"
+          multiple={false}
+        />
+      </div>
+    </div>
   );
 };
 

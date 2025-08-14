@@ -78,6 +78,7 @@ interface SortableTabProps {
   onSelect: (sectionId: string) => void;
   onEdit: (section: Section) => void;
   onDelete: (sectionId: string) => void;
+  colorClass: string;
 }
 
 const SortableTab = ({
@@ -86,6 +87,7 @@ const SortableTab = ({
   onSelect,
   onEdit,
   onDelete,
+  colorClass,
 }: SortableTabProps) => {
   const {
     attributes,
@@ -106,17 +108,11 @@ const SortableTab = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative flex items-center gap-1 px-3 py-2 rounded-t-lg border-b-2 cursor-pointer transition-all ${
-        isSelected
-          ? "bg-background border-b-primary"
-          : "bg-muted/50 border-b-transparent hover:bg-muted"
+      className={`group relative flex items-center gap-2 px-4 py-3 cursor-pointer transition-all vibrant-tab ${
+        isSelected ? `active ${colorClass}` : "hover:bg-accent/20"
       }`}
       onClick={() => onSelect(section.id)}
     >
-      <div
-        className="w-2 h-2 rounded-full flex-shrink-0"
-        style={{ backgroundColor: section.color || "#3b82f6" }}
-      />
       <span className="text-sm font-medium truncate max-w-32">
         {section.name}
       </span>
@@ -124,7 +120,7 @@ const SortableTab = ({
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent rounded"
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/10 rounded"
         >
           <GripVertical className="h-3 w-3" />
         </div>
@@ -133,7 +129,7 @@ const SortableTab = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3 w-3" />
@@ -252,9 +248,16 @@ const SectionTabs = ({
     }
   };
 
+  const vibrantColors = [
+    "section-tab-purple",
+    "section-tab-orange",
+    "section-tab-cyan",
+    "section-tab-pink",
+  ];
+
   return (
-    <div className={`border-b bg-background ${className}`}>
-      <div className="flex items-center gap-2 px-4 py-2">
+    <div className={`bg-background ${className}`}>
+      <div className="flex items-center px-4 py-0">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -264,24 +267,28 @@ const SectionTabs = ({
             items={sections.map((s) => s.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-              {sections.map((section) => (
-                <SortableTab
-                  key={section.id}
-                  section={section}
-                  isSelected={selectedSectionId === section.id}
-                  onSelect={onSelectSection}
-                  onEdit={handleEditSection}
-                  onDelete={onDeleteSection}
-                />
-              ))}
+            <div className="flex items-end gap-0 flex-1 overflow-x-auto">
+              {sections.map((section, index) => {
+                const colorClass = vibrantColors[index % vibrantColors.length];
+                return (
+                  <SortableTab
+                    key={section.id}
+                    section={section}
+                    isSelected={selectedSectionId === section.id}
+                    onSelect={onSelectSection}
+                    onEdit={handleEditSection}
+                    onDelete={onDeleteSection}
+                    colorClass={colorClass}
+                  />
+                );
+              })}
             </div>
           </SortableContext>
         </DndContext>
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="sleek-button ml-2">
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>

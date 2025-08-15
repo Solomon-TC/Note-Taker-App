@@ -1,0 +1,236 @@
+"use client";
+
+import { createClient } from "@/lib/supabase-client";
+import imageCompression from "browser-image-compression";
+
+export interface UploadResult {
+  url: string;
+  path: string;
+  objectKey: string;
+}
+
+export class StorageService {
+  private supabase = createClient();
+  private bucketName = "notes";
+
+  /**
+   * Generate a storage path for a file
+   */
+  generatePath(
+    userId: string,
+    noteId: string,
+    type: "images" | "drawings",
+    filename: string,
+  ): string {
+    const timestamp = Date.now();
+    const extension = filename.split(".").pop() || "png";
+    const sanitizedFilename = `${timestamp}-${Math.random().toString(36).substring(2)}.${extension}`;
+    return `${userId}/${noteId}/${type}/${sanitizedFilename}`;
+  }
+
+  /**
+   * Compress an image file before upload
+   */
+  async compressImage(file: File, maxSizeMB: number = 10): Promise<File> {
+    const options = {
+      maxSizeMB,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      fileType: file.type as any,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      return compressedFile;
+    } catch (error) {
+      console.warn("Image compression failed, using original file:", error);
+      return file;
+    }
+  }
+
+  /**
+   * Validate file type and size
+   */
+  validateFile(file: File): { valid: boolean; error?: string } {
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    const maxSize = 50 * 1024 * 1024; // 50MB
+
+    if (!allowedTypes.includes(file.type)) {
+      return {
+        valid: false,
+        error: `File type ${file.type} is not allowed. Please use PNG, JPEG, WebP, or GIF.`,
+      };
+    }
+
+    if (file.size > maxSize) {
+      return {
+        valid: false,
+        error: `File size ${(file.size / 1024 / 1024).toFixed(1)}MB exceeds the 50MB limit.`,
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Upload a file to Supabase Storage
+   */
+  async uploadFile(
+    file: File,
+    userId: string,
+    noteId: string,
+    type: "images" | "drawings" = "images",
+  ): Promise<UploadResult> {
+    // Validate file
+    const validation = this.validateFile(file);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    // Compress image if needed
+    const processedFile = await this.compressImage(file);
+
+    // Generate path
+    const path = this.generatePath(userId, noteId, type, processedFile.name);
+
+    // Upload to Supabase Storage
+    const { data, error } = await this.supabase.storage
+      .from(this.bucketName)
+      .upload(path, processedFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    // Get signed URL
+    const signedUrl = await this.getSignedUrl(path);
+
+    return {
+      url: signedUrl,
+      path: data.path,
+      objectKey: path,
+    };
+  }
+
+  /**
+   * Upload a blob (for drawings)
+   */
+  async uploadBlob(
+    blob: Blob,
+    userId: string,
+    noteId: string,
+    filename: string,
+    type: "images" | "drawings" = "drawings",
+  ): Promise<UploadResult> {
+    const path = this.generatePath(userId, noteId, type, filename);
+
+    const { data, error } = await this.supabase.storage
+      .from(this.bucketName)
+      .upload(path, blob, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: "image/png",
+      });
+
+    if (error) {
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    const signedUrl = await this.getSignedUrl(path);
+
+    return {
+      url: signedUrl,
+      path: data.path,
+      objectKey: path,
+    };
+  }
+
+  /**
+   * Get a signed URL for a file
+   */
+  async getSignedUrl(path: string, expiresIn: number = 3600): Promise<string> {
+    const { data, error } = await this.supabase.storage
+      .from(this.bucketName)
+      .createSignedUrl(path, expiresIn);
+
+    if (error) {
+      throw new Error(`Failed to get signed URL: ${error.message}`);
+    }
+
+    return data.signedUrl;
+  }
+
+  /**
+   * Delete a file from storage
+   */
+  async deleteFile(path: string): Promise<void> {
+    const { error } = await this.supabase.storage
+      .from(this.bucketName)
+      .remove([path]);
+
+    if (error) {
+      throw new Error(`Failed to delete file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Refresh signed URLs in Tiptap JSON content
+   */
+  async refreshSignedUrlsInContent(content: any): Promise<any> {
+    if (!content || typeof content !== "object") {
+      return content;
+    }
+
+    // Deep clone to avoid mutations
+    const refreshedContent = JSON.parse(JSON.stringify(content));
+
+    const refreshNode = async (node: any) => {
+      if (node.type === "image" && node.attrs?.src && node.attrs?.objectKey) {
+        try {
+          const newSignedUrl = await this.getSignedUrl(node.attrs.objectKey);
+          node.attrs.src = newSignedUrl;
+        } catch (error) {
+          console.warn(
+            `Failed to refresh signed URL for ${node.attrs.objectKey}:`,
+            error,
+          );
+        }
+      }
+
+      if (node.content && Array.isArray(node.content)) {
+        for (const childNode of node.content) {
+          await refreshNode(childNode);
+        }
+      }
+    };
+
+    if (refreshedContent.content && Array.isArray(refreshedContent.content)) {
+      for (const node of refreshedContent.content) {
+        await refreshNode(node);
+      }
+    }
+
+    return refreshedContent;
+  }
+
+  /**
+   * Convert a data URL to a blob
+   */
+  dataURLToBlob(dataURL: string): Blob {
+    const arr = dataURL.split(",");
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  }
+}
+
+// Export singleton instance
+export const storageService = new StorageService();

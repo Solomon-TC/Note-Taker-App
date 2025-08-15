@@ -19,6 +19,11 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Brain, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
+import {
+  safeJsonParse,
+  extractPlainText,
+  type TiptapDocument,
+} from "@/lib/editor/json";
 
 type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
 type Section = Database["public"]["Tables"]["sections"]["Row"];
@@ -352,6 +357,8 @@ export default function DashboardPage() {
     if (!user || !selectedSectionId) return;
 
     try {
+      const defaultContent = { type: "doc", content: [] } as TiptapDocument;
+
       const { data, error } = await supabase
         .from("pages")
         .insert({
@@ -360,6 +367,7 @@ export default function DashboardPage() {
           parent_page_id: parentPageId || null,
           title: "Untitled Page",
           content: "",
+          content_json: defaultContent as any,
           sort_order: pages.filter(
             (p) =>
               p.section_id === selectedSectionId &&
@@ -447,6 +455,7 @@ export default function DashboardPage() {
     id: string;
     title: string;
     content: string;
+    contentJson: TiptapDocument;
     sectionId?: string;
     parentPageId?: string;
   }) => {
@@ -458,6 +467,8 @@ export default function DashboardPage() {
         .update({
           title: pageData.title,
           content: pageData.content,
+          content_json: pageData.contentJson as any,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", pageData.id)
         .eq("user_id", user.id)
@@ -483,34 +494,144 @@ export default function DashboardPage() {
     id: string;
     title: string;
     content: string;
+    contentJson: TiptapDocument;
     sectionId?: string;
     parentPageId?: string;
   }) => {
-    if (!user) return;
+    if (!user) {
+      console.error("No user found for autosave");
+      throw new Error("User not authenticated");
+    }
+
+    // Validate required data
+    if (!pageData.id) {
+      console.error("No page ID provided for autosave");
+      throw new Error("Page ID is required");
+    }
+
+    if (!pageData.contentJson || typeof pageData.contentJson !== "object") {
+      console.error("Invalid content JSON for autosave:", pageData.contentJson);
+      throw new Error("Valid content JSON is required");
+    }
 
     try {
+      console.log("Dashboard: Starting autosave for page:", pageData.id);
+      console.log("Dashboard: Update data:", {
+        title: pageData.title,
+        contentLength: pageData.content.length,
+        hasContentJson: !!pageData.contentJson,
+        contentJsonType: typeof pageData.contentJson,
+        contentJsonValid: pageData.contentJson.type === "doc",
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Validate content JSON structure
+      const validatedContentJson = safeJsonParse(pageData.contentJson);
+
+      const updatePayload = {
+        title: pageData.title || "Untitled Page",
+        content: pageData.content || "",
+        content_json: validatedContentJson as any,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log("Dashboard: Sending update payload:", {
+        ...updatePayload,
+        content_json: "[JSON Object]", // Don't log the full JSON
+        content_json_size: JSON.stringify(updatePayload.content_json).length,
+      });
+
       const { data, error } = await supabase
         .from("pages")
-        .update({
-          title: pageData.title,
-          content: pageData.content,
-        })
+        .update(updatePayload)
         .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()
         .single();
 
       if (error) {
-        console.error("Error auto-saving page:", error);
+        console.error("Dashboard: Supabase error during autosave:", {
+          error,
+          pageId: pageData.id,
+          userId: user.id,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Enhanced error handling with specific error types
+        if (error.code === "42703") {
+          throw new Error(
+            `Database schema error: The content_json column is missing from the pages table. Please run the database migration.`,
+          );
+        }
+
+        if (error.code === "PGRST116") {
+          throw new Error(
+            `Page not found or access denied. Page ID: ${pageData.id}`,
+          );
+        }
+
+        if (error.message?.includes("content_json")) {
+          throw new Error(
+            `Content JSON error: ${error.message}. This may indicate a database schema issue.`,
+          );
+        }
+
+        if (error.message?.includes("schema cache")) {
+          // Force a schema refresh by retrying after a short delay
+          console.log("Schema cache error detected, retrying after delay...");
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Retry the operation once
+          const { data: retryData, error: retryError } = await supabase
+            .from("pages")
+            .update(updatePayload)
+            .eq("id", pageData.id)
+            .eq("user_id", user.id)
+            .select()
+            .single();
+
+          if (retryError) {
+            throw new Error(
+              `Schema cache error persists: ${retryError.message}`,
+            );
+          }
+
+          if (retryData) {
+            setPages((currentPages) =>
+              currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
+            );
+            return;
+          }
+        }
+
         throw error;
       }
 
       if (data) {
+        console.log("Dashboard: Autosave successful, updating local state");
         // Update the pages state silently for autosave
-        setPages(pages.map((p) => (p.id === pageData.id ? data : p)));
+        setPages((currentPages) =>
+          currentPages.map((p) => (p.id === pageData.id ? data : p)),
+        );
+      } else {
+        console.warn("Dashboard: No data returned from autosave");
+        throw new Error("No data returned from database update");
       }
     } catch (error) {
-      console.error("Error auto-saving page:", error);
+      console.error("Dashboard: Error auto-saving page:", {
+        error,
+        pageId: pageData.id,
+        userId: user?.id,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        errorStack: error instanceof Error ? error.stack : "No stack trace",
+        timestamp: new Date().toISOString(),
+      });
       throw error;
     }
   };
@@ -752,7 +873,7 @@ export default function DashboardPage() {
               <NoteEditor
                 pageId={currentPage.id}
                 initialTitle={currentPage.title}
-                initialContent={currentPage.content || ""}
+                initialContent={safeJsonParse(currentPage.content_json)}
                 sectionId={selectedSectionId || undefined}
                 parentPageId={currentPage.parent_page_id || undefined}
                 onSave={handleSavePage}

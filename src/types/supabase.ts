@@ -205,6 +205,7 @@ export type Database = {
       pages: {
         Row: {
           content: string | null
+          content_json: Json | null
           created_at: string | null
           id: string
           parent_page_id: string | null
@@ -216,6 +217,7 @@ export type Database = {
         }
         Insert: {
           content?: string | null
+          content_json?: Json | null
           created_at?: string | null
           id?: string
           parent_page_id?: string | null
@@ -227,6 +229,7 @@ export type Database = {
         }
         Update: {
           content?: string | null
+          content_json?: Json | null
           created_at?: string | null
           id?: string
           parent_page_id?: string | null

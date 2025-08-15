@@ -129,4 +129,360 @@
   .section-tab-pink {
     background: hsl(var(--vibrant-pink));
   }
+
+  /* Tiptap Editor Styles - Scoped to prevent global interference */
+  .ProseMirror {
+    white-space: normal;
+    outline: none;
+  }
+
+  .ProseMirror p {
+    margin: 0 0 0.5rem 0;
+    white-space: pre-wrap; /* preserves user-intended line breaks */
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    padding-left: 1.5rem !important; /* show indentation */
+    margin: 0.5rem 0 !important;
+    list-style-position: outside !important;
+  }
+
+  /* Text alignment for lists - proper alignment with markers */
+  .ProseMirror ul[style*="text-align: center"],
+  .ProseMirror ol[style*="text-align: center"] {
+    text-align: center;
+    list-style-position: inside !important;
+    padding-left: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: fit-content !important;
+    display: block !important;
+  }
+
+  .ProseMirror ul[style*="text-align: center"] li,
+  .ProseMirror ol[style*="text-align: center"] li {
+    text-align: center !important;
+    display: list-item !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .ProseMirror ul[style*="text-align: right"],
+  .ProseMirror ol[style*="text-align: right"] {
+    text-align: right;
+    list-style-position: inside !important;
+    padding-left: 0 !important;
+    margin-left: auto !important;
+    width: fit-content !important;
+    display: block !important;
+  }
+
+  .ProseMirror ul[style*="text-align: right"] li,
+  .ProseMirror ol[style*="text-align: right"] li {
+    text-align: right !important;
+    display: list-item !important;
+  }
+
+  .ProseMirror ul[style*="text-align: left"],
+  .ProseMirror ol[style*="text-align: left"] {
+    text-align: left;
+    list-style-position: outside !important;
+    padding-left: 1.5rem !important;
+    display: block !important;
+  }
+
+  .ProseMirror ul[style*="text-align: left"] li,
+  .ProseMirror ol[style*="text-align: left"] li {
+    text-align: left !important;
+    display: list-item !important;
+  }
+
+  .ProseMirror ul {
+    list-style-type: disc !important;
+  }
+
+  .ProseMirror ol {
+    list-style-type: decimal !important;
+  }
+
+  .ProseMirror li {
+    display: list-item !important;
+    list-style: inherit !important;
+    margin: 0.25rem 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .ProseMirror li p {
+    margin: 0 !important;
+    display: inline !important;
+  }
+
+  /* Ensure list markers are visible */
+  .ProseMirror ul li::marker,
+  .ProseMirror ol li::marker {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Additional list styling for better visibility */
+  .prose-lists ul,
+  .prose-lists ol {
+    padding-left: 1.5rem !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .prose-lists ul {
+    list-style-type: disc !important;
+  }
+
+  .prose-lists ol {
+    list-style-type: decimal !important;
+  }
+
+  .prose-lists li {
+    display: list-item !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  /* Image styling */
+  .ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem 0;
+    border-radius: 0.375rem;
+    border: 1px solid hsl(var(--border));
+  }
+
+  .ProseMirror h1,
+  .ProseMirror h2,
+  .ProseMirror h3,
+  .ProseMirror h4,
+  .ProseMirror h5,
+  .ProseMirror h6 {
+    margin: 1rem 0 0.5rem 0;
+    line-height: 1.2;
+  }
+
+  .ProseMirror h1:first-child,
+  .ProseMirror h2:first-child,
+  .ProseMirror h3:first-child,
+  .ProseMirror h4:first-child,
+  .ProseMirror h5:first-child,
+  .ProseMirror h6:first-child,
+  .ProseMirror p:first-child {
+    margin-top: 0;
+  }
+
+  .ProseMirror blockquote {
+    border-left: 4px solid hsl(var(--border));
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+  }
+
+  .ProseMirror code {
+    background: hsl(var(--muted));
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+      "Liberation Mono", Menlo, monospace;
+  }
+
+  .ProseMirror pre {
+    background: hsl(var(--muted));
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  .ProseMirror pre code {
+    background: none;
+    padding: 0;
+  }
+
+  /* Task list styles - Fixed for proper functionality */
+  .ProseMirror ul[data-type="taskList"] {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li {
+    display: flex !important;
+    align-items: flex-start !important;
+    margin: 0.25rem 0 !important;
+    padding-left: 0 !important;
+    list-style: none !important;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label {
+    flex: 0 0 auto;
+    margin-right: 0.5rem;
+    margin-top: 0.125rem;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > div > p {
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  /* Table styles */
+  .ProseMirror table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 1rem 0;
+    overflow: hidden;
+  }
+
+  .ProseMirror table td,
+  .ProseMirror table th {
+    min-width: 1em;
+    border: 1px solid hsl(var(--border));
+    padding: 0.5rem;
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .ProseMirror table th {
+    font-weight: bold;
+    text-align: left;
+    background: hsl(var(--muted));
+  }
+
+  .ProseMirror table .selectedCell:after {
+    z-index: 2;
+    position: absolute;
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: hsl(var(--primary) / 0.1);
+    pointer-events: none;
+  }
+
+  /* Placeholder styles */
+  .ProseMirror .is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+    height: 0;
+  }
+
+  /* Highlight styles */
+  .ProseMirror mark {
+    background-color: #fef08a;
+    color: inherit;
+    padding: 0.125rem 0;
+    border-radius: 0.125rem;
+  }
+
+  /* Custom text colors */
+  .ProseMirror [style*="color:"] {
+    /* Preserve custom text colors */
+  }
+
+  /* Font family styles */
+  .ProseMirror [style*="font-family:"] {
+    /* Preserve custom font families */
+  }
+
+  /* Font size styles */
+  .ProseMirror [style*="font-size:"] {
+    /* Preserve custom font sizes */
+  }
+
+  /* Enhanced Google Docs-like table styling */
+  .ProseMirror .tiptap-table {
+    border-collapse: collapse;
+    table-layout: auto;
+    width: 100%;
+    margin: 1rem 0;
+    overflow: visible;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+  }
+
+  .ProseMirror .tiptap-table-cell,
+  .ProseMirror .tiptap-table-header {
+    min-width: 2em;
+    border: 1px solid hsl(var(--border));
+    padding: 0.75rem;
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+    background: hsl(var(--background));
+    transition: background-color 0.2s ease;
+  }
+
+  .ProseMirror .tiptap-table-cell:hover,
+  .ProseMirror .tiptap-table-header:hover {
+    background: hsl(var(--accent) / 0.1);
+  }
+
+  .ProseMirror .tiptap-table-header {
+    font-weight: 600;
+    text-align: left;
+    background: hsl(var(--muted) / 0.5);
+    border-bottom: 2px solid hsl(var(--border));
+  }
+
+  .ProseMirror .tiptap-table-cell.selectedCell,
+  .ProseMirror .tiptap-table-header.selectedCell {
+    background: hsl(var(--primary) / 0.1);
+    border: 2px solid hsl(var(--primary));
+  }
+
+  /* Table resize handles */
+  .ProseMirror .tableWrapper {
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  .ProseMirror .resize-cursor {
+    cursor: col-resize;
+  }
+
+  /* Improved list alignment for all text alignments */
+  .ProseMirror ul,
+  .ProseMirror ol {
+    transition: all 0.2s ease;
+  }
+
+  /* Default left alignment */
+  .ProseMirror ul:not([style*="text-align"]),
+  .ProseMirror ol:not([style*="text-align"]) {
+    text-align: left;
+    list-style-position: outside !important;
+    padding-left: 1.5rem !important;
+    display: block !important;
+  }
+
+  .ProseMirror ul:not([style*="text-align"]) li,
+  .ProseMirror ol:not([style*="text-align"]) li {
+    text-align: left !important;
+    display: list-item !important;
+  }
 }

@@ -247,7 +247,25 @@ const AIChatSidebar = ({
       if (error) {
         console.error("Error loading AI sessions:", error);
       } else {
-        setAISessions(data || []);
+        // Transform the data to match our AISession interface
+        const transformedSessions: AISession[] = (data || []).map(
+          (session) => ({
+            id: session.id,
+            session_type:
+              session.session_type === "chat" ||
+              session.session_type === "summary" ||
+              session.session_type === "practice"
+                ? session.session_type
+                : "chat", // Default fallback
+            title: session.title,
+            context: safeJsonParse(session.context) || {},
+            messages: safeJsonParse(session.messages) || [],
+            metadata: safeJsonParse(session.metadata) || {},
+            created_at: session.created_at || new Date().toISOString(),
+            updated_at: session.updated_at || new Date().toISOString(),
+          }),
+        );
+        setAISessions(transformedSessions);
       }
     } catch (error) {
       console.error("Error loading AI sessions:", error);

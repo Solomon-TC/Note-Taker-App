@@ -15,6 +15,7 @@ import SectionTabs from "@/components/navigation/SectionTabs";
 import PageList from "@/components/navigation/PageList";
 import NoteEditor from "@/components/notes/NoteEditor";
 import AIChatSidebar from "@/components/ai/AIChatSidebar";
+import FloatingAIAssistantButton from "@/components/ai/FloatingAIAssistantButton";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Brain, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
@@ -829,14 +830,6 @@ export default function DashboardPage() {
 
           {/* Right side - Actions */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
-              className="sleek-button"
-            >
-              <Brain className="h-4 w-4" />
-            </Button>
             {selectedSectionId && (
               <Button
                 variant="ghost"
@@ -867,8 +860,10 @@ export default function DashboardPage() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Note Editor - Takes most space */}
-          <div className="flex-1 overflow-hidden">
+          {/* Note Editor - Takes most space, adjust for AI sidebar */}
+          <div
+            className={`flex-1 overflow-hidden transition-all duration-300 ${isAIAssistantOpen ? "mr-[600px]" : ""}`}
+          >
             {selectedPageId && currentPage ? (
               <NoteEditor
                 pageId={currentPage.id}
@@ -901,8 +896,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Pages List - Right Sidebar */}
-          {selectedSectionId && (
+          {/* Pages List - Right Sidebar - Only show when AI assistant is closed */}
+          {selectedSectionId && !isAIAssistantOpen && (
             <div className="w-64 border-l border-border/50 bg-background/50">
               <div className="p-3 border-b border-border/50">
                 <div className="flex items-center justify-between">
@@ -917,7 +912,47 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </div>
-              <div className="p-2">
+              <div className="p-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {getCurrentSectionPages().length > 0 ? (
+                  getCurrentSectionPages().map((page) => (
+                    <div
+                      key={page.id}
+                      onClick={() => handleSelectPage(page.id)}
+                      className={`p-2 rounded text-sm cursor-pointer transition-colors ${
+                        selectedPageId === page.id
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      }`}
+                    >
+                      {page.title || "Untitled page"}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground p-2">
+                    No pages yet
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Pages List in AI Sidebar when open */}
+          {selectedSectionId && isAIAssistantOpen && (
+            <div className="fixed top-16 right-[600px] w-64 h-[calc(100vh-64px)] bg-background border-l border-border/50 z-40">
+              <div className="p-3 border-b border-border/50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground">Pages</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCreatePage()}
+                    className="h-6 w-6 p-0 sleek-button"
+                  >
+                    <FileText className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-2 max-h-[calc(100vh-200px)] overflow-y-auto">
                 {getCurrentSectionPages().length > 0 ? (
                   getCurrentSectionPages().map((page) => (
                     <div
@@ -943,6 +978,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Floating AI Assistant Button */}
+      <FloatingAIAssistantButton
+        onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+        isOpen={isAIAssistantOpen}
+      />
+
       {/* AI Chat Sidebar - Popup */}
       <AIChatSidebar
         currentNote={
@@ -954,6 +995,35 @@ export default function DashboardPage() {
               }
             : undefined
         }
+        context={{
+          currentNotebook: selectedNotebookId
+            ? notebooks.find((nb) => nb.id === selectedNotebookId)
+              ? {
+                  id: selectedNotebookId,
+                  name: notebooks.find((nb) => nb.id === selectedNotebookId)!
+                    .name,
+                }
+              : undefined
+            : undefined,
+          currentSection: selectedSectionId
+            ? sections.find((s) => s.id === selectedSectionId)
+              ? {
+                  id: selectedSectionId,
+                  name: sections.find((s) => s.id === selectedSectionId)!.name,
+                }
+              : undefined
+            : undefined,
+          currentPage: currentPage
+            ? { id: currentPage.id, title: currentPage.title }
+            : undefined,
+          allPages: pages.map((page) => ({
+            id: page.id,
+            title: page.title,
+            content: page.content || extractPlainText(page.content_json) || "",
+            content_json: page.content_json,
+            section_id: page.section_id,
+          })),
+        }}
         isOpen={isAIAssistantOpen}
         onClose={() => setIsAIAssistantOpen(false)}
       />

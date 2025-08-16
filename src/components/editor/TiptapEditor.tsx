@@ -117,7 +117,7 @@ const CustomImage = Image.extend({
   },
 
   addNodeView() {
-    return ({ node, updateAttributes, getPos, editor }) => {
+    return ({ node, getPos, editor }) => {
       const container = document.createElement("div");
       container.className = "interactive-image-container relative inline-block";
 
@@ -255,14 +255,21 @@ const CustomImage = Image.extend({
             // Use the editor's command API to update attributes
             // This is more reliable than calling updateAttributes directly
             const pos = getPos();
-            if (typeof pos === "number") {
-              editor.view.dispatch(
-                editor.view.state.tr.setNodeMarkup(pos, undefined, {
-                  ...node.attrs,
-                  width: img.style.width,
-                  height: img.style.height,
-                }),
-              );
+            if (typeof pos === "number" && editor && editor.view) {
+              try {
+                const transaction = editor.view.state.tr.setNodeMarkup(
+                  pos,
+                  undefined,
+                  {
+                    ...node.attrs,
+                    width: img.style.width,
+                    height: img.style.height,
+                  },
+                );
+                editor.view.dispatch(transaction);
+              } catch (error) {
+                console.error("Error updating image attributes:", error);
+              }
             }
             document.removeEventListener("mousemove", handleMouseMove);
             document.removeEventListener("mouseup", handleMouseUp);

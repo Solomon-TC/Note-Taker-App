@@ -49,7 +49,6 @@ import {
   PenTool,
   Palette,
   Highlighter,
-  ChevronDown,
   Plus,
   Minus,
   MoreHorizontal,
@@ -66,25 +65,40 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
   const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
 
   const addLink = useCallback(() => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl);
+    if (!editor) return;
 
-    // cancelled
-    if (url === null) {
-      return;
+    try {
+      const previousUrl = editor.getAttributes("link").href;
+      const url = window.prompt("URL", previousUrl);
+
+      // cancelled
+      if (url === null) {
+        return;
+      }
+
+      // empty
+      if (url === "") {
+        editor?.chain().focus().extendMarkRange("link").unsetLink().run();
+        return;
+      }
+
+      // update link
+      editor
+        ?.chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: url })
+        .run();
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error adding link:", error);
+      }
     }
-
-    // empty
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-
-    // update link
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
 
   const insertTable = useCallback(() => {
+    if (!editor) return;
+
     try {
       // Insert a Google Docs-like table with better default settings
       const tableConfig = {
@@ -95,22 +109,24 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
       };
 
       if (editor.can().insertTable(tableConfig)) {
-        editor.chain().focus().insertTable(tableConfig).run();
+        editor?.chain().focus().insertTable(tableConfig).run();
       } else {
         // Try to insert at a new paragraph
         editor
-          .chain()
+          ?.chain()
           .focus()
           .insertContent("\n")
           .insertTable(tableConfig)
           .run();
       }
     } catch (error) {
-      console.error("Error inserting table:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error inserting table:", error);
+      }
       // Fallback: try inserting at the end
       try {
         editor
-          .chain()
+          ?.chain()
           .focus()
           .command(({ tr, state, dispatch }) => {
             const { doc } = state;
@@ -122,7 +138,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
           .run();
       } catch (fallbackError) {
-        console.error("Fallback table insertion failed:", fallbackError);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Fallback table insertion failed:", fallbackError);
+        }
         alert(
           "Could not insert table. Please try placing your cursor in a different location.",
         );
@@ -131,38 +149,51 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
   }, [editor]);
 
   const addTableRow = useCallback(() => {
-    editor.chain().focus().addRowAfter().run();
+    if (!editor) return;
+    editor?.chain().focus().addRowAfter().run();
   }, [editor]);
 
   const addTableColumn = useCallback(() => {
-    editor.chain().focus().addColumnAfter().run();
+    if (!editor) return;
+    editor?.chain().focus().addColumnAfter().run();
   }, [editor]);
 
   const deleteTableRow = useCallback(() => {
-    editor.chain().focus().deleteRow().run();
+    if (!editor) return;
+    editor?.chain().focus().deleteRow().run();
   }, [editor]);
 
   const deleteTableColumn = useCallback(() => {
-    editor.chain().focus().deleteColumn().run();
+    if (!editor) return;
+    editor?.chain().focus().deleteColumn().run();
   }, [editor]);
 
   const deleteTable = useCallback(() => {
-    editor.chain().focus().deleteTable().run();
+    if (!editor) return;
+    editor?.chain().focus().deleteTable().run();
   }, [editor]);
 
-  const isInTable = editor.isActive("table");
-  const canAddRow = editor.can().addRowAfter();
-  const canAddColumn = editor.can().addColumnAfter();
-  const canDeleteRow = editor.can().deleteRow();
-  const canDeleteColumn = editor.can().deleteColumn();
-  const canDeleteTable = editor.can().deleteTable();
+  const isInTable = editor?.isActive("table") ?? false;
+  const canAddRow = editor?.can().addRowAfter() ?? false;
+  const canAddColumn = editor?.can().addColumnAfter() ?? false;
+  const canDeleteRow = editor?.can().deleteRow() ?? false;
+  const canDeleteColumn = editor?.can().deleteColumn() ?? false;
+  const canDeleteTable = editor?.can().deleteTable() ?? false;
 
   const setFontFamily = useCallback(
     (fontFamily: string) => {
-      if (fontFamily === "default") {
-        editor.chain().focus().unsetFontFamily().run();
-      } else {
-        editor.chain().focus().setFontFamily(fontFamily).run();
+      if (!editor) return;
+
+      try {
+        if (fontFamily === "default") {
+          editor?.chain().focus().unsetFontFamily().run();
+        } else {
+          editor?.chain().focus().setFontFamily(fontFamily).run();
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error setting font family:", error);
+        }
       }
     },
     [editor],
@@ -170,21 +201,31 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
   const setTextColor = useCallback(
     (color: string) => {
+      if (!editor) return;
+
       try {
         // First ensure we have a selection or create one
         const { from, to } = editor.state.selection;
         if (from === to) {
           // No selection, apply to current position for future typing
-          editor.chain().focus().setMark("textStyle", { color }).run();
+          editor?.chain().focus().setMark("textStyle", { color }).run();
         } else {
           // Apply to selected text
-          editor.chain().focus().setColor(color).run();
+          editor?.chain().focus().setColor(color).run();
         }
         setIsColorPickerOpen(false);
       } catch (error) {
-        console.error("Error setting text color:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error setting text color:", error);
+        }
         // Fallback: try using textStyle mark directly
-        editor.chain().focus().setMark("textStyle", { color }).run();
+        try {
+          editor?.chain().focus().setMark("textStyle", { color }).run();
+        } catch (fallbackError) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Fallback text color failed:", fallbackError);
+          }
+        }
         setIsColorPickerOpen(false);
       }
     },
@@ -193,21 +234,40 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
   const setHighlightColor = useCallback(
     (color: string) => {
+      if (!editor) return;
+
       try {
+        // Check if highlight extension is available
+        if (!editor.isActive || !editor.can().setHighlight) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("Highlight extension not available");
+          }
+          setIsHighlightPickerOpen(false);
+          return;
+        }
+
         // First ensure we have a selection or create one
         const { from, to } = editor.state.selection;
         if (from === to) {
           // No selection, apply to current position for future typing
-          editor.chain().focus().setMark("highlight", { color }).run();
+          editor?.chain().focus().setMark("highlight", { color }).run();
         } else {
-          // Apply to selected text
-          editor.chain().focus().setHighlight({ color }).run();
+          // Apply to selected text - use correct color parameter
+          editor?.chain().focus().setHighlight({ color }).run();
         }
         setIsHighlightPickerOpen(false);
       } catch (error) {
-        console.error("Error setting highlight color:", error);
-        // Fallback: try with backgroundColor
-        editor.chain().focus().setHighlight({ backgroundColor: color }).run();
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error setting highlight color:", error);
+        }
+        // Fallback: try with color parameter (not backgroundColor)
+        try {
+          editor?.chain().focus().setHighlight({ color }).run();
+        } catch (fallbackError) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Fallback highlight failed:", fallbackError);
+          }
+        }
         setIsHighlightPickerOpen(false);
       }
     },
@@ -216,34 +276,58 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
   const setFontSize = useCallback(
     (fontSize: string) => {
-      if (fontSize === "default") {
-        editor.chain().focus().unsetFontSize().run();
-      } else {
-        editor.chain().focus().setFontSize(fontSize).run();
+      if (!editor) return;
+
+      try {
+        if (fontSize === "default") {
+          editor?.chain().focus().unsetFontSize().run();
+        } else {
+          editor?.chain().focus().setFontSize(fontSize).run();
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error setting font size:", error);
+        }
       }
     },
     [editor],
   );
 
   const colors = [
-    "#000000",
-    "#374151",
-    "#6B7280",
-    "#9CA3AF",
-    "#D1D5DB",
-    "#F3F4F6",
-    "#EF4444",
-    "#F97316",
-    "#EAB308",
-    "#22C55E",
-    "#06B6D4",
-    "#3B82F6",
-    "#8B5CF6",
-    "#EC4899",
-    "#F59E0B",
-    "#10B981",
-    "#0EA5E9",
-    "#6366F1",
+    "#000000", // Black
+    "#374151", // Gray 700
+    "#6B7280", // Gray 500
+    "#9CA3AF", // Gray 400
+    "#D1D5DB", // Gray 300
+    "#F3F4F6", // Gray 100
+    "#EF4444", // Red 500
+    "#F97316", // Orange 500
+    "#EAB308", // Yellow 500
+    "#22C55E", // Green 500
+    "#06B6D4", // Cyan 500
+    "#3B82F6", // Blue 500
+    "#8B5CF6", // Violet 500
+    "#EC4899", // Pink 500
+    "#F59E0B", // Amber 500
+    "#10B981", // Emerald 500
+    "#0EA5E9", // Sky 500
+    "#6366F1", // Indigo 500
+  ];
+
+  // Enhanced highlight colors with better visibility
+  const highlightColors = [
+    "#FEF3C7", // Yellow 100 - Classic highlight
+    "#DBEAFE", // Blue 100
+    "#D1FAE5", // Green 100
+    "#FCE7F3", // Pink 100
+    "#E0E7FF", // Indigo 100
+    "#FED7D7", // Red 100
+    "#FED7AA", // Orange 100
+    "#E6FFFA", // Teal 100
+    "#F0FDF4", // Green 50
+    "#FDF2F8", // Pink 50
+    "#EFF6FF", // Blue 50
+    "#FFFBEB", // Amber 50
   ];
 
   const fontFamilies = [
@@ -284,8 +368,8 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().undo().run()}
-              disabled={!editor.can().chain().focus().undo().run()}
+              onClick={() => editor?.chain().focus().undo().run()}
+              disabled={!editor?.can().chain().focus().undo().run()}
               className="h-8 w-8 p-0"
             >
               <Undo className="h-4 w-4" />
@@ -301,8 +385,8 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().redo().run()}
-              disabled={!editor.can().chain().focus().redo().run()}
+              onClick={() => editor?.chain().focus().redo().run()}
+              disabled={!editor?.can().chain().focus().redo().run()}
               className="h-8 w-8 p-0"
             >
               <Redo className="h-4 w-4" />
@@ -319,9 +403,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("bold") ? "default" : "ghost"}
+              variant={editor?.isActive("bold") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleBold().run()}
+              onClick={() => editor?.chain().focus().toggleBold().run()}
               className="h-8 w-8 p-0"
             >
               <Bold className="h-4 w-4" />
@@ -335,9 +419,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("italic") ? "default" : "ghost"}
+              variant={editor?.isActive("italic") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleItalic().run()}
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
               className="h-8 w-8 p-0"
             >
               <Italic className="h-4 w-4" />
@@ -351,9 +435,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("underline") ? "default" : "ghost"}
+              variant={editor?.isActive("underline") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              onClick={() => editor?.chain().focus().toggleUnderline().run()}
               className="h-8 w-8 p-0"
             >
               <Underline className="h-4 w-4" />
@@ -367,9 +451,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("strike") ? "default" : "ghost"}
+              variant={editor?.isActive("strike") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleStrike().run()}
+              onClick={() => editor?.chain().focus().toggleStrike().run()}
               className="h-8 w-8 p-0"
             >
               <Strikethrough className="h-4 w-4" />
@@ -386,9 +470,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("paragraph") ? "default" : "ghost"}
+              variant={editor?.isActive("paragraph") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().setParagraph().run()}
+              onClick={() => editor?.chain().focus().setParagraph().run()}
               className="h-8 w-8 p-0"
             >
               <Type className="h-4 w-4" />
@@ -403,11 +487,11 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive("heading", { level: 1 }) ? "default" : "ghost"
+                editor?.isActive("heading", { level: 1 }) ? "default" : "ghost"
               }
               size="sm"
               onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 1 }).run()
+                editor?.chain().focus().toggleHeading({ level: 1 }).run()
               }
               className="h-8 w-8 p-0"
             >
@@ -423,11 +507,11 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive("heading", { level: 2 }) ? "default" : "ghost"
+                editor?.isActive("heading", { level: 2 }) ? "default" : "ghost"
               }
               size="sm"
               onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run()
+                editor?.chain().focus().toggleHeading({ level: 2 }).run()
               }
               className="h-8 w-8 p-0"
             >
@@ -443,11 +527,11 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive("heading", { level: 3 }) ? "default" : "ghost"
+                editor?.isActive("heading", { level: 3 }) ? "default" : "ghost"
               }
               size="sm"
               onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 3 }).run()
+                editor?.chain().focus().toggleHeading({ level: 3 }).run()
               }
               className="h-8 w-8 p-0"
             >
@@ -465,9 +549,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("bulletList") ? "default" : "ghost"}
+              variant={editor?.isActive("bulletList") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
               className="h-8 w-8 p-0"
             >
               <List className="h-4 w-4" />
@@ -481,9 +565,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("orderedList") ? "default" : "ghost"}
+              variant={editor?.isActive("orderedList") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
               className="h-8 w-8 p-0"
             >
               <ListOrdered className="h-4 w-4" />
@@ -497,9 +581,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("taskList") ? "default" : "ghost"}
+              variant={editor?.isActive("taskList") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleTaskList().run()}
+              onClick={() => editor?.chain().focus().toggleTaskList().run()}
               className="h-8 w-8 p-0"
             >
               <CheckSquare className="h-4 w-4" />
@@ -516,9 +600,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("blockquote") ? "default" : "ghost"}
+              variant={editor?.isActive("blockquote") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              onClick={() => editor?.chain().focus().toggleBlockquote().run()}
               className="h-8 w-8 p-0"
             >
               <Quote className="h-4 w-4" />
@@ -532,9 +616,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("code") ? "default" : "ghost"}
+              variant={editor?.isActive("code") ? "default" : "ghost"}
               size="sm"
-              onClick={() => editor.chain().focus().toggleCode().run()}
+              onClick={() => editor?.chain().focus().toggleCode().run()}
               className="h-8 w-8 p-0"
             >
               <Code className="h-4 w-4" />
@@ -552,10 +636,10 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive({ textAlign: "left" }) ? "default" : "ghost"
+                editor?.isActive({ textAlign: "left" }) ? "default" : "ghost"
               }
               size="sm"
-              onClick={() => editor.chain().focus().setTextAlign("left").run()}
+              onClick={() => editor?.chain().focus().setTextAlign("left").run()}
               className="h-8 w-8 p-0"
             >
               <AlignLeft className="h-4 w-4" />
@@ -570,11 +654,11 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive({ textAlign: "center" }) ? "default" : "ghost"
+                editor?.isActive({ textAlign: "center" }) ? "default" : "ghost"
               }
               size="sm"
               onClick={() =>
-                editor.chain().focus().setTextAlign("center").run()
+                editor?.chain().focus().setTextAlign("center").run()
               }
               className="h-8 w-8 p-0"
             >
@@ -590,10 +674,12 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           <TooltipTrigger asChild>
             <Button
               variant={
-                editor.isActive({ textAlign: "right" }) ? "default" : "ghost"
+                editor?.isActive({ textAlign: "right" }) ? "default" : "ghost"
               }
               size="sm"
-              onClick={() => editor.chain().focus().setTextAlign("right").run()}
+              onClick={() =>
+                editor?.chain().focus().setTextAlign("right").run()
+              }
               className="h-8 w-8 p-0"
             >
               <AlignRight className="h-4 w-4" />
@@ -610,7 +696,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={editor.isActive("link") ? "default" : "ghost"}
+              variant={editor?.isActive("link") ? "default" : "ghost"}
               size="sm"
               onClick={addLink}
               className="h-8 w-8 p-0"
@@ -628,8 +714,8 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => editor.chain().focus().unsetLink().run()}
-              disabled={!editor.isActive("link")}
+              onClick={() => editor?.chain().focus().unsetLink().run()}
+              disabled={!editor?.isActive("link")}
               className="h-8 w-8 p-0"
             >
               <Unlink className="h-4 w-4" />
@@ -770,7 +856,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         <div className="flex items-center gap-1">
           {/* Font Family */}
           <Select
-            value={editor.getAttributes("textStyle").fontFamily || "default"}
+            value={editor?.getAttributes("textStyle").fontFamily || "default"}
             onValueChange={setFontFamily}
           >
             <SelectTrigger className="w-32 h-8 text-xs">
@@ -794,7 +880,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
           {/* Font Size */}
           <Select
-            value={editor.getAttributes("textStyle").fontSize || "default"}
+            value={editor?.getAttributes("textStyle").fontSize || "default"}
             onValueChange={setFontSize}
           >
             <SelectTrigger className="w-20 h-8 text-xs">
@@ -831,7 +917,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                       className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
                       style={{
                         backgroundColor:
-                          editor.getAttributes("textStyle").color || "#000000",
+                          editor?.getAttributes("textStyle").color || "#000000",
                       }}
                     />
                   </Button>
@@ -858,7 +944,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 size="sm"
                 className="w-full mt-2 text-xs"
                 onClick={() => {
-                  editor.chain().focus().unsetColor().run();
+                  editor?.chain().focus().unsetColor().run();
                   setIsColorPickerOpen(false);
                 }}
               >
@@ -876,7 +962,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={editor.isActive("highlight") ? "default" : "ghost"}
+                    variant={
+                      editor?.isActive("highlight") ? "default" : "ghost"
+                    }
                     size="sm"
                     className="h-8 w-8 p-0"
                   >
@@ -890,7 +978,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2">
               <div className="grid grid-cols-6 gap-1">
-                {colors.map((color) => (
+                {highlightColors.map((color) => (
                   <button
                     key={color}
                     className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
@@ -905,7 +993,13 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 size="sm"
                 className="w-full mt-2 text-xs"
                 onClick={() => {
-                  editor.chain().focus().unsetHighlight().run();
+                  try {
+                    editor?.chain().focus().unsetHighlight().run();
+                  } catch (error) {
+                    if (process.env.NODE_ENV === "development") {
+                      console.error("Error removing highlight:", error);
+                    }
+                  }
                   setIsHighlightPickerOpen(false);
                 }}
               >
@@ -923,9 +1017,15 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                editor.chain().focus().clearNodes().unsetAllMarks().run()
-              }
+              onClick={() => {
+                try {
+                  editor?.chain().focus().clearNodes().unsetAllMarks().run();
+                } catch (error) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.error("Error clearing formatting:", error);
+                  }
+                }
+              }}
               className="h-8 w-8 p-0"
             >
               <RemoveFormatting className="h-4 w-4" />

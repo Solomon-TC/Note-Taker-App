@@ -81,9 +81,27 @@ const CustomImage = Image.extend({
       ...this.parent?.(),
       objectKey: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-object-key"),
+        renderHTML: (attributes) => {
+          if (!attributes.objectKey) {
+            return {};
+          }
+          return {
+            "data-object-key": attributes.objectKey,
+          };
+        },
       },
       drawingId: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-drawing-id"),
+        renderHTML: (attributes) => {
+          if (!attributes.drawingId) {
+            return {};
+          }
+          return {
+            "data-drawing-id": attributes.drawingId,
+          };
+        },
       },
       width: {
         default: null,
@@ -582,14 +600,17 @@ const TiptapEditor = ({
           "images",
         );
 
+        // Only pass valid Tiptap Image properties (src, alt, title)
+        // Store objectKey in the custom attributes via the CustomImage extension
         editor
           .chain()
           .focus()
           .setImage({
             src: uploadResult.url,
             alt: file.name,
+            // Custom attributes are handled by the CustomImage extension
             objectKey: uploadResult.objectKey,
-          })
+          } as any) // Type assertion for custom attributes
           .run();
       } catch (error) {
         console.error("Failed to upload image:", error);
@@ -625,6 +646,7 @@ const TiptapEditor = ({
       if (!editor) return;
 
       // Insert the drawing image at the current cursor position
+      // Only pass valid Tiptap Image properties, custom attributes handled by CustomImage extension
       editor
         .chain()
         .focus()
@@ -632,7 +654,7 @@ const TiptapEditor = ({
           src: imageUrl,
           alt: "Drawing",
           drawingId: `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}`,
-        })
+        } as any) // Type assertion for custom attributes
         .run();
     },
     [editor],

@@ -565,7 +565,7 @@ const TiptapEditor = ({
       }, 100);
 
       // Set content without emitting update events to prevent feedback loops
-      editor.commands.setContent(newContent, false);
+      editor.commands.setContent(newContent, { emitUpdate: false });
       lastContentRef.current = newContent;
     }
   }, [editor, noteId]); // Only depend on noteId, not content

@@ -1019,7 +1019,10 @@ export default function DashboardPage() {
           allPages: pages.map((page) => ({
             id: page.id,
             title: page.title,
-            content: page.content || extractPlainText(page.content_json) || "",
+            content:
+              page.content ||
+              extractPlainText(safeJsonParse(page.content_json)) ||
+              "",
             content_json: page.content_json,
             section_id: page.section_id,
           })),

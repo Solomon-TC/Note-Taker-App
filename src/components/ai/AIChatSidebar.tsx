@@ -27,7 +27,7 @@ import {
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Database } from "@/types/supabase";
-import { extractPlainText } from "@/lib/editor/json";
+import { extractPlainText, safeJsonParse } from "@/lib/editor/json";
 
 interface Message {
   id: string;
@@ -150,7 +150,9 @@ const AIChatSidebar = ({
           try {
             content =
               page.content ||
-              (page.content_json ? extractPlainText(page.content_json) : "");
+              (page.content_json
+                ? extractPlainText(safeJsonParse(page.content_json))
+                : "");
           } catch (e) {
             console.warn("Error extracting content from page:", page.id, e);
             content = page.content || "";

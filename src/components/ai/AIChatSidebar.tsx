@@ -324,6 +324,16 @@ const AIChatSidebar = ({
     }
   };
 
+  // Helper function to convert messages to JSON-compatible format
+  const messagesToJson = (messages: Message[]) => {
+    return messages.map((msg) => ({
+      id: msg.id,
+      content: msg.content,
+      sender: msg.sender,
+      timestamp: msg.timestamp.toISOString(), // Convert Date to string
+    }));
+  };
+
   // Save current session to database
   const saveCurrentSession = async (
     sessionType: "chat" | "summary" | "practice",
@@ -334,12 +344,15 @@ const AIChatSidebar = ({
     if (!user) return null;
 
     try {
+      // Convert messages to JSON-compatible format
+      const jsonMessages = messagesToJson(sessionMessages);
+
       const sessionData = {
         user_id: user.id,
         session_type: sessionType,
         title,
         context: context || {},
-        messages: sessionMessages,
+        messages: jsonMessages as any, // Cast to any to satisfy Json type
         metadata,
       };
 
@@ -348,7 +361,7 @@ const AIChatSidebar = ({
         const { data, error } = await supabase
           .from("ai_sessions")
           .update({
-            messages: sessionMessages,
+            messages: jsonMessages as any, // Cast to any to satisfy Json type
             metadata,
             updated_at: new Date().toISOString(),
           })

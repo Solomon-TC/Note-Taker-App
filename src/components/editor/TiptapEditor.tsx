@@ -531,9 +531,13 @@ const TiptapEditor = ({
   // Store auth and noteId in editor storage for custom extensions
   useEffect(() => {
     if (editor) {
-      editor.storage.auth = { user };
-      editor.storage.noteId = noteId;
-      editor.storage.openDrawingModal = (drawingId?: string, pos?: number) => {
+      // Use type assertion to allow custom properties on editor storage
+      (editor.storage as any).auth = { user };
+      (editor.storage as any).noteId = noteId;
+      (editor.storage as any).openDrawingModal = (
+        drawingId?: string,
+        pos?: number,
+      ) => {
         setEditingDrawingId(drawingId || null);
         setEditingDrawingPos(pos || null);
         setIsDrawingModalOpen(true);

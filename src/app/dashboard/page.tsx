@@ -797,72 +797,78 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          {/* Left side - Notebook Dropdown */}
-          <div className="flex items-center gap-4">
-            <NotebookDropdown
-              notebooks={notebooks}
-              selectedNotebookId={selectedNotebookId}
-              onSelectNotebook={handleSelectNotebook}
-              onCreateNotebook={handleCreateNotebook}
-              onUpdateNotebook={handleUpdateNotebook}
-              onDeleteNotebook={handleDeleteNotebook}
-            />
-            <div className="text-xs text-muted-foreground">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {new Date().toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </div>
-          </div>
+        {/* Top Header - Modern Card Style */}
+        <div className="dashboard-card m-4 mb-2">
+          <div className="dashboard-card-header px-6 py-4">
+            <div className="flex items-center justify-between">
+              {/* Left side - Notebook Dropdown */}
+              <div className="flex items-center gap-6">
+                <NotebookDropdown
+                  notebooks={notebooks}
+                  selectedNotebookId={selectedNotebookId}
+                  onSelectNotebook={handleSelectNotebook}
+                  onCreateNotebook={handleCreateNotebook}
+                  onUpdateNotebook={handleUpdateNotebook}
+                  onDeleteNotebook={handleDeleteNotebook}
+                />
+                <div className="dashboard-body">
+                  {new Date().toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}{" "}
+                  •{" "}
+                  {new Date().toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </div>
+              </div>
 
-          {/* Right side - Actions */}
-          <div className="flex items-center gap-2">
-            {selectedSectionId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleCreatePage()}
-                className="sleek-button flex items-center gap-1"
-              >
-                <FileText className="h-4 w-4" />
-                <span className="text-xs">Add Page</span>
-              </Button>
-            )}
-            <UserMenu />
+              {/* Right side - Actions */}
+              <div className="flex items-center gap-3">
+                {selectedSectionId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCreatePage()}
+                    className="sleek-button flex items-center gap-2 hover-glow"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm font-medium">Add Page</span>
+                  </Button>
+                )}
+                <UserMenu />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Section Tabs - Top */}
+        {/* Section Tabs - Modern Card Style */}
         {selectedNotebookId && (
-          <SectionTabs
-            sections={getCurrentNotebookSections()}
-            selectedSectionId={selectedSectionId}
-            onSelectSection={handleSelectSection}
-            onCreateSection={handleCreateSection}
-            onUpdateSection={handleUpdateSection}
-            onDeleteSection={handleDeleteSection}
-            onReorderSections={handleReorderSections}
-          />
+          <div className="mx-4 mb-4">
+            <SectionTabs
+              sections={getCurrentNotebookSections()}
+              selectedSectionId={selectedSectionId}
+              onSelectSection={handleSelectSection}
+              onCreateSection={handleCreateSection}
+              onUpdateSection={handleUpdateSection}
+              onDeleteSection={handleDeleteSection}
+              onReorderSections={handleReorderSections}
+            />
+          </div>
         )}
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Note Editor - Takes most space, adjust for AI sidebar */}
+        {/* Main Content Area - Grid Layout */}
+        <div className="flex-1 flex gap-4 mx-4 mb-4 overflow-hidden">
+          {/* Note Editor - Main Card */}
           <div
-            className={`flex-1 overflow-hidden transition-all duration-300 ${isAIAssistantOpen ? "mr-[600px]" : ""}`}
+            className={`flex-1 dashboard-card overflow-hidden transition-all duration-300 ${isAIAssistantOpen ? "mr-[600px]" : ""}`}
           >
             {selectedPageId && currentPage ? (
               <NoteEditor
@@ -876,18 +882,25 @@ export default function DashboardPage() {
                 onTitleChange={(title) =>
                   handleUpdatePage(currentPage.id, { title })
                 }
+                className="h-full"
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">No page selected</h3>
-                  <p className="mb-4">
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center p-8">
+                  <div className="stats-card-icon mx-auto mb-4">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <h3 className="dashboard-heading mb-2">No page selected</h3>
+                  <p className="dashboard-body mb-6 max-w-md">
                     {selectedSectionId
-                      ? "Select a page from the list or create a new one"
-                      : "Select a section to view pages"}
+                      ? "Select a page from the list or create a new one to start taking notes"
+                      : "Select a section to view and manage your pages"}
                   </p>
                   {selectedSectionId && (
-                    <Button onClick={() => handleCreatePage()}>
+                    <Button
+                      onClick={() => handleCreatePage()}
+                      className="hover-glow"
+                    >
                       Create New Page
                     </Button>
                   )}
@@ -896,82 +909,94 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Pages List - Right Sidebar - Only show when AI assistant is closed */}
+          {/* Pages List - Right Sidebar Card - Only show when AI assistant is closed */}
           {selectedSectionId && !isAIAssistantOpen && (
-            <div className="w-64 border-l border-border/50 bg-background/50">
-              <div className="p-3 border-b border-border/50">
+            <div className="w-80 dashboard-card">
+              <div className="dashboard-card-header px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-foreground">Pages</h3>
+                  <h3 className="dashboard-subheading">Pages</h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCreatePage()}
-                    className="h-6 w-6 p-0 sleek-button"
+                    className="sleek-button hover-glow"
                   >
-                    <FileText className="h-3 w-3" />
+                    <FileText className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="p-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-                {getCurrentSectionPages().length > 0 ? (
-                  getCurrentSectionPages().map((page) => (
-                    <div
-                      key={page.id}
-                      onClick={() => handleSelectPage(page.id)}
-                      className={`p-2 rounded text-sm cursor-pointer transition-colors ${
-                        selectedPageId === page.id
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      }`}
-                    >
-                      {page.title || "Untitled page"}
+              <div className="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+                <div className="space-y-2">
+                  {getCurrentSectionPages().length > 0 ? (
+                    getCurrentSectionPages().map((page) => (
+                      <div
+                        key={page.id}
+                        onClick={() => handleSelectPage(page.id)}
+                        className={`nav-item cursor-pointer rounded-xl ${
+                          selectedPageId === page.id ? "active" : ""
+                        }`}
+                      >
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">
+                          {page.title || "Untitled page"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="stats-card-icon mx-auto mb-3 opacity-50">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <p className="dashboard-body">No pages yet</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-muted-foreground p-2">
-                    No pages yet
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* Pages List in AI Sidebar when open */}
           {selectedSectionId && isAIAssistantOpen && (
-            <div className="fixed top-16 right-[600px] w-64 h-[calc(100vh-64px)] bg-background border-l border-border/50 z-40">
-              <div className="p-3 border-b border-border/50">
+            <div className="fixed top-20 right-[620px] w-80 h-[calc(100vh-100px)] floating-card z-40">
+              <div className="dashboard-card-header px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-foreground">Pages</h3>
+                  <h3 className="dashboard-subheading">Pages</h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCreatePage()}
-                    className="h-6 w-6 p-0 sleek-button"
+                    className="sleek-button hover-glow"
                   >
-                    <FileText className="h-3 w-3" />
+                    <FileText className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="p-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-                {getCurrentSectionPages().length > 0 ? (
-                  getCurrentSectionPages().map((page) => (
-                    <div
-                      key={page.id}
-                      onClick={() => handleSelectPage(page.id)}
-                      className={`p-2 rounded text-sm cursor-pointer transition-colors ${
-                        selectedPageId === page.id
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      }`}
-                    >
-                      {page.title || "Untitled page"}
+              <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                <div className="space-y-2">
+                  {getCurrentSectionPages().length > 0 ? (
+                    getCurrentSectionPages().map((page) => (
+                      <div
+                        key={page.id}
+                        onClick={() => handleSelectPage(page.id)}
+                        className={`nav-item cursor-pointer rounded-xl ${
+                          selectedPageId === page.id ? "active" : ""
+                        }`}
+                      >
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">
+                          {page.title || "Untitled page"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="stats-card-icon mx-auto mb-3 opacity-50">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <p className="dashboard-body">No pages yet</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-muted-foreground p-2">
-                    No pages yet
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -984,7 +1009,7 @@ export default function DashboardPage() {
         isOpen={isAIAssistantOpen}
       />
 
-      {/* AI Chat Sidebar - Popup */}
+      {/* AI Chat Sidebar - Floating Card */}
       <AIChatSidebar
         currentNote={
           currentPage

@@ -383,24 +383,6 @@ const TiptapEditor = ({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        // Configure paragraph to keep marks and attributes
-        paragraph: {
-          keepMarks: true,
-          keepAttributes: true,
-        },
-        // Configure lists to keep marks and attributes
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: true,
-        },
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: true,
-        },
-        listItem: {
-          keepMarks: true,
-          keepAttributes: true,
-        },
         history: {
           depth: 50,
         },

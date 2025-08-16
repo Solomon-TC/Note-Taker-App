@@ -148,11 +148,12 @@ const AIChatSidebar = ({
         const formattedNotes = (pagesData || []).map((page) => {
           let content = "";
           try {
-            content =
-              page.content ||
-              (page.content_json
-                ? extractPlainText(safeJsonParse(page.content_json))
-                : "");
+            if (page.content) {
+              content = page.content;
+            } else if (page.content_json) {
+              const parsedJson = safeJsonParse(page.content_json);
+              content = extractPlainText(parsedJson);
+            }
           } catch (e) {
             console.warn("Error extracting content from page:", page.id, e);
             content = page.content || "";
@@ -160,7 +161,7 @@ const AIChatSidebar = ({
           return {
             id: page.id,
             title: page.title || "Untitled",
-            content,
+            content: content || "",
             sectionId: page.section_id,
           };
         });
@@ -231,6 +232,55 @@ const AIChatSidebar = ({
     }
   };
 
+  // Helper function to safely parse messages from database
+  const parseSessionMessages = (messagesData: any): Message[] => {
+    try {
+      if (!messagesData) return [];
+
+      // If it's already an array, validate and return
+      if (Array.isArray(messagesData)) {
+        return messagesData
+          .filter(
+            (msg) =>
+              msg &&
+              typeof msg === "object" &&
+              typeof msg.id === "string" &&
+              typeof msg.content === "string" &&
+              (msg.sender === "user" || msg.sender === "ai"),
+          )
+          .map((msg) => ({
+            ...msg,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+          }));
+      }
+
+      // If it's a string, try to parse it
+      if (typeof messagesData === "string") {
+        const parsed = JSON.parse(messagesData);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter(
+              (msg) =>
+                msg &&
+                typeof msg === "object" &&
+                typeof msg.id === "string" &&
+                typeof msg.content === "string" &&
+                (msg.sender === "user" || msg.sender === "ai"),
+            )
+            .map((msg) => ({
+              ...msg,
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            }));
+        }
+      }
+
+      return [];
+    } catch (error) {
+      console.warn("Failed to parse session messages:", error);
+      return [];
+    }
+  };
+
   // Load AI sessions from database
   const loadAISessions = async () => {
     if (!user) return;
@@ -255,11 +305,11 @@ const AIChatSidebar = ({
               session.session_type === "chat" ||
               session.session_type === "summary" ||
               session.session_type === "practice"
-                ? session.session_type
-                : "chat", // Default fallback
-            title: session.title,
+                ? (session.session_type as "chat" | "summary" | "practice")
+                : "chat", // Default fallback with proper typing
+            title: session.title || "Untitled Session",
             context: safeJsonParse(session.context) || {},
-            messages: safeJsonParse(session.messages) || [],
+            messages: parseSessionMessages(session.messages),
             metadata: safeJsonParse(session.metadata) || {},
             created_at: session.created_at || new Date().toISOString(),
             updated_at: session.updated_at || new Date().toISOString(),
@@ -508,43 +558,65 @@ const AIChatSidebar = ({
       }
 
       // Handle both JSON and text responses
-      if (data.response.questions) {
-        setPracticeQuestions(data.response.questions);
+      if (
+        data.response &&
+        typeof data.response === "object" &&
+        Array.isArray(data.response.questions)
+      ) {
+        // Validate questions structure
+        const validQuestions = data.response.questions.filter(
+          (q: any) =>
+            q && typeof q === "object" && typeof q.question === "string",
+        );
+        setPracticeQuestions(validQuestions);
 
         // Save session for practice questions
         const practiceTitle = `Practice: ${context?.currentPage?.title || context?.currentSection?.name || "Study Session"}`;
         await saveCurrentSession("practice", practiceTitle, [], {
-          questionsCount: data.response.questions.length,
+          questionsCount: validQuestions.length,
           context: context || {},
         });
       } else {
         // Fallback for text response
+        const responseText =
+          typeof data.response === "string"
+            ? data.response
+            : data.response?.text || JSON.stringify(data.response);
         const fallbackQuestion: PracticeQuestion = {
           type: "open-ended",
-          question: data.response.text || data.response,
+          question: responseText,
           explanation: "AI-generated practice question",
         };
         setPracticeQuestions([fallbackQuestion]);
       }
 
-      // Save to database if we have a current note
-      if (currentNote?.id && data.response.questions) {
+      // Save to database if we have a current note and valid questions
+      if (
+        currentNote?.id &&
+        data.response &&
+        Array.isArray(data.response.questions)
+      ) {
         for (const question of data.response.questions) {
-          const problemData = {
-            user_id: user.id,
-            note_id: currentNote.id,
-            question: question.question,
-            options: question.options || [],
-            correct_answer: question.correctAnswer || 0,
-            completed: false,
-          };
+          if (question && typeof question.question === "string") {
+            const problemData = {
+              user_id: user.id,
+              note_id: currentNote.id,
+              question: question.question,
+              options: Array.isArray(question.options) ? question.options : [],
+              correct_answer:
+                typeof question.correctAnswer === "number"
+                  ? question.correctAnswer
+                  : 0,
+              completed: false,
+            };
 
-          const { error } = await supabase
-            .from("practice_problems")
-            .insert(problemData);
+            const { error } = await supabase
+              .from("practice_problems")
+              .insert(problemData);
 
-          if (error) {
-            console.error("Error saving practice problem:", error);
+            if (error) {
+              console.error("Error saving practice problem:", error);
+            }
           }
         }
       }
@@ -1221,7 +1293,13 @@ const AIChatSidebar = ({
                                 // Continue session
                                 if (session.session_type === "chat") {
                                   setActiveTab("chat");
-                                  setMessages(session.messages || []);
+                                  // Ensure messages is a valid array before setting
+                                  const validMessages = Array.isArray(
+                                    session.messages,
+                                  )
+                                    ? session.messages
+                                    : [];
+                                  setMessages(validMessages);
                                   setCurrentSessionId(session.id);
                                 } else if (session.session_type === "summary") {
                                   setActiveTab("summaries");
@@ -1281,9 +1359,10 @@ const AIChatSidebar = ({
                       <CardContent className="pt-0">
                         <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
                           {session.messages && session.messages.length > 0
-                            ? session.messages[
+                            ? (session.messages[
                                 session.messages.length - 1
-                              ]?.content?.substring(0, 120) + "..."
+                              ]?.content?.substring(0, 120) || "No content") +
+                              "..."
                             : "No messages yet"}
                         </p>
                         <div className="flex justify-between items-center pt-2 border-t border-border/50">

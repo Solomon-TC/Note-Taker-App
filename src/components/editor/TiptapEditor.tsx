@@ -382,11 +382,7 @@ const TiptapEditor = ({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({
-        history: {
-          depth: 50,
-        },
-      }),
+      StarterKit,
       Underline,
       Strike,
       Link.configure({

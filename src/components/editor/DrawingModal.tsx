@@ -43,6 +43,74 @@ export default function DrawingModal({
   const handleDelete = () => canvasRef.current?.clearCanvas(); // keep history
   const handleReset = () => canvasRef.current?.resetCanvas(); // clear history
 
+  // Function to automatically crop the canvas to fit the drawing content
+  const cropCanvasToContent = (
+    canvas: HTMLCanvasElement,
+  ): HTMLCanvasElement => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = 0;
+    let maxY = 0;
+
+    // Find the bounding box of non-transparent pixels
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const alpha = data[(y * canvas.width + x) * 4 + 3];
+        if (alpha > 0) {
+          // Non-transparent pixel
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    // If no content found, return original canvas
+    if (minX >= maxX || minY >= maxY) {
+      return canvas;
+    }
+
+    // Add some padding around the content
+    const padding = 10;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(canvas.width, maxX + padding);
+    maxY = Math.min(canvas.height, maxY + padding);
+
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    // Create a new canvas with the cropped dimensions
+    const croppedCanvas = document.createElement("canvas");
+    croppedCanvas.width = width;
+    croppedCanvas.height = height;
+    const croppedCtx = croppedCanvas.getContext("2d");
+
+    if (croppedCtx) {
+      // Copy the cropped region to the new canvas
+      croppedCtx.drawImage(
+        canvas,
+        minX,
+        minY,
+        width,
+        height,
+        0,
+        0,
+        width,
+        height,
+      );
+    }
+
+    return croppedCanvas;
+  };
+
   const handleInsert = async () => {
     if (!user) {
       alert("You must be logged in to save drawings.");
@@ -58,8 +126,28 @@ export default function DrawingModal({
         throw new Error("Failed to export drawing from canvas.");
       }
 
-      // Convert data URL to blob using the storage service method
-      const blob = storageService.dataURLToBlob(dataUrl);
+      // Create a temporary canvas to crop the image
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      const img = new Image();
+
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          tempCtx?.drawImage(img, 0, 0);
+          resolve(null);
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+
+      // Crop the canvas to fit the content
+      const croppedCanvas = cropCanvasToContent(tempCanvas);
+      const croppedDataUrl = croppedCanvas.toDataURL("image/png");
+
+      // Convert cropped data URL to blob
+      const blob = storageService.dataURLToBlob(croppedDataUrl);
       const filename = `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}.png`;
 
       // Upload using the centralized storage service

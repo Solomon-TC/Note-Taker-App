@@ -485,4 +485,128 @@
     text-align: left !important;
     display: list-item !important;
   }
+
+  /* Interactive Image Styles */
+  .interactive-image-wrapper {
+    display: inline-block;
+    position: relative;
+    margin: 1rem 0;
+  }
+
+  .interactive-image-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  .ProseMirror-selectednode .interactive-image-container {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* Resize handles */
+  .resize-handle {
+    position: absolute;
+    background: #3b82f6;
+    border: 2px solid white;
+    border-radius: 2px;
+    width: 12px;
+    height: 12px;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .interactive-image-container:hover .resize-handle,
+  .ProseMirror-selectednode .resize-handle {
+    opacity: 1;
+  }
+
+  /* Resize handle positions */
+  .resize-handle.nw {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+  }
+
+  .resize-handle.n {
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: n-resize;
+  }
+
+  .resize-handle.ne {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+  }
+
+  .resize-handle.e {
+    top: 50%;
+    right: -6px;
+    transform: translateY(-50%);
+    cursor: e-resize;
+  }
+
+  .resize-handle.se {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
+  }
+
+  .resize-handle.s {
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: s-resize;
+  }
+
+  .resize-handle.sw {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+  }
+
+  .resize-handle.w {
+    top: 50%;
+    left: -6px;
+    transform: translateY(-50%);
+    cursor: w-resize;
+  }
+
+  /* Crop overlay styles */
+  .crop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .crop-selection {
+    position: absolute;
+    border: 2px dashed #3b82f6;
+    background: transparent;
+    pointer-events: all;
+    cursor: move;
+  }
+
+  /* Image selection styles */
+  .ProseMirror img.ProseMirror-selectednode {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* Prevent image dragging in editor */
+  .ProseMirror img {
+    user-select: none;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+  }
 }

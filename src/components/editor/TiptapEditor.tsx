@@ -74,7 +74,7 @@ import DrawingModal from "./DrawingModal";
 import Toolbar from "./Toolbar";
 import StatusBar from "./StatusBar";
 
-// Custom Image extension with drawing support - simplified to fix rendering issues
+// Custom Image extension with interactive resize functionality
 const CustomImage = Image.extend({
   addAttributes() {
     return {
@@ -85,10 +85,253 @@ const CustomImage = Image.extend({
       drawingId: {
         default: null,
       },
+      width: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("width") || element.style.width,
+        renderHTML: (attributes) => {
+          if (!attributes.width) {
+            return {};
+          }
+          return {
+            width: attributes.width,
+            style: `width: ${attributes.width}`,
+          };
+        },
+      },
+      height: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("height") || element.style.height,
+        renderHTML: (attributes) => {
+          if (!attributes.height) {
+            return {};
+          }
+          return {
+            height: attributes.height,
+            style: `height: ${attributes.height}`,
+          };
+        },
+      },
     };
   },
-  // Remove custom node view to fix image rendering issues
-  // Images will now render normally as HTML img elements
+
+  addNodeView() {
+    return ({ node, updateAttributes, getPos, editor }) => {
+      const container = document.createElement("div");
+      container.className = "interactive-image-container relative inline-block";
+
+      const img = document.createElement("img");
+      img.src = node.attrs.src;
+      img.alt = node.attrs.alt || "";
+      img.className = "block rounded border max-w-full h-auto";
+      img.draggable = false;
+
+      // Apply dimensions if they exist
+      if (node.attrs.width) {
+        img.style.width = node.attrs.width;
+      }
+      if (node.attrs.height) {
+        img.style.height = node.attrs.height;
+      }
+
+      container.appendChild(img);
+
+      // Create resize handles
+      const handles = [
+        { position: "nw", cursor: "nw-resize" },
+        { position: "ne", cursor: "ne-resize" },
+        { position: "se", cursor: "se-resize" },
+        { position: "sw", cursor: "sw-resize" },
+        { position: "n", cursor: "n-resize" },
+        { position: "e", cursor: "e-resize" },
+        { position: "s", cursor: "s-resize" },
+        { position: "w", cursor: "w-resize" },
+      ];
+
+      handles.forEach((handle) => {
+        const handleEl = document.createElement("div");
+        handleEl.className = `resize-handle ${handle.position} absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-sm opacity-0 transition-opacity duration-200 z-10`;
+        handleEl.style.cursor = handle.cursor;
+
+        // Position the handles
+        switch (handle.position) {
+          case "nw":
+            handleEl.style.top = "-6px";
+            handleEl.style.left = "-6px";
+            break;
+          case "n":
+            handleEl.style.top = "-6px";
+            handleEl.style.left = "50%";
+            handleEl.style.transform = "translateX(-50%)";
+            break;
+          case "ne":
+            handleEl.style.top = "-6px";
+            handleEl.style.right = "-6px";
+            break;
+          case "e":
+            handleEl.style.top = "50%";
+            handleEl.style.right = "-6px";
+            handleEl.style.transform = "translateY(-50%)";
+            break;
+          case "se":
+            handleEl.style.bottom = "-6px";
+            handleEl.style.right = "-6px";
+            break;
+          case "s":
+            handleEl.style.bottom = "-6px";
+            handleEl.style.left = "50%";
+            handleEl.style.transform = "translateX(-50%)";
+            break;
+          case "sw":
+            handleEl.style.bottom = "-6px";
+            handleEl.style.left = "-6px";
+            break;
+          case "w":
+            handleEl.style.top = "50%";
+            handleEl.style.left = "-6px";
+            handleEl.style.transform = "translateY(-50%)";
+            break;
+        }
+
+        // Add resize functionality
+        handleEl.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startWidth = img.offsetWidth;
+          const startHeight = img.offsetHeight;
+          const aspectRatio = startWidth / startHeight;
+
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+
+            switch (handle.position) {
+              case "se":
+                newWidth = Math.max(50, startWidth + deltaX);
+                newHeight = Math.max(50, startHeight + deltaY);
+                break;
+              case "sw":
+                newWidth = Math.max(50, startWidth - deltaX);
+                newHeight = Math.max(50, startHeight + deltaY);
+                break;
+              case "ne":
+                newWidth = Math.max(50, startWidth + deltaX);
+                newHeight = Math.max(50, startHeight - deltaY);
+                break;
+              case "nw":
+                newWidth = Math.max(50, startWidth - deltaX);
+                newHeight = Math.max(50, startHeight - deltaY);
+                break;
+              case "e":
+                newWidth = Math.max(50, startWidth + deltaX);
+                newHeight = newWidth / aspectRatio;
+                break;
+              case "w":
+                newWidth = Math.max(50, startWidth - deltaX);
+                newHeight = newWidth / aspectRatio;
+                break;
+              case "s":
+                newHeight = Math.max(50, startHeight + deltaY);
+                newWidth = newHeight * aspectRatio;
+                break;
+              case "n":
+                newHeight = Math.max(50, startHeight - deltaY);
+                newWidth = newHeight * aspectRatio;
+                break;
+            }
+
+            img.style.width = `${newWidth}px`;
+            img.style.height = `${newHeight}px`;
+          };
+
+          const handleMouseUp = () => {
+            // Use the editor's command API to update attributes
+            // This is more reliable than calling updateAttributes directly
+            const pos = getPos();
+            if (typeof pos === "number") {
+              editor.view.dispatch(
+                editor.view.state.tr.setNodeMarkup(pos, undefined, {
+                  ...node.attrs,
+                  width: img.style.width,
+                  height: img.style.height,
+                }),
+              );
+            }
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+          };
+
+          document.addEventListener("mousemove", handleMouseMove);
+          document.addEventListener("mouseup", handleMouseUp);
+        });
+
+        container.appendChild(handleEl);
+      });
+
+      // Show/hide handles on hover and selection
+      const showHandles = () => {
+        handles.forEach((_, index) => {
+          const handleEl = container.children[index + 1] as HTMLElement;
+          if (handleEl) {
+            handleEl.style.opacity = "1";
+          }
+        });
+      };
+
+      const hideHandles = () => {
+        handles.forEach((_, index) => {
+          const handleEl = container.children[index + 1] as HTMLElement;
+          if (handleEl) {
+            handleEl.style.opacity = "0";
+          }
+        });
+      };
+
+      container.addEventListener("mouseenter", showHandles);
+      container.addEventListener("mouseleave", hideHandles);
+
+      return {
+        dom: container,
+        update: (updatedNode) => {
+          if (updatedNode.type !== node.type) {
+            return false;
+          }
+
+          // Update image attributes
+          img.src = updatedNode.attrs.src;
+          img.alt = updatedNode.attrs.alt || "";
+
+          if (updatedNode.attrs.width) {
+            img.style.width = updatedNode.attrs.width;
+          }
+          if (updatedNode.attrs.height) {
+            img.style.height = updatedNode.attrs.height;
+          }
+
+          return true;
+        },
+        selectNode: () => {
+          container.classList.add("ProseMirror-selectednode");
+          showHandles();
+        },
+        deselectNode: () => {
+          container.classList.remove("ProseMirror-selectednode");
+          hideHandles();
+        },
+        destroy: () => {
+          container.removeEventListener("mouseenter", showHandles);
+          container.removeEventListener("mouseleave", hideHandles);
+        },
+      };
+    };
+  },
 });
 
 interface TiptapEditorProps {
@@ -180,8 +423,10 @@ const TiptapEditor = ({
       }),
       CustomImage.configure({
         inline: false,
+        allowBase64: true,
         HTMLAttributes: {
-          class: "rounded border max-w-full h-auto block my-4",
+          class:
+            "rounded border max-w-full h-auto block my-4 interactive-image",
         },
       }),
       Table.configure({

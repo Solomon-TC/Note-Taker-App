@@ -334,6 +334,25 @@ const AIChatSidebar = ({
     }));
   };
 
+  // Helper function to transform raw Supabase session data to AISession format
+  const transformSessionData = (sessionData: any): AISession => {
+    return {
+      id: sessionData.id,
+      session_type:
+        sessionData.session_type === "chat" ||
+        sessionData.session_type === "summary" ||
+        sessionData.session_type === "practice"
+          ? (sessionData.session_type as "chat" | "summary" | "practice")
+          : "chat", // Default fallback with proper typing
+      title: sessionData.title || "Untitled Session",
+      context: safeJsonParse(sessionData.context) || {},
+      messages: parseSessionMessages(sessionData.messages),
+      metadata: safeJsonParse(sessionData.metadata) || {},
+      created_at: sessionData.created_at || new Date().toISOString(),
+      updated_at: sessionData.updated_at || new Date().toISOString(),
+    };
+  };
+
   // Save current session to database
   const saveCurrentSession = async (
     sessionType: "chat" | "summary" | "practice",
@@ -387,7 +406,9 @@ const AIChatSidebar = ({
           console.error("Error creating AI session:", error);
         } else {
           setCurrentSessionId(data.id);
-          setAISessions((prev) => [data, ...prev]);
+          // Transform the raw Supabase data to match AISession interface
+          const transformedSession = transformSessionData(data);
+          setAISessions((prev) => [transformedSession, ...prev]);
           return data;
         }
       }

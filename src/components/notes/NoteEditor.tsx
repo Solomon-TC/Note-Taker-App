@@ -213,7 +213,7 @@ const NoteEditor = ({
       },
       1200,
     ),
-  ).current;
+  );
 
   // Sync with props when page changes - CRITICAL: Only when pageId actually changes
   useEffect(() => {
@@ -289,7 +289,7 @@ const NoteEditor = ({
     });
 
     // Trigger debounced autosave with explicit pageId
-    debouncedAutoSave(content, title, pageId);
+    debouncedAutoSave.current(content, title, pageId);
   }, [
     title,
     content,

@@ -17,7 +17,7 @@ import NoteEditor from "@/components/notes/NoteEditor";
 import AIChatSidebar from "@/components/ai/AIChatSidebar";
 import FloatingAIAssistantButton from "@/components/ai/FloatingAIAssistantButton";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw, Brain, FileText } from "lucide-react";
+import { AlertCircle, RefreshCw, Brain, FileText, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
 import {
@@ -858,17 +858,6 @@ export default function DashboardPage() {
 
               {/* Right side - Actions */}
               <div className="flex items-center gap-3">
-                {selectedSectionId && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCreatePage()}
-                    className="sleek-button flex items-center gap-2 hover-glow"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="text-sm font-medium">Add Page</span>
-                  </Button>
-                )}
                 <UserMenu />
               </div>
             </div>
@@ -958,15 +947,36 @@ export default function DashboardPage() {
                     getCurrentSectionPages().map((page) => (
                       <div
                         key={page.id}
-                        onClick={() => handleSelectPage(page.id)}
-                        className={`nav-item cursor-pointer rounded-xl ${
+                        className={`nav-item cursor-pointer rounded-xl group ${
                           selectedPageId === page.id ? "active" : ""
                         }`}
                       >
-                        <FileText className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium truncate">
-                          {page.title || "Untitled page"}
-                        </span>
+                        <div
+                          onClick={() => handleSelectPage(page.id)}
+                          className="flex items-center gap-3 flex-1"
+                        >
+                          <FileText className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">
+                            {page.title || "Untitled page"}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `Are you sure you want to delete "${page.title || "Untitled page"}"?`,
+                              )
+                            ) {
+                              handleDeletePage(page.id);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     ))
                   ) : (
@@ -1004,15 +1014,36 @@ export default function DashboardPage() {
                     getCurrentSectionPages().map((page) => (
                       <div
                         key={page.id}
-                        onClick={() => handleSelectPage(page.id)}
-                        className={`nav-item cursor-pointer rounded-xl ${
+                        className={`nav-item cursor-pointer rounded-xl group ${
                           selectedPageId === page.id ? "active" : ""
                         }`}
                       >
-                        <FileText className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium truncate">
-                          {page.title || "Untitled page"}
-                        </span>
+                        <div
+                          onClick={() => handleSelectPage(page.id)}
+                          className="flex items-center gap-3 flex-1"
+                        >
+                          <FileText className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">
+                            {page.title || "Untitled page"}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                `Are you sure you want to delete "${page.title || "Untitled page"}"?`,
+                              )
+                            ) {
+                              handleDeletePage(page.id);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     ))
                   ) : (
@@ -1030,10 +1061,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Floating AI Assistant Button */}
+      {/* Floating AI Assistant Button - Positioned to the right of UserMenu */}
       <FloatingAIAssistantButton
         onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
         isOpen={isAIAssistantOpen}
+        className="fixed top-4 right-4 z-40"
       />
 
       {/* AI Chat Sidebar - Floating Card */}

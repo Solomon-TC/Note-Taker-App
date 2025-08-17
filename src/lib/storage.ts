@@ -149,9 +149,10 @@ export class StorageService {
   }
 
   /**
-   * Get a signed URL for a file
+   * Get a signed URL for a file with longer expiration for drawings
    */
-  async getSignedUrl(path: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedUrl(path: string, expiresIn: number = 86400): Promise<string> {
+    // 24 hours default
     const { data, error } = await this.supabase.storage
       .from(this.bucketName)
       .createSignedUrl(path, expiresIn);
@@ -177,26 +178,42 @@ export class StorageService {
   }
 
   /**
-   * Refresh signed URLs in Tiptap JSON content
+   * Refresh signed URLs in Tiptap JSON content - Enhanced for drawings
    */
   async refreshSignedUrlsInContent(content: any): Promise<any> {
     if (!content || typeof content !== "object") {
       return content;
     }
 
+    console.log("StorageService: Refreshing signed URLs in content");
+
     // Deep clone to avoid mutations
     const refreshedContent = JSON.parse(JSON.stringify(content));
+    let refreshCount = 0;
 
     const refreshNode = async (node: any) => {
       if (node.type === "image" && node.attrs?.src && node.attrs?.objectKey) {
         try {
-          const newSignedUrl = await this.getSignedUrl(node.attrs.objectKey);
+          console.log(
+            "StorageService: Refreshing URL for objectKey:",
+            node.attrs.objectKey,
+          );
+          const newSignedUrl = await this.getSignedUrl(
+            node.attrs.objectKey,
+            86400,
+          ); // 24 hours
           node.attrs.src = newSignedUrl;
+          refreshCount++;
+          console.log(
+            "StorageService: Successfully refreshed URL for:",
+            node.attrs.objectKey,
+          );
         } catch (error) {
           console.warn(
             `Failed to refresh signed URL for ${node.attrs.objectKey}:`,
             error,
           );
+          // Keep the old URL if refresh fails
         }
       }
 
@@ -213,6 +230,7 @@ export class StorageService {
       }
     }
 
+    console.log(`StorageService: Refreshed ${refreshCount} signed URLs`);
     return refreshedContent;
   }
 

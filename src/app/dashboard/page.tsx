@@ -358,7 +358,16 @@ export default function DashboardPage() {
     if (!user || !selectedSectionId) return;
 
     try {
+      // Always create a completely fresh, empty document
       const defaultContent = { type: "doc", content: [] } as TiptapDocument;
+      const uniqueTitle = `Untitled Page ${Date.now()}`; // Ensure unique titles
+
+      console.log("Creating new page with empty content:", {
+        sectionId: selectedSectionId,
+        parentPageId,
+        userId: user.id,
+        defaultContent,
+      });
 
       const { data, error } = await supabase
         .from("pages")
@@ -366,9 +375,9 @@ export default function DashboardPage() {
           user_id: user.id,
           section_id: selectedSectionId,
           parent_page_id: parentPageId || null,
-          title: "Untitled Page",
-          content: "",
-          content_json: defaultContent as any,
+          title: uniqueTitle,
+          content: "", // Always empty string
+          content_json: defaultContent as any, // Always empty doc
           sort_order: pages.filter(
             (p) =>
               p.section_id === selectedSectionId &&
@@ -384,9 +393,19 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages([...pages, data]);
-        setSelectedPageId(data.id);
-        setIsCreatingPage(true);
+        console.log("Successfully created new page:", data.id);
+        setPages((prevPages) => [...prevPages, data]);
+
+        // CRITICAL: Force complete state reset for new page creation
+        setSelectedPageId(null);
+        setIsCreatingPage(false);
+
+        // Clear any cached content and force a clean slate
+        setTimeout(() => {
+          console.log("Setting new page as selected:", data.id);
+          setSelectedPageId(data.id);
+          setIsCreatingPage(true);
+        }, 100); // Longer delay to ensure complete state reset
       }
     } catch (error) {
       console.error("Error creating page:", error);
@@ -716,10 +735,17 @@ export default function DashboardPage() {
     setSelectedPageId(null);
   }, []);
 
-  // Enhanced page selection handler
+  // Enhanced page selection handler with content isolation
   const handleSelectPage = useCallback((pageId: string) => {
     console.log("Selecting page:", pageId);
-    setSelectedPageId(pageId);
+
+    // CRITICAL: Clear current page first to prevent content bleeding
+    setSelectedPageId(null);
+
+    // Then set the new page after a brief delay to ensure clean state
+    setTimeout(() => {
+      setSelectedPageId(pageId);
+    }, 10);
   }, []);
 
   const currentPage = getCurrentPage();
@@ -872,6 +898,7 @@ export default function DashboardPage() {
           >
             {selectedPageId && currentPage ? (
               <NoteEditor
+                key={`note-editor-${currentPage.id}`} // CRITICAL: Force remount for each page
                 pageId={currentPage.id}
                 initialTitle={currentPage.title}
                 initialContent={safeJsonParse(currentPage.content_json)}

@@ -73,119 +73,195 @@ const NoteEditor = ({
     content: safeJsonParse(initialContent),
   });
 
-  // Debounced autosave function with comprehensive error handling
+  // Debounced autosave function with comprehensive error handling and isolation
   const debouncedAutoSave = useRef(
-    debounce(async (contentToSave: TiptapDocument, titleToSave: string) => {
-      // Check if content has actually changed since last save
-      if (deepEqual(contentToSave, lastSavedContentRef.current)) {
-        return;
-      }
-
-      if (!pageId || !onAutoSave) {
-        console.warn("Autosave skipped: missing pageId or onAutoSave function");
-        return;
-      }
-
-      // Validate user authentication
-      if (!user) {
-        console.error("Autosave failed: user not authenticated");
-        setSaveStatus("error");
-        return;
-      }
-
-      try {
-        console.log("Starting autosave for page:", pageId);
-        setSaveStatus("saving");
-
-        // Validate content structure
-        if (!contentToSave || typeof contentToSave !== "object") {
-          console.error(
-            "Invalid content structure for autosave:",
-            contentToSave,
+    debounce(
+      async (
+        contentToSave: TiptapDocument,
+        titleToSave: string,
+        targetPageId: string,
+      ) => {
+        // CRITICAL: Always use the targetPageId passed to this function, not the current pageId state
+        // This prevents race conditions when switching between pages
+        if (!targetPageId || !onAutoSave) {
+          console.warn(
+            "Autosave skipped: missing targetPageId or onAutoSave function",
           );
-          contentToSave = getDefaultDocument();
+          return;
         }
 
-        // Auto-generate title from first heading/paragraph if title is empty or default
-        let finalTitle = titleToSave;
-        if (!titleToSave || titleToSave === "Untitled Page") {
-          const firstNode = contentToSave.content?.[0];
+        // Check if content has actually changed since last save
+        if (deepEqual(contentToSave, lastSavedContentRef.current)) {
+          console.log(
+            "Autosave skipped: content unchanged for page:",
+            targetPageId,
+          );
+          return;
+        }
+
+        // Validate user authentication
+        if (!user) {
+          console.error("Autosave failed: user not authenticated");
+          setSaveStatus("error");
+          return;
+        }
+
+        try {
+          console.log("Starting autosave for page:", targetPageId);
+          setSaveStatus("saving");
+
+          // Validate content structure
           if (
-            firstNode &&
-            (firstNode.type === "heading" || firstNode.type === "paragraph")
+            !contentToSave ||
+            typeof contentToSave !== "object" ||
+            contentToSave.type !== "doc"
           ) {
-            const text = firstNode.content?.[0]?.text || "";
-            if (text.trim()) {
-              finalTitle = text.substring(0, 100);
+            console.error(
+              "Invalid content structure for autosave:",
+              contentToSave,
+            );
+            contentToSave = getDefaultDocument();
+          }
+
+          // Auto-generate title from first heading/paragraph if title is empty or default
+          let finalTitle = titleToSave || "Untitled Page";
+          if (
+            !titleToSave ||
+            titleToSave === "Untitled Page" ||
+            titleToSave.startsWith("Untitled Page ")
+          ) {
+            const firstNode = contentToSave.content?.[0];
+            if (
+              firstNode &&
+              (firstNode.type === "heading" || firstNode.type === "paragraph")
+            ) {
+              const text = firstNode.content?.[0]?.text || "";
+              if (text.trim()) {
+                finalTitle = text.substring(0, 100).trim();
+              }
             }
           }
-        }
 
-        const plainTextContent = extractPlainText(contentToSave);
-        console.log("Autosave data:", {
-          pageId,
-          userId: user.id,
-          titleLength: finalTitle.length,
-          contentLength: plainTextContent.length,
-          jsonSize: JSON.stringify(contentToSave).length,
-          contentType: typeof contentToSave,
-          hasValidStructure: contentToSave.type === "doc",
-        });
+          const plainTextContent = extractPlainText(contentToSave);
+          console.log("Autosave data:", {
+            targetPageId,
+            userId: user.id,
+            titleLength: finalTitle.length,
+            contentLength: plainTextContent.length,
+            jsonSize: JSON.stringify(contentToSave).length,
+            contentType: typeof contentToSave,
+            hasValidStructure: contentToSave.type === "doc",
+            contentNodes: contentToSave.content?.length || 0,
+          });
 
-        await onAutoSave({
-          id: pageId,
-          title: finalTitle,
-          content: plainTextContent,
-          contentJson: contentToSave,
-          sectionId,
-          parentPageId,
-        });
+          // CRITICAL: Use targetPageId, not pageId state
+          await onAutoSave({
+            id: targetPageId,
+            title: finalTitle,
+            content: plainTextContent,
+            contentJson: contentToSave,
+            sectionId,
+            parentPageId,
+          });
 
-        console.log("Autosave successful for page:", pageId);
-        // Update references after successful save
-        lastSavedContentRef.current = contentToSave;
-        initialDataRef.current = { title: finalTitle, content: contentToSave };
-        setSaveStatus("saved");
-        setHasUnsavedChanges(false);
-        setLastSaved(new Date());
-      } catch (error) {
-        console.error("Auto-save failed for page:", pageId, error);
-        console.error("Error details:", {
-          message: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : "No stack trace",
-          errorType: typeof error,
-          pageId,
-          userId: user?.id,
-          contentValid: contentToSave && typeof contentToSave === "object",
-        });
-        setSaveStatus("error");
+          console.log("Autosave successful for page:", targetPageId);
 
-        // Enhanced retry logic with exponential backoff
-        const retryDelay = Math.min(10000, 2000 * Math.pow(2, 0)); // Start with 2 seconds, max 10 seconds
-        setTimeout(() => {
-          console.log(
-            `Retrying autosave for page ${pageId} after ${retryDelay}ms delay`,
-          );
-          // Only retry if we still have the same content and user is still authenticated
-          if (user && pageId && deepEqual(contentToSave, content)) {
-            debouncedAutoSave(contentToSave, titleToSave);
+          // Only update references if this autosave was for the currently active page
+          if (targetPageId === pageId) {
+            lastSavedContentRef.current = contentToSave;
+            initialDataRef.current = {
+              title: finalTitle,
+              content: contentToSave,
+            };
+            setSaveStatus("saved");
+            setHasUnsavedChanges(false);
+            setLastSaved(new Date());
           }
-        }, retryDelay);
-      }
-    }, 1200),
+        } catch (error) {
+          console.error("Auto-save failed for page:", targetPageId, error);
+          console.error("Error details:", {
+            message: error instanceof Error ? error.message : "Unknown error",
+            stack: error instanceof Error ? error.stack : "No stack trace",
+            errorType: typeof error,
+            targetPageId,
+            currentPageId: pageId,
+            userId: user?.id,
+            contentValid: contentToSave && typeof contentToSave === "object",
+          });
+
+          // Only show error status if this was for the current page
+          if (targetPageId === pageId) {
+            setSaveStatus("error");
+          }
+
+          // Enhanced retry logic with exponential backoff
+          const retryDelay = Math.min(10000, 2000);
+          setTimeout(() => {
+            console.log(
+              `Retrying autosave for page ${targetPageId} after ${retryDelay}ms delay`,
+            );
+            // Only retry if we still have the same content and user is still authenticated
+            if (user && targetPageId && deepEqual(contentToSave, content)) {
+              debouncedAutoSave.current(
+                contentToSave,
+                titleToSave,
+                targetPageId,
+              );
+            }
+          }, retryDelay);
+        }
+      },
+      1200,
+    ),
   ).current;
 
-  // Sync with props when page changes
+  // Sync with props when page changes - CRITICAL: Only when pageId actually changes
   useEffect(() => {
-    setTitle(initialTitle);
+    if (!pageId) return; // Don't process if no pageId
+
+    console.log("NoteEditor: Page changed, initializing content:", {
+      pageId,
+      initialTitle,
+      hasInitialContent: !!initialContent,
+      contentType: typeof initialContent,
+    });
+
+    // CRITICAL: Always start with a completely fresh document for new pages
+    // Check if this is a new page by looking at the content
     const processedContent = safeJsonParse(initialContent);
-    setContent(processedContent);
-    initialDataRef.current = { title: initialTitle, content: processedContent };
-    lastSavedContentRef.current = processedContent;
+
+    // For new pages or empty content, always use empty document
+    const isNewOrEmptyPage =
+      !processedContent.content ||
+      processedContent.content.length === 0 ||
+      (processedContent.content.length === 1 &&
+        processedContent.content[0].type === "paragraph" &&
+        (!processedContent.content[0].content ||
+          processedContent.content[0].content.length === 0));
+
+    const finalContent = isNewOrEmptyPage
+      ? getDefaultDocument()
+      : processedContent;
+
+    console.log("NoteEditor: Setting content:", {
+      pageId,
+      isNewOrEmptyPage,
+      finalContentNodes: finalContent.content?.length || 0,
+      isEmptyDoc: finalContent.content?.length === 0,
+    });
+
+    // Reset all state completely for each page change
+    setTitle(initialTitle || "Untitled Page");
+    setContent(finalContent);
+    initialDataRef.current = {
+      title: initialTitle || "Untitled Page",
+      content: finalContent,
+    };
+    lastSavedContentRef.current = finalContent;
     setSaveStatus("saved");
     setHasUnsavedChanges(false);
     setLastSaved(new Date());
-  }, [initialTitle, initialContent, pageId]);
+  }, [pageId, initialTitle, initialContent]); // Include all props to ensure proper updates
 
   // Track unsaved changes using deep equality
   useEffect(() => {
@@ -201,12 +277,19 @@ const NoteEditor = ({
     }
   }, [title, content, hasUnsavedChanges, saveStatus]);
 
-  // Autosave functionality using debounced function
+  // Autosave functionality using debounced function with proper page isolation
   useEffect(() => {
     if (!hasUnsavedChanges || !pageId || !onAutoSave) return;
 
-    // Trigger debounced autosave
-    debouncedAutoSave(content, title);
+    // CRITICAL: Pass the current pageId to the autosave function to prevent race conditions
+    console.log("Triggering autosave for page:", pageId, {
+      hasUnsavedChanges,
+      titleLength: title.length,
+      contentNodes: content.content?.length || 0,
+    });
+
+    // Trigger debounced autosave with explicit pageId
+    debouncedAutoSave(content, title, pageId);
   }, [
     title,
     content,
@@ -446,6 +529,7 @@ const NoteEditor = ({
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <TiptapEditor
+            key={`tiptap-editor-${pageId}`} // CRITICAL: Force remount for each page
             content={content}
             onChange={handleContentChange}
             onTitleChange={handleEditorTitleChange}

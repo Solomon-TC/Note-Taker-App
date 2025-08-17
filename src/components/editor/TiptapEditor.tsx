@@ -563,30 +563,72 @@ const TiptapEditor = ({
     }
   }, [editor, user, noteId]);
 
-  // Update content when prop changes (only when noteId changes or initial load)
+  // Update content when noteId or content changes - CRITICAL for preventing content bleeding
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !noteId) return;
+
+    console.log("TiptapEditor: noteId/content changed, updating content:", {
+      noteId,
+      hasContent: !!content,
+      contentType: typeof content,
+    });
 
     const newContent = safeJsonParse(content);
     const currentContent = editor.getJSON() as TiptapDocument;
 
-    // Only set content if it's actually different and we're not in the middle of setting content
+    console.log("TiptapEditor: Content comparison:", {
+      noteId,
+      newContentNodes: newContent.content?.length || 0,
+      currentContentNodes: currentContent.content?.length || 0,
+      areEqual: deepEqual(newContent, currentContent),
+      isSettingContent: isSettingContentRef.current,
+    });
+
+    // Always set content when noteId changes OR when content is different
+    // This ensures each page gets its own isolated content
     if (
-      !deepEqual(newContent, currentContent) &&
-      !isSettingContentRef.current
+      !isSettingContentRef.current &&
+      !deepEqual(newContent, currentContent)
     ) {
       isSettingContentRef.current = true;
 
-      // Use a timeout to ensure the flag is reset even if setContent fails
-      setTimeout(() => {
-        isSettingContentRef.current = false;
-      }, 100);
+      console.log("TiptapEditor: Setting content for noteId:", noteId);
 
-      // Set content without emitting update events to prevent feedback loops
-      editor.commands.setContent(newContent, { emitUpdate: false });
-      lastContentRef.current = newContent;
+      // Use a timeout to ensure the flag is reset even if setContent fails
+      const resetTimeout = setTimeout(() => {
+        isSettingContentRef.current = false;
+      }, 300);
+
+      try {
+        // CRITICAL: Always clear editor completely first
+        editor.commands.clearContent(false);
+
+        // Add a small delay to ensure clearing is complete
+        setTimeout(() => {
+          try {
+            // Then set the new content
+            editor.commands.setContent(newContent, { emitUpdate: false });
+            lastContentRef.current = newContent;
+
+            console.log(
+              "TiptapEditor: Successfully set content for noteId:",
+              noteId,
+            );
+          } catch (error) {
+            console.error(
+              "TiptapEditor: Error setting content (delayed):",
+              error,
+            );
+          }
+        }, 10);
+      } catch (error) {
+        console.error("TiptapEditor: Error clearing content:", error);
+      } finally {
+        clearTimeout(resetTimeout);
+        isSettingContentRef.current = false;
+      }
     }
-  }, [editor, noteId]); // Only depend on noteId, not content
+  }, [editor, noteId, content]); // Depend on both noteId and content for proper isolation
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -642,22 +684,32 @@ const TiptapEditor = ({
   }, []);
 
   const handleDrawingInserted = useCallback(
-    (imageUrl: string) => {
+    (imageUrl: string, objectKey?: string) => {
       if (!editor) return;
 
+      console.log("TiptapEditor: Inserting drawing:", {
+        imageUrl,
+        objectKey,
+        noteId,
+      });
+
       // Insert the drawing image at the current cursor position
-      // Only pass valid Tiptap Image properties, custom attributes handled by CustomImage extension
+      // Store both the URL and objectKey for proper persistence
       editor
         .chain()
         .focus()
         .setImage({
           src: imageUrl,
           alt: "Drawing",
+          title: "Drawing",
+          objectKey: objectKey, // Store the storage path for later retrieval
           drawingId: `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}`,
         } as any) // Type assertion for custom attributes
         .run();
+
+      console.log("TiptapEditor: Drawing inserted successfully");
     },
-    [editor],
+    [editor, noteId],
   );
 
   const handleDrawingModalClose = useCallback(() => {

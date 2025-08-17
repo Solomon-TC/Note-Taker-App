@@ -6,7 +6,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  onInserted: (url: string) => void; // caller inserts into Tiptap with this URL
+  onInserted: (url: string, objectKey?: string) => void; // caller inserts into Tiptap with this URL and objectKey
   noteId?: string; // Add noteId prop for proper storage organization
 };
 
@@ -159,8 +159,15 @@ export default function DrawingModal({
         "drawings",
       );
 
-      // Insert the drawing into the editor
-      onInserted(uploadResult.url);
+      console.log("DrawingModal: Upload successful:", {
+        url: uploadResult.url,
+        objectKey: uploadResult.objectKey,
+        path: uploadResult.path,
+        noteId,
+      });
+
+      // Insert the drawing into the editor with both URL and objectKey
+      onInserted(uploadResult.url, uploadResult.objectKey);
       onClose();
     } catch (error) {
       console.error("Failed to insert drawing:", error);

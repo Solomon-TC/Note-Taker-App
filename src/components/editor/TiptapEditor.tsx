@@ -377,7 +377,6 @@ const TiptapEditor = ({
       // CRITICAL: Load Color extension with proper configuration
       Color.configure({
         types: ["textStyle"],
-        keepMarks: true,
       }),
 
       // CRITICAL: Load Highlight extension independently with proper config

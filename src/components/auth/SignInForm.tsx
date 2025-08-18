@@ -13,12 +13,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { Loader2, Mail } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
 
 export default function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const supabase = createClient();
@@ -80,6 +83,45 @@ export default function SignInForm() {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    setGoogleLoading(true);
+    setMessage("");
+
+    try {
+      const authClient = createClient();
+
+      console.log("Attempting Google OAuth:", {
+        origin: window.location.origin,
+      });
+
+      const { data, error } = await authClient.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Google OAuth error:", error);
+        throw error;
+      }
+
+      console.log("Google OAuth initiated successfully");
+      // The redirect will happen automatically, so we don't need to do anything else
+    } catch (error: any) {
+      console.error("Google authentication error:", error);
+      setMessage(
+        error.message || "Google authentication failed. Please try again.",
+      );
+      setGoogleLoading(false);
+    }
+    // Note: We don't set googleLoading to false here because the page will redirect
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -99,7 +141,36 @@ export default function SignInForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
+          {/* Google OAuth Button */}
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleAuth}
+              disabled={loading || googleLoading}
+            >
+              {googleLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FcGoogle className="mr-2 h-4 w-4" />
+              )}
+              Continue with Google
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -109,7 +180,7 @@ export default function SignInForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={loading}
+                disabled={loading || googleLoading}
               />
             </div>
             <div className="space-y-2">
@@ -136,7 +207,11 @@ export default function SignInForm() {
                 <AlertDescription>{message}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || googleLoading}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSignUp ? "Create Account" : "Sign In"}
             </Button>

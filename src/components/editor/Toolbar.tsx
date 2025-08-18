@@ -68,6 +68,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     if (!editor) return;
 
     try {
+      const { from, to } = editor.state.selection;
       const previousUrl = editor.getAttributes("link").href;
       const url = window.prompt("URL", previousUrl);
 
@@ -76,23 +77,34 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         return;
       }
 
-      // empty
+      // empty - remove link
       if (url === "") {
         editor?.chain().focus().extendMarkRange("link").unsetLink().run();
         return;
       }
 
-      // update link
-      editor
-        ?.chain()
-        .focus()
-        .extendMarkRange("link")
-        .setLink({ href: url })
-        .run();
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error adding link:", error);
+      // If no text is selected, prompt for link text
+      if (from === to) {
+        const linkText = window.prompt("Link text", url);
+        if (linkText === null) return;
+
+        // Insert link with text
+        editor
+          ?.chain()
+          .focus()
+          .insertContent(`<a href="${url}">${linkText || url}</a>`)
+          .run();
+      } else {
+        // Apply link to selected text
+        editor
+          ?.chain()
+          .focus()
+          .extendMarkRange("link")
+          .setLink({ href: url })
+          .run();
       }
+    } catch (error) {
+      console.error("Error adding link:", error);
     }
   }, [editor]);
 
@@ -186,10 +198,14 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
       try {
         if (fontFamily === "default") {
-          editor?.chain().focus().unsetFontFamily().run();
+          // Remove fontFamily using unsetFontFamily command
+          editor.chain().focus().unsetFontFamily().run();
         } else {
-          editor?.chain().focus().setFontFamily(fontFamily).run();
+          // Set fontFamily using setFontFamily command
+          editor.chain().focus().setFontFamily(fontFamily).run();
         }
+
+        console.log("Font family applied:", { fontFamily });
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
           console.error("Error setting font family:", error);
@@ -199,80 +215,271 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     [editor],
   );
 
-  const setTextColor = useCallback(
-    (color: string) => {
-      if (!editor) return;
-
-      try {
-        // First ensure we have a selection or create one
-        const { from, to } = editor.state.selection;
-        if (from === to) {
-          // No selection, apply to current position for future typing
-          editor?.chain().focus().setMark("textStyle", { color }).run();
-        } else {
-          // Apply to selected text
-          editor?.chain().focus().setColor(color).run();
-        }
-        setIsColorPickerOpen(false);
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error setting text color:", error);
-        }
-        // Fallback: try using textStyle mark directly
-        try {
-          editor?.chain().focus().setMark("textStyle", { color }).run();
-        } catch (fallbackError) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Fallback text color failed:", fallbackError);
-          }
-        }
-        setIsColorPickerOpen(false);
+  const applyTextColor = useCallback(
+    (hex: string) => {
+      if (!editor) {
+        console.error("Text color: No editor available");
+        return;
       }
-    },
-    [editor],
-  );
-
-  const setHighlightColor = useCallback(
-    (color: string) => {
-      if (!editor) return;
 
       try {
-        // Check if highlight extension is available
-        if (!editor.isActive || !editor.can().setHighlight) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn("Highlight extension not available");
-          }
-          setIsHighlightPickerOpen(false);
+        console.log("Applying text color:", hex);
+
+        // Validate that the Color extension is available
+        const hasColorExtension = editor.extensionManager.extensions.some(
+          (ext) => ext.name === "color",
+        );
+
+        if (!hasColorExtension) {
+          console.error("Color extension not found");
+          alert(
+            "Color extension is not available. Please check the editor configuration.",
+          );
           return;
         }
 
-        // First ensure we have a selection or create one
+        // Check if we have a selection
         const { from, to } = editor.state.selection;
         if (from === to) {
-          // No selection, apply to current position for future typing
-          editor?.chain().focus().setMark("highlight", { color }).run();
-        } else {
-          // Apply to selected text - use correct color parameter
-          editor?.chain().focus().setHighlight({ color }).run();
+          console.log("No text selected, cannot apply color");
+          alert("Please select some text first to apply color");
+          return;
         }
-        setIsHighlightPickerOpen(false);
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error setting highlight color:", error);
+
+        // Ensure the editor is focused
+        if (!editor.isFocused) {
+          editor.commands.focus();
         }
-        // Fallback: try with color parameter (not backgroundColor)
+
+        console.log("Editor state before color:", {
+          canSetColor: editor.can().setColor
+            ? editor.can().setColor(hex)
+            : false,
+          hasSelection: from !== to,
+          selectionLength: to - from,
+          isFocused: editor.isFocused,
+          hasColorExtension,
+        });
+
+        // Apply color using the Color extension with comprehensive error handling
+        let result = false;
+
         try {
-          editor?.chain().focus().setHighlight({ color }).run();
-        } catch (fallbackError) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Fallback highlight failed:", fallbackError);
+          result = editor.chain().focus().setColor(hex).run();
+          console.log("Primary setColor result:", result);
+        } catch (colorError) {
+          console.error("Primary setColor failed:", colorError);
+        }
+
+        // If primary method failed, try alternative approaches
+        if (!result) {
+          console.log("Trying alternative color application methods...");
+
+          try {
+            // Method 2: Use setMark with textStyle
+            result = editor
+              .chain()
+              .focus()
+              .setMark("textStyle", { color: hex })
+              .run();
+            console.log("Alternative setMark result:", result);
+          } catch (markError) {
+            console.error("Alternative setMark failed:", markError);
+          }
+
+          // Method 3: Direct command execution
+          if (!result) {
+            try {
+              result = editor.commands.setColor(hex);
+              console.log("Direct command result:", result);
+            } catch (directError) {
+              console.error("Direct command failed:", directError);
+            }
           }
         }
-        setIsHighlightPickerOpen(false);
+
+        if (result) {
+          console.log("Successfully applied text color:", hex);
+        } else {
+          console.error("All color application methods failed");
+          alert(
+            "Failed to apply text color. Please try selecting the text again.",
+          );
+        }
+      } catch (error) {
+        console.error("Error applying text color:", error);
+        alert(
+          `Error applying text color: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
+
+      setIsColorPickerOpen(false);
     },
     [editor],
   );
+
+  const clearTextColor = useCallback(() => {
+    if (!editor) {
+      console.log("Clear text color: No editor available");
+      return;
+    }
+
+    try {
+      console.log("Clearing text color");
+      console.log("Editor state before clear:", {
+        canUnsetColor: editor.can().unsetColor
+          ? editor.can().unsetColor()
+          : false,
+        currentColor: editor.getAttributes("textStyle").color,
+      });
+
+      // CRITICAL FIX: Use unsetColor command from Color extension
+      const result = editor.chain().focus().unsetColor().run();
+      console.log("Clear text color command result:", result);
+
+      if (result) {
+        console.log("Cleared text color successfully");
+      } else {
+        console.error("Clear text color command failed");
+      }
+    } catch (error) {
+      console.error("Error clearing text color:", error);
+    }
+
+    setIsColorPickerOpen(false);
+  }, [editor]);
+
+  const applyHighlight = useCallback(
+    (hex: string) => {
+      if (!editor) {
+        console.error("Highlight: No editor available");
+        return;
+      }
+
+      try {
+        console.log("Applying highlight:", hex);
+
+        // Validate that the Highlight extension is available
+        const hasHighlightExtension = editor.extensionManager.extensions.some(
+          (ext) => ext.name === "highlight",
+        );
+
+        if (!hasHighlightExtension) {
+          console.error("Highlight extension not found");
+          alert(
+            "Highlight extension is not available. Please check the editor configuration.",
+          );
+          return;
+        }
+
+        // Check if we have a selection
+        const { from, to } = editor.state.selection;
+        if (from === to) {
+          console.log("No text selected, cannot apply highlight");
+          alert("Please select some text first to apply highlight");
+          return;
+        }
+
+        // Ensure the editor is focused
+        if (!editor.isFocused) {
+          editor.commands.focus();
+        }
+
+        console.log("Editor state before highlight:", {
+          canSetHighlight: editor.can().setHighlight
+            ? editor.can().setHighlight({ color: hex })
+            : false,
+          hasSelection: from !== to,
+          selectionLength: to - from,
+          isFocused: editor.isFocused,
+          hasHighlightExtension,
+        });
+
+        // Apply highlight using the Highlight extension with comprehensive error handling
+        let result = false;
+
+        try {
+          result = editor.chain().focus().setHighlight({ color: hex }).run();
+          console.log("Primary setHighlight result:", result);
+        } catch (highlightError) {
+          console.error("Primary setHighlight failed:", highlightError);
+        }
+
+        // If primary method failed, try alternative approaches
+        if (!result) {
+          console.log("Trying alternative highlight application methods...");
+
+          try {
+            // Method 2: Use toggleHighlight
+            result = editor
+              .chain()
+              .focus()
+              .toggleHighlight({ color: hex })
+              .run();
+            console.log("Alternative toggleHighlight result:", result);
+          } catch (toggleError) {
+            console.error("Alternative toggleHighlight failed:", toggleError);
+          }
+
+          // Method 3: Direct command execution
+          if (!result) {
+            try {
+              result = editor.commands.setHighlight({ color: hex });
+              console.log("Direct highlight command result:", result);
+            } catch (directError) {
+              console.error("Direct highlight command failed:", directError);
+            }
+          }
+        }
+
+        if (result) {
+          console.log("Successfully applied highlight:", hex);
+        } else {
+          console.error("All highlight application methods failed");
+          alert(
+            "Failed to apply highlight. Please try selecting the text again.",
+          );
+        }
+      } catch (error) {
+        console.error("Error applying highlight:", error);
+        alert(
+          `Error applying highlight: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+
+      setIsHighlightPickerOpen(false);
+    },
+    [editor],
+  );
+
+  const clearHighlight = useCallback(() => {
+    if (!editor) {
+      console.log("Clear highlight: No editor available");
+      return;
+    }
+
+    try {
+      console.log("Clearing highlight");
+      console.log("Editor state before clear:", {
+        canUnsetHighlight: editor.can().unsetHighlight(),
+        isHighlightActive: editor.isActive("highlight"),
+        currentHighlight: editor.getAttributes("highlight"),
+      });
+
+      const result = editor.chain().focus().unsetHighlight().run();
+      console.log("Clear highlight command result:", result);
+
+      if (result) {
+        console.log("Cleared highlight successfully");
+      } else {
+        console.error("Clear highlight command failed");
+      }
+    } catch (error) {
+      console.error("Error clearing highlight:", error);
+    }
+
+    setIsHighlightPickerOpen(false);
+  }, [editor]);
 
   const setFontSize = useCallback(
     (fontSize: string) => {
@@ -280,10 +487,14 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
       try {
         if (fontSize === "default") {
-          editor?.chain().focus().unsetFontSize().run();
+          // Remove fontSize using unsetFontSize command
+          editor.chain().focus().unsetFontSize().run();
         } else {
-          editor?.chain().focus().setFontSize(fontSize).run();
+          // Set fontSize using setFontSize command
+          editor.chain().focus().setFontSize(fontSize).run();
         }
+
+        console.log("Font size applied:", { fontSize });
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
           console.error("Error setting font size:", error);
@@ -905,51 +1116,83 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           {/* Text Color */}
           <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
             <PopoverTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 relative"
-                  >
-                    <Palette className="h-4 w-4" />
-                    <div
-                      className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
-                      style={{
-                        backgroundColor:
-                          editor?.getAttributes("textStyle").color || "#000000",
-                      }}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Text Color</p>
-                </TooltipContent>
-              </Tooltip>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-2">
-              <div className="grid grid-cols-6 gap-1">
-                {colors.map((color) => (
-                  <button
-                    key={color}
-                    className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    onClick={() => setTextColor(color)}
-                    title={color}
-                  />
-                ))}
-              </div>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="w-full mt-2 text-xs"
-                onClick={() => {
-                  editor?.chain().focus().unsetColor().run();
-                  setIsColorPickerOpen(false);
+                className="h-8 w-8 p-0 relative"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // If shift key is held, apply default black color directly
+                  if (e.shiftKey) {
+                    applyTextColor("#000000");
+                    return;
+                  }
+
+                  // Toggle the color picker
+                  setIsColorPickerOpen(!isColorPickerOpen);
                 }}
+                title="Text Color (Shift+Click for black)"
               >
-                Remove Color
+                <Palette className="h-4 w-4" />
+                <div
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
+                  style={{
+                    backgroundColor:
+                      editor?.getAttributes("textStyle").color || "#000000",
+                  }}
+                />
               </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3">
+              <div className="space-y-3">
+                {/* Native Color Picker */}
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="text-color-picker"
+                    className="text-sm font-medium"
+                  >
+                    Choose Color:
+                  </label>
+                  <input
+                    id="text-color-picker"
+                    type="color"
+                    value={
+                      editor?.getAttributes("textStyle").color || "#000000"
+                    }
+                    onChange={(e) => applyTextColor(e.target.value)}
+                    className="w-8 h-8 rounded border border-border cursor-pointer"
+                  />
+                </div>
+
+                {/* Preset Colors */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Quick Colors:
+                  </p>
+                  <div className="grid grid-cols-6 gap-1">
+                    {colors.map((color) => (
+                      <button
+                        key={color}
+                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                        onClick={() => applyTextColor(color)}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={clearTextColor}
+                >
+                  Remove Color
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
 
@@ -959,57 +1202,88 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             onOpenChange={setIsHighlightPickerOpen}
           >
             <PopoverTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={
-                      editor?.isActive("highlight") ? "default" : "ghost"
-                    }
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Highlighter className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Highlight</p>
-                </TooltipContent>
-              </Tooltip>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-2">
-              <div className="grid grid-cols-6 gap-1">
-                {highlightColors.map((color) => (
-                  <button
-                    key={color}
-                    className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                    style={{ backgroundColor: color }}
-                    onClick={() => setHighlightColor(color)}
-                    title={color}
-                  />
-                ))}
-              </div>
               <Button
-                variant="outline"
+                variant={editor?.isActive("highlight") ? "default" : "ghost"}
                 size="sm"
-                className="w-full mt-2 text-xs"
-                onClick={() => {
-                  try {
-                    editor?.chain().focus().unsetHighlight().run();
-                  } catch (error) {
-                    if (process.env.NODE_ENV === "development") {
-                      console.error("Error removing highlight:", error);
-                    }
+                className="h-8 w-8 p-0 relative"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // If shift key is held, apply default yellow highlight directly
+                  if (e.shiftKey) {
+                    applyHighlight("#FEF3C7");
+                    return;
                   }
-                  setIsHighlightPickerOpen(false);
+
+                  // Toggle the highlight picker
+                  setIsHighlightPickerOpen(!isHighlightPickerOpen);
                 }}
+                title="Highlight (Shift+Click for yellow)"
               >
-                Remove Highlight
+                <Highlighter className="h-4 w-4" />
+                {editor?.isActive("highlight") && (
+                  <div
+                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
+                    style={{
+                      backgroundColor:
+                        editor?.getAttributes("highlight").color || "#FEF3C7",
+                    }}
+                  />
+                )}
               </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3">
+              <div className="space-y-3">
+                {/* Native Color Picker */}
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="highlight-color-picker"
+                    className="text-sm font-medium"
+                  >
+                    Choose Color:
+                  </label>
+                  <input
+                    id="highlight-color-picker"
+                    type="color"
+                    value={
+                      editor?.getAttributes("highlight").color || "#FEF3C7"
+                    }
+                    onChange={(e) => applyHighlight(e.target.value)}
+                    className="w-8 h-8 rounded border border-border cursor-pointer"
+                  />
+                </div>
+
+                {/* Preset Highlight Colors */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Quick Highlights:
+                  </p>
+                  <div className="grid grid-cols-6 gap-1">
+                    {highlightColors.map((color) => (
+                      <button
+                        key={color}
+                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                        onClick={() => applyHighlight(color)}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={clearHighlight}
+                >
+                  Remove Highlight
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
 
         {/* Clear Formatting */}
         <Tooltip>

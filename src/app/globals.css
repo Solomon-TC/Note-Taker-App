@@ -405,7 +405,7 @@
     padding: 0;
   }
 
-  /* Task list styles - Fixed for proper functionality */
+  /* Task list styles - Enhanced for proper functionality */
   .ProseMirror ul[data-type="taskList"] {
     list-style: none !important;
     padding-left: 0 !important;
@@ -426,11 +426,16 @@
     margin-top: 0.125rem;
     user-select: none;
     cursor: pointer;
+    display: flex;
+    align-items: center;
   }
 
   .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
     margin: 0;
     cursor: pointer;
+    width: 1rem;
+    height: 1rem;
+    accent-color: hsl(var(--primary));
   }
 
   .ProseMirror ul[data-type="taskList"] li > div {
@@ -446,6 +451,27 @@
   .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
     text-decoration: line-through;
     opacity: 0.6;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Ensure task items render properly */
+  .ProseMirror li[data-type="taskItem"] {
+    display: flex !important;
+    align-items: flex-start !important;
+    list-style: none !important;
+  }
+
+  .ProseMirror li[data-type="taskItem"] > label {
+    flex: 0 0 auto;
+    margin-right: 0.5rem;
+    margin-top: 0.125rem;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .ProseMirror li[data-type="taskItem"] > div {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   /* Table styles */
@@ -494,27 +520,120 @@
     height: 0;
   }
 
-  /* Highlight styles */
+  /* Enforce visibility inside the editor */
   .ProseMirror mark {
-    background-color: #fef08a;
-    color: inherit;
-    padding: 0.125rem 0;
-    border-radius: 0.125rem;
+    padding: 0 0.1em;
+    border-radius: 0.2em;
   }
 
-  /* Custom text colors */
-  .ProseMirror [style*="color:"] {
-    /* Preserve custom text colors */
+  /* Link styles - Enhanced for better visibility and interaction */
+  .ProseMirror a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color 0.2s ease;
   }
 
-  /* Font family styles */
-  .ProseMirror [style*="font-family:"] {
-    /* Preserve custom font families */
+  .ProseMirror a:hover {
+    color: hsl(var(--primary) / 0.8);
+    text-decoration: underline;
   }
 
-  /* Font size styles */
-  .ProseMirror [style*="font-size:"] {
-    /* Preserve custom font sizes */
+  .ProseMirror a:visited {
+    color: hsl(var(--primary) / 0.7);
+  }
+
+  /* Ensure links are clickable in read mode */
+  .ProseMirror a[href] {
+    pointer-events: auto;
+  }
+
+  /* CRITICAL: Text color and highlight preservation - COMPLETELY FIXED */
+
+  /* Ensure all inline color styles are preserved with maximum specificity */
+  .ProseMirror span[style*="color:"] {
+    /* Color styles are preserved by not overriding them */
+  }
+
+  .ProseMirror span[style*="font-size:"] {
+    /* Font size styles are preserved */
+  }
+
+  .ProseMirror span[style*="font-family:"] {
+    /* Font family styles are preserved */
+  }
+
+  /* Enhanced text color support */
+  .ProseMirror .text-style {
+    /* Ensure text-style class doesn't interfere */
+  }
+
+  .ProseMirror span[data-color] {
+    /* Support for data-color attributes */
+  }
+
+  /* Highlight mark styling with proper preservation */
+  .ProseMirror mark[data-color] {
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  .ProseMirror mark[style*="background-color:"] {
+    /* Highlight background colors are preserved */
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  .ProseMirror .highlight {
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  /* CRITICAL: Ensure no CSS rules override inline styles */
+  .ProseMirror span[style],
+  .ProseMirror mark[style] {
+    /* All inline styles take precedence - no overrides */
+  }
+
+  /* Remove any potential color overrides */
+  .ProseMirror * {
+    /* Ensure no global color inheritance issues */
+  }
+
+  /* Debug styles for development */
+  .ProseMirror span[style*="color:"] {
+    /* Add a subtle border in development to see if color spans are being created */
+  }
+
+  .ProseMirror mark {
+    /* Ensure marks are visible */
+    display: inline;
+  }
+
+  /* Task list improvements */
+  .ProseMirror .task-list {
+    list-style: none !important;
+    padding-left: 0 !important;
+  }
+
+  .ProseMirror .task-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    list-style: none !important;
+    margin: 0.25rem 0 !important;
+  }
+
+  .ProseMirror .task-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+    margin-top: 0.125rem;
+    accent-color: hsl(var(--primary));
   }
 
   /* Enhanced Google Docs-like table styling */

@@ -24,43 +24,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
-// Custom FontSize extension
-const FontSize = TextStyle.extend({
-  addAttributes() {
-    return {
-      fontSize: {
-        default: null,
-        parseHTML: (element) => element.style.fontSize.replace(/["']/g, ""),
-        renderHTML: (attributes) => {
-          if (!attributes.fontSize) {
-            return {};
-          }
-          return {
-            style: `font-size: ${attributes.fontSize}`,
-          };
-        },
-      },
-    };
-  },
-
-  addCommands() {
-    return {
-      setFontSize:
-        (fontSize) =>
-        ({ chain }) => {
-          return chain().setMark("textStyle", { fontSize }).run();
-        },
-      unsetFontSize:
-        () =>
-        ({ chain }) => {
-          return chain()
-            .setMark("textStyle", { fontSize: null })
-            .removeEmptyTextStyle()
-            .run();
-        },
-    };
-  },
-});
+import FontSize from "@tiptap/extension-font-size";
 import { storageService } from "@/lib/storage";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -400,15 +364,57 @@ const TiptapEditor = ({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      // Base extensions first
+      StarterKit.configure({
+        paragraph: { keepMarks: true, keepAttributes: true },
+        bulletList: { keepMarks: true, keepAttributes: true },
+        orderedList: { keepMarks: true, keepAttributes: true },
+      }),
+
+      // CRITICAL: Load TextStyle first as the foundation for all text styling
+      TextStyle.configure({
+        HTMLAttributes: {
+          class: "text-style",
+        },
+      }),
+
+      // CRITICAL: Load Color extension with proper configuration
+      Color.configure({
+        types: ["textStyle"],
+        keepMarks: true,
+      }),
+
+      // CRITICAL: Load Highlight extension independently with proper config
+      Highlight.configure({
+        multicolor: true,
+        HTMLAttributes: {
+          class: "highlight",
+        },
+      }),
+
+      // CRITICAL: Load font extensions with proper configuration
+      FontFamily.configure({
+        types: ["textStyle"],
+      }),
+      FontSize.configure({
+        types: ["textStyle"],
+      }),
+
+      // Other formatting extensions
       Underline,
       Strike,
+
+      // Link extension
       Link.configure({
-        openOnClick: false,
+        openOnClick: true,
+        autolink: true,
+        protocols: ["http", "https", "mailto"],
         HTMLAttributes: {
           rel: "noopener noreferrer",
           target: "_blank",
+          class: "tiptap-link",
         },
+        linkOnPaste: true,
       }),
       TextAlign.configure({
         types: [
@@ -461,24 +467,19 @@ const TiptapEditor = ({
         HTMLAttributes: {
           class: "task-list",
         },
+        itemTypeName: "taskItem",
       }),
       TaskItem.configure({
         nested: true,
         HTMLAttributes: {
           class: "task-item",
         },
+        onReadOnlyChecked: (node, checked) => {
+          return checked;
+        },
       }),
-      TextStyle,
-      FontFamily.configure({
-        types: ["textStyle"],
-      }),
-      FontSize,
-      Color.configure({
-        types: ["textStyle"],
-      }),
-      Highlight.configure({
-        multicolor: true,
-      }),
+
+      // Block-level extensions
       Blockquote,
       Code,
     ],
@@ -560,6 +561,64 @@ const TiptapEditor = ({
         setEditingDrawingPos(pos || null);
         setIsDrawingModalOpen(true);
       };
+
+      // CRITICAL: Debug extension loading and validate configuration
+      const extensionInfo = {
+        hasTextStyle: !!editor.extensionManager.extensions.find(
+          (ext) => ext.name === "textStyle",
+        ),
+        hasColor: !!editor.extensionManager.extensions.find(
+          (ext) => ext.name === "color",
+        ),
+        hasHighlight: !!editor.extensionManager.extensions.find(
+          (ext) => ext.name === "highlight",
+        ),
+        extensionNames: editor.extensionManager.extensions.map(
+          (ext) => ext.name,
+        ),
+        canSetColor: false,
+        canSetHighlight: false,
+        currentAttributes: {
+          textStyle: editor.getAttributes("textStyle"),
+          highlight: editor.getAttributes("highlight"),
+        },
+      };
+
+      // Safely check command availability
+      try {
+        extensionInfo.canSetColor = editor.can().setColor
+          ? editor.can().setColor("#ff0000")
+          : false;
+      } catch (error) {
+        console.warn("Cannot check setColor capability:", error);
+      }
+
+      try {
+        extensionInfo.canSetHighlight = editor.can().setHighlight
+          ? editor.can().setHighlight({ color: "#ffff00" })
+          : false;
+      } catch (error) {
+        console.warn("Cannot check setHighlight capability:", error);
+      }
+
+      console.log("TiptapEditor: Extensions loaded:", extensionInfo);
+
+      // Validate critical extensions
+      if (!extensionInfo.hasTextStyle) {
+        console.error(
+          "CRITICAL: TextStyle extension not found! Color functionality will not work.",
+        );
+      }
+      if (!extensionInfo.hasColor) {
+        console.error(
+          "CRITICAL: Color extension not found! Text color functionality will not work.",
+        );
+      }
+      if (!extensionInfo.hasHighlight) {
+        console.error(
+          "CRITICAL: Highlight extension not found! Highlight functionality will not work.",
+        );
+      }
     }
   }, [editor, user, noteId]);
 
@@ -606,7 +665,7 @@ const TiptapEditor = ({
         // Add a small delay to ensure clearing is complete
         setTimeout(() => {
           try {
-            // Then set the new content
+            // Then set the new content - use JSON format to preserve marks
             editor.commands.setContent(newContent, { emitUpdate: false });
             lastContentRef.current = newContent;
 

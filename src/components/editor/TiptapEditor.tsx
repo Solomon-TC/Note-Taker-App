@@ -365,11 +365,7 @@ const TiptapEditor = ({
     immediatelyRender: false,
     extensions: [
       // Base extensions first
-      StarterKit.configure({
-        paragraph: { keepMarks: true, keepAttributes: true },
-        bulletList: { keepMarks: true, keepAttributes: true },
-        orderedList: { keepMarks: true, keepAttributes: true },
-      }),
+      StarterKit.configure({}),
 
       // CRITICAL: Load TextStyle first as the foundation for all text styling
       TextStyle.configure({

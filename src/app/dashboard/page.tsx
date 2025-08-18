@@ -17,7 +17,15 @@ import NoteEditor from "@/components/notes/NoteEditor";
 import AIChatSidebar from "@/components/ai/AIChatSidebar";
 import FloatingAIAssistantButton from "@/components/ai/FloatingAIAssistantButton";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw, Brain, FileText, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  RefreshCw,
+  Brain,
+  FileText,
+  Trash2,
+  Users,
+  User,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
 import {
@@ -858,6 +866,34 @@ export default function DashboardPage() {
 
               {/* Right side - Actions */}
               <div className="flex items-center gap-3">
+                {/* AI Assistant Button */}
+                <Button
+                  variant={isAIAssistantOpen ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+                  className="sleek-button hover-glow"
+                  title="AI Assistant"
+                >
+                  <Brain
+                    className={`h-4 w-4 ${isAIAssistantOpen ? "animate-pulse" : ""}`}
+                  />
+                </Button>
+
+                {/* Friends Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // TODO: Implement friends functionality
+                    console.log("Friends button clicked");
+                  }}
+                  className="sleek-button hover-glow"
+                  title="Friends"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+
+                {/* Profile Button (UserMenu) */}
                 <UserMenu />
               </div>
             </div>
@@ -1060,13 +1096,6 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-
-      {/* Floating AI Assistant Button - Positioned to the right of UserMenu */}
-      <FloatingAIAssistantButton
-        onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
-        isOpen={isAIAssistantOpen}
-        className="fixed top-4 right-4 z-40"
-      />
 
       {/* AI Chat Sidebar - Floating Card */}
       <AIChatSidebar

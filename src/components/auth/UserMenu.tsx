@@ -11,10 +11,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Sun, Moon, Laptop } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export default function UserMenu() {
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!user) return null;
 
@@ -52,6 +61,40 @@ export default function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Theme Toggle */}
+        {mounted && (
+          <>
+            <DropdownMenuItem
+              onClick={() => {
+                if (theme === "light") {
+                  setTheme("dark");
+                } else if (theme === "dark") {
+                  setTheme("system");
+                } else {
+                  setTheme("light");
+                }
+              }}
+            >
+              {theme === "light" ? (
+                <Sun className="mr-2 h-4 w-4" />
+              ) : theme === "dark" ? (
+                <Moon className="mr-2 h-4 w-4" />
+              ) : (
+                <Laptop className="mr-2 h-4 w-4" />
+              )}
+              <span>
+                {theme === "light"
+                  ? "Light mode"
+                  : theme === "dark"
+                    ? "Dark mode"
+                    : "System theme"}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>

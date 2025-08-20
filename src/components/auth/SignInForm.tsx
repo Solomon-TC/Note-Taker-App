@@ -68,9 +68,10 @@ export default function SignInForm() {
 
         if (error) throw error;
 
-        // Force a page reload to ensure proper session handling
+        // Check if sign in was successful
         if (data.session) {
           console.log("Sign in successful, redirecting to dashboard");
+          // Force a full page reload to ensure proper session handling
           window.location.href = "/dashboard";
           return;
         }

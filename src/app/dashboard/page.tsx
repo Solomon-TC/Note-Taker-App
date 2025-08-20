@@ -883,9 +883,47 @@ export default function DashboardPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    // TODO: Implement friends functionality
-                    console.log("Friends button clicked");
+                  onClick={async () => {
+                    console.log("🔍 Dashboard: Friends button clicked");
+
+                    // Check session before navigating
+                    try {
+                      const supabase = createClient();
+                      const {
+                        data: { session },
+                        error: sessionError,
+                      } = await supabase.auth.getSession();
+
+                      console.log(
+                        "🔍 Dashboard: Session check for friends navigation:",
+                        {
+                          hasSession: !!session,
+                          userId: session?.user?.id,
+                          userEmail: session?.user?.email,
+                          provider: session?.user?.app_metadata?.provider,
+                          sessionError: sessionError?.message,
+                        },
+                      );
+
+                      if (session?.user) {
+                        console.log(
+                          "🔍 Dashboard: Session valid, navigating to /friends",
+                        );
+                        router.push("/friends");
+                      } else {
+                        console.log(
+                          "🔍 Dashboard: No valid session, redirecting to /auth",
+                        );
+                        router.push("/auth");
+                      }
+                    } catch (error) {
+                      console.error(
+                        "🔍 Dashboard: Error checking session for friends navigation:",
+                        error,
+                      );
+                      // Fallback to auth page if there's an error
+                      router.push("/auth");
+                    }
                   }}
                   className="sleek-button hover-glow"
                   title="Friends"

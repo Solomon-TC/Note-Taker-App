@@ -493,7 +493,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_friend_shared_pages: {
+        Args: { friend_user_id: string }
+        Returns: {
+          content: string
+          content_json: Json
+          created_at: string
+          id: string
+          section_id: string
+          title: string
+          updated_at: string
+        }[]
+      }
+      get_user_friends: {
+        Args: { user_uuid: string }
+        Returns: {
+          friend_email: string
+          friend_id: string
+          friend_name: string
+          friendship_created_at: string
+        }[]
+      }
+      search_user_by_email_exact: {
+        Args: { p_email: string }
+        Returns: {
+          email: string
+          id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

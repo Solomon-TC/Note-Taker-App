@@ -71,7 +71,7 @@ export default function FriendsPage() {
 
       // Check users table with error handling
       let users = null;
-      let usersError = null;
+      let usersError: any = null;
       try {
         const result = await supabase.from("users").select("*");
         users = result.data;
@@ -141,9 +141,10 @@ export default function FriendsPage() {
           : null,
         usersInDb: users?.length || 0,
         sessionError: sessionError?.message,
-        usersError:
-          usersError?.message ||
-          (usersError instanceof Error ? usersError.message : "Unknown error"),
+        usersError: usersError
+          ? usersError.message ||
+            (usersError instanceof Error ? usersError.message : "Unknown error")
+          : null,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

@@ -34,6 +34,11 @@ export interface Friend {
   friendship_created_at: string;
 }
 
+export interface UnfriendResult {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Send a friend request to a user by their email address
  */
@@ -651,5 +656,93 @@ export async function getFriends(userId: string): Promise<Friend[]> {
   } catch (error) {
     console.error("Unexpected error in getFriends:", error);
     return [];
+  }
+}
+
+/**
+ * Remove a friend (unfriend)
+ */
+export async function unfriendUser(
+  userId: string,
+  friendId: string,
+): Promise<UnfriendResult> {
+  const supabase = createClient();
+
+  try {
+    // Validate input
+    if (!userId || !friendId) {
+      return {
+        success: false,
+        error: "User ID and friend ID are required",
+      };
+    }
+
+    // Prevent unfriending self
+    if (userId === friendId) {
+      return {
+        success: false,
+        error: "You cannot unfriend yourself",
+      };
+    }
+
+    console.log("💔 Unfriending user:", { userId, friendId });
+
+    // Delete friendship record - handle both directions
+    // The friendship could be stored as (user_id, friend_id) or (friend_id, user_id)
+    const { error: deleteError } = await supabase
+      .from("friends")
+      .delete()
+      .or(
+        `and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`,
+      );
+
+    if (deleteError) {
+      console.error("Error unfriending user:", deleteError);
+
+      // Handle specific error cases
+      if (deleteError.code === "PGRST116") {
+        return {
+          success: false,
+          error: "Friendship not found or already removed",
+        };
+      }
+
+      return {
+        success: false,
+        error: "Failed to remove friend. Please try again.",
+      };
+    }
+
+    // Also delete any associated friend requests between these users
+    // This allows them to send new friend requests in the future
+    console.log("💔 Cleaning up associated friend requests");
+    const { error: requestDeleteError } = await supabase
+      .from("friend_requests")
+      .delete()
+      .or(
+        `and(sender_id.eq.${userId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${userId})`,
+      );
+
+    if (requestDeleteError) {
+      console.warn(
+        "Warning: Failed to delete associated friend requests:",
+        requestDeleteError,
+      );
+      // Don't fail the entire operation since the main friendship removal was successful
+      // This is just cleanup to allow future friend requests
+    } else {
+      console.log("💔 Successfully cleaned up friend requests");
+    }
+
+    console.log(
+      "💔 Successfully unfriended user and cleaned up associated data",
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("Unexpected error in unfriendUser:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred. Please try again.",
+    };
   }
 }

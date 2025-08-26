@@ -21,6 +21,17 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
+import {
   ArrowLeft,
   Users,
   UserPlus,
@@ -44,6 +55,7 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   getFriends,
+  unfriendUser,
   type FriendRequestWithUser,
   type Friend,
 } from "@/lib/supabase/friends";
@@ -53,6 +65,7 @@ import {
 export default function FriendsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   // Form state
   const [emailToAdd, setEmailToAdd] = useState("");
@@ -77,6 +90,11 @@ export default function FriendsPage() {
   const [showAddFriends, setShowAddFriends] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Unfriend confirmation state
+  const [showUnfriendDialog, setShowUnfriendDialog] = useState(false);
+  const [friendToUnfriend, setFriendToUnfriend] = useState<Friend | null>(null);
+  const [isUnfriending, setIsUnfriending] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -105,6 +123,63 @@ export default function FriendsPage() {
     } finally {
       setLoadingRequests(false);
     }
+  };
+
+  const handleUnfriendClick = (friend: Friend) => {
+    setFriendToUnfriend(friend);
+    setShowUnfriendDialog(true);
+  };
+
+  const handleConfirmUnfriend = async () => {
+    if (!user || !friendToUnfriend) return;
+
+    setIsUnfriending(true);
+
+    try {
+      const result = await unfriendUser(user.id, friendToUnfriend.friend_id);
+
+      if (result.success) {
+        // Optimistically remove from friends list
+        setFriends((prev) =>
+          prev.filter(
+            (friend) => friend.friend_id !== friendToUnfriend.friend_id,
+          ),
+        );
+
+        // Show success toast
+        toast({
+          title: "Friend removed",
+          description: `You removed ${friendToUnfriend.friend_name || friendToUnfriend.friend_email} as a friend.`,
+        });
+
+        // Close dialogs
+        setShowUnfriendDialog(false);
+        setShowProfileModal(false);
+        setFriendToUnfriend(null);
+      } else {
+        // Show error toast
+        toast({
+          title: "Error",
+          description:
+            result.error || "Failed to remove friend. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error unfriending user:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnfriending(false);
+    }
+  };
+
+  const handleCancelUnfriend = () => {
+    setShowUnfriendDialog(false);
+    setFriendToUnfriend(null);
   };
 
   const loadFriends = async () => {
@@ -448,18 +523,31 @@ export default function FriendsPage() {
                                 </p>
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="w-full opacity-0 group-hover:opacity-100 transition-opacity sleek-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFriend(friend);
-                                setShowProfileModal(true);
-                              }}
-                            >
-                              View Profile
-                            </Button>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="flex-1 sleek-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFriend(friend);
+                                  setShowProfileModal(true);
+                                }}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnfriendClick(friend);
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -746,11 +834,9 @@ export default function FriendsPage() {
                       View Shared Notes
                     </Button>
                     <Button
-                      variant="ghost"
-                      onClick={() =>
-                        console.log("Remove friend", selectedFriend.friend_id)
-                      }
-                      className="sleek-button text-destructive hover:text-destructive hover:bg-destructive/10"
+                      variant="destructive"
+                      onClick={() => handleUnfriendClick(selectedFriend)}
+                      className="hover-glow"
                     >
                       Remove Friend
                     </Button>
@@ -825,6 +911,48 @@ export default function FriendsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Unfriend Confirmation Dialog */}
+      <AlertDialog
+        open={showUnfriendDialog}
+        onOpenChange={setShowUnfriendDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Friend</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove{" "}
+              <strong>
+                {friendToUnfriend?.friend_name ||
+                  friendToUnfriend?.friend_email}
+              </strong>{" "}
+              as a friend? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={handleCancelUnfriend}
+              disabled={isUnfriending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmUnfriend}
+              disabled={isUnfriending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isUnfriending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

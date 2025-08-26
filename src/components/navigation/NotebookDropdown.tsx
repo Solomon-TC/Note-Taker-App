@@ -116,7 +116,12 @@ const NotebookDropdown = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
-            {selectedNotebook ? (
+            {selectedNotebookId === "__dashboard__" ? (
+              <>
+                <BookOpen className="h-4 w-4" />
+                <span>Dashboard</span>
+              </>
+            ) : selectedNotebook ? (
               <>
                 <div
                   className="w-3 h-3 rounded-full"
@@ -138,8 +143,21 @@ const NotebookDropdown = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          {/* Dashboard Option */}
+          <DropdownMenuItem
+            onClick={() => onSelectNotebook("__dashboard__")}
+            className="flex items-center gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Dashboard</p>
+              <p className="text-xs text-muted-foreground">View all classes</p>
+            </div>
+          </DropdownMenuItem>
+
           {notebooks.length > 0 && (
             <>
+              <DropdownMenuSeparator />
               {notebooks.map((notebook) => (
                 <DropdownMenuItem
                   key={notebook.id}
@@ -162,16 +180,20 @@ const NotebookDropdown = ({
                   </div>
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
             </>
           )}
+
+          {notebooks.length > 0 && <DropdownMenuSeparator />}
 
           <Dialog
             open={isCreateDialogOpen}
             onOpenChange={setIsCreateDialogOpen}
           >
             <DialogTrigger asChild>
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                data-create-notebook
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add New Class
               </DropdownMenuItem>

@@ -104,32 +104,53 @@ const SortableTab = ({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const selectedStyle =
+    isSelected && section.color
+      ? {
+          backgroundColor: section.color,
+          color: "#ffffff",
+          boxShadow: `0 4px 15px ${section.color}40`,
+        }
+      : {};
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, ...selectedStyle }}
       className={`group relative flex items-center gap-2 px-4 py-3 cursor-pointer transition-all vibrant-tab ${
-        isSelected ? `active ${colorClass}` : "hover:bg-accent/20"
+        isSelected ? "active" : "hover:bg-accent/20"
       }`}
       onClick={() => onSelect(section.id)}
     >
-      <span className="text-sm font-medium truncate max-w-32">
+      <span
+        className={`text-sm font-medium truncate max-w-32 ${
+          isSelected ? "text-white font-semibold" : "text-foreground"
+        }`}
+      >
         {section.name}
       </span>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/10 rounded"
+          className={`cursor-grab active:cursor-grabbing p-1 rounded ${
+            isSelected ? "hover:bg-black/10" : "hover:bg-white/10"
+          }`}
         >
-          <GripVertical className="h-3 w-3" />
+          <GripVertical
+            className={`h-3 w-3 ${isSelected ? "text-white" : "text-current"}`}
+          />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 hover:bg-white/10"
+              className={`h-6 w-6 p-0 ${
+                isSelected
+                  ? "hover:bg-black/10 text-white"
+                  : "hover:bg-white/10"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3 w-3" />
@@ -269,7 +290,6 @@ const SectionTabs = ({
           >
             <div className="flex items-end gap-0 flex-1 overflow-x-auto">
               {sections.map((section, index) => {
-                const colorClass = vibrantColors[index % vibrantColors.length];
                 return (
                   <SortableTab
                     key={section.id}
@@ -278,7 +298,7 @@ const SectionTabs = ({
                     onSelect={onSelectSection}
                     onEdit={handleEditSection}
                     onDelete={onDeleteSection}
-                    colorClass={colorClass}
+                    colorClass=""
                   />
                 );
               })}

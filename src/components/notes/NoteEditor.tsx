@@ -3,13 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Clock,
   CheckCircle,
@@ -498,38 +492,22 @@ const NoteEditor = ({
               placeholder="Untitled page"
             />
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                Visibility:
-              </label>
-              <Select
-                value={visibility}
-                onValueChange={(value: PageVisibility) => setVisibility(value)}
-              >
-                <SelectTrigger className="w-32 h-8 text-sm">
-                  <div className="flex items-center gap-1">
-                    {visibility === "private" ? (
-                      <Eye className="h-3 w-3" />
-                    ) : (
-                      <Users className="h-3 w-3" />
-                    )}
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="private">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-3 w-3" />
-                      <span>Private</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="friends">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3 w-3" />
-                      <span>Friends</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                {visibility === "private" ? (
+                  <Eye className="h-3 w-3" />
+                ) : (
+                  <Users className="h-3 w-3" />
+                )}
+                <span className="text-sm font-medium text-muted-foreground">
+                  {visibility === "private" ? "Private" : "Friends"}
+                </span>
+              </div>
+              <Switch
+                checked={visibility === "friends"}
+                onCheckedChange={(checked) =>
+                  setVisibility(checked ? "friends" : "private")
+                }
+              />
             </div>
           </div>
           {/* Save Status Indicator */}
@@ -577,18 +555,12 @@ const NoteEditor = ({
             size="sm"
             onClick={handleSave}
             disabled={isSaving || saveStatus === "saving"}
-            className="sleek-button"
+            className="sleek-button p-2"
           >
             {isSaving || saveStatus === "saving" ? (
-              <span className="flex items-center">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </span>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <span className="flex items-center">
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </span>
+              <Save className="h-4 w-4" />
             )}
           </Button>
         </div>

@@ -25,6 +25,7 @@ import {
   Trash2,
   Users,
   User,
+  BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";

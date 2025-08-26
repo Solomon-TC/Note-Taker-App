@@ -309,6 +309,17 @@ export async function sendFriendRequest(
         };
       }
 
+      // Handle RLS policy violations
+      if (
+        insertError.code === "42501" ||
+        insertError.message?.includes("policy")
+      ) {
+        return {
+          success: false,
+          error: "You are not authorized to send this friend request.",
+        };
+      }
+
       return {
         success: false,
         error: "Failed to send friend request. Please try again.",
@@ -488,6 +499,18 @@ export async function acceptFriendRequest(
 
       if (updateError) {
         console.error("Error updating request status:", updateError);
+
+        // Handle RLS policy violations
+        if (
+          updateError.code === "42501" ||
+          updateError.message?.includes("policy")
+        ) {
+          return {
+            success: false,
+            error: "You are not authorized to accept this friend request.",
+          };
+        }
+
         return {
           success: false,
           error: "Failed to update request status",
@@ -522,6 +545,18 @@ export async function acceptFriendRequest(
 
       if (updateError) {
         console.error("Error updating request status:", updateError);
+
+        // Handle RLS policy violations
+        if (
+          updateError.code === "42501" ||
+          updateError.message?.includes("policy")
+        ) {
+          return {
+            success: false,
+            error: "You are not authorized to accept this friend request.",
+          };
+        }
+
         return {
           success: false,
           error: "Failed to update request status",
@@ -547,6 +582,17 @@ export async function acceptFriendRequest(
           return {
             success: false,
             error: "Friendship already exists",
+          };
+        }
+
+        // Handle RLS policy violations
+        if (
+          insertError.code === "42501" ||
+          insertError.message?.includes("policy")
+        ) {
+          return {
+            success: false,
+            error: "You are not authorized to create this friendship.",
           };
         }
 
@@ -598,6 +644,18 @@ export async function declineFriendRequest(
 
     if (updateError) {
       console.error("Error declining friend request:", updateError);
+
+      // Handle RLS policy violations
+      if (
+        updateError.code === "42501" ||
+        updateError.message?.includes("policy")
+      ) {
+        return {
+          success: false,
+          error: "You are not authorized to decline this friend request.",
+        };
+      }
+
       return {
         success: false,
         error: "Failed to decline friend request",
@@ -704,6 +762,17 @@ export async function unfriendUser(
         return {
           success: false,
           error: "Friendship not found or already removed",
+        };
+      }
+
+      // Handle RLS policy violations
+      if (
+        deleteError.code === "42501" ||
+        deleteError.message?.includes("policy")
+      ) {
+        return {
+          success: false,
+          error: "You are not authorized to remove this friendship.",
         };
       }
 

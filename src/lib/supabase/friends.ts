@@ -626,7 +626,28 @@ export async function getFriends(userId: string): Promise<Friend[]> {
       return [];
     }
 
-    return data || [];
+    // Client-side deduplication as a fallback measure
+    // Remove any duplicate friends based on friend_id
+    const uniqueFriends = (data || []).reduce(
+      (acc: Friend[], current: Friend) => {
+        const existingFriend = acc.find(
+          (friend) => friend.friend_id === current.friend_id,
+        );
+        if (!existingFriend) {
+          acc.push(current);
+        }
+        return acc;
+      },
+      [],
+    );
+
+    console.log("🤝 Friends fetched:", {
+      totalReturned: data?.length || 0,
+      uniqueFriends: uniqueFriends.length,
+      duplicatesRemoved: (data?.length || 0) - uniqueFriends.length,
+    });
+
+    return uniqueFriends;
   } catch (error) {
     console.error("Unexpected error in getFriends:", error);
     return [];

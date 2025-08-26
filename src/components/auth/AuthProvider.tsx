@@ -95,43 +95,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
           setError(null);
 
-          // Ensure user record exists for new sign-ins only
+          // User records are now automatically created by database trigger
+          // No manual intervention needed for new sign-ins
           if (session?.user && event === "SIGNED_IN") {
             console.log(
-              "🔐 AuthProvider: Ensuring user record for new sign-in:",
+              "🔐 AuthProvider: User signed in, record automatically synced:",
               {
                 userId: session.user.id,
+                email: session.user.email,
                 provider: session.user.app_metadata?.provider,
               },
             );
-            // Don't await - run in background
-            ensureUserRecord(supabase, session.user).catch((error) => {
-              console.warn(
-                "🔐 AuthProvider: Background user record creation failed:",
-                error,
-              );
-            });
           }
         });
 
         subscription = authSubscription;
 
-        // Ensure user record exists for existing session
+        // User records are automatically synced by database trigger
         if (session?.user) {
-          console.log(
-            "🔐 AuthProvider: Ensuring user record exists for existing session:",
-            {
-              userId: session.user.id,
-              email: session.user.email,
-              provider: session.user.app_metadata?.provider,
-            },
-          );
-          // Don't await - run in background
-          ensureUserRecord(supabase, session.user).catch((error) => {
-            console.warn(
-              "🔐 AuthProvider: Background user record creation failed:",
-              error,
-            );
+          console.log("🔐 AuthProvider: Existing session loaded:", {
+            userId: session.user.id,
+            email: session.user.email,
+            provider: session.user.app_metadata?.provider,
           });
         }
       } catch (err) {
@@ -153,78 +138,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [mounted]);
 
-  // Simplified helper function to ensure user record exists
-  const ensureUserRecord = async (
-    supabase: ReturnType<typeof createClient>,
-    user: User,
-  ) => {
-    try {
-      console.log("🔐 AuthProvider: Ensuring user record exists for:", {
-        id: user.id,
-        email: user.email,
-        provider: user.app_metadata?.provider,
-      });
-
-      // Simple check for existing user - no retries to prevent loops
-      const { data: existingUser, error: selectError } = await supabase
-        .from("users")
-        .select("id, email, full_name, avatar_url")
-        .eq("id", user.id)
-        .single();
-
-      // If there's a critical error, don't retry - just log and continue
-      if (selectError && selectError.code !== "PGRST116") {
-        console.warn(
-          "🔐 AuthProvider: Database error checking user:",
-          selectError.message,
-        );
-        return; // Don't throw, just continue
-      }
-
-      // Prepare user data with simple fallbacks
-      const userData = {
-        id: user.id,
-        email: user.email!,
-        full_name:
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.user_metadata?.display_name ||
-          (user.email ? user.email.split("@")[0] : null) ||
-          null,
-        avatar_url:
-          user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-      };
-
-      if (!existingUser) {
-        // Simple user creation - single attempt only
-        console.log("🔐 AuthProvider: Creating new user record");
-        const { error: insertError } = await supabase
-          .from("users")
-          .insert(userData);
-
-        if (insertError) {
-          // If it's a duplicate key error, that's fine (race condition)
-          if (insertError.code === "23505") {
-            console.log(
-              "🔐 AuthProvider: User already exists (race condition)",
-            );
-          } else {
-            console.warn(
-              "🔐 AuthProvider: Failed to create user record:",
-              insertError.message,
-            );
-          }
-        } else {
-          console.log("🔐 AuthProvider: Successfully created user record");
-        }
-      } else {
-        console.log("🔐 AuthProvider: User record already exists");
-      }
-    } catch (error) {
-      console.error("🔐 AuthProvider: Error ensuring user record:", error);
-      // Don't throw - just log and continue to prevent infinite loops
-    }
-  };
+  // User records are now automatically managed by database triggers
+  // This function is no longer needed but kept for reference
+  // const ensureUserRecord = async (...) => { ... }
 
   const signOut = async () => {
     try {

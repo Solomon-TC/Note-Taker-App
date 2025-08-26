@@ -1,205 +1,128 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth/AuthProvider";
-import UserMenu from "@/components/auth/UserMenu";
-import { Button } from "@/components/ui/button";
 import {
-  AlertCircle,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
   ArrowLeft,
   Users,
   UserPlus,
   MessageCircle,
   Settings,
-  RefreshCw,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
-import { Database } from "@/types/supabase";
+import UserMenu from "@/components/auth/UserMenu";
+import { useAuth } from "@/components/auth/AuthProvider";
+import {
+  sendFriendRequest,
+  getPendingFriendRequests,
+  type FriendRequestWithUser,
+} from "@/lib/supabase/friends";
 
-type User = Database["public"]["Tables"]["users"]["Row"];
+type Friend = { id: string; email: string; name?: string };
 
 export default function FriendsPage() {
-  const { user: authUser, loading, error } = useAuth();
   const router = useRouter();
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [dbUser, setDbUser] = useState<User | null>(null);
-  const [sessionDebug, setSessionDebug] = useState<any>(null);
+  const { user, loading: authLoading } = useAuth();
 
-  // Comprehensive session and user debugging
-  const performDebugChecks = async () => {
+  // Form state
+  const [emailToAdd, setEmailToAdd] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Data state
+  const [pendingRequests, setPendingRequests] = useState<
+    FriendRequestWithUser[]
+  >([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+
+  // Temporary mock friends list (will be implemented in next step)
+  const friends: Friend[] = [];
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/auth");
+    }
+  }, [user, authLoading, router]);
+
+  // Load pending friend requests
+  useEffect(() => {
+    if (user) {
+      loadPendingRequests();
+    }
+  }, [user]);
+
+  const loadPendingRequests = async () => {
+    if (!user) return;
+
     try {
-      const supabase = createClient();
-
-      console.log("🔍 Friends Page: Starting debug checks...");
-
-      // Check session with more detailed logging
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      console.log("🔍 Friends Page: Session check:", {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email,
-        provider: session?.user?.app_metadata?.provider,
-        sessionError: sessionError?.message,
-        accessToken: session?.access_token ? "[PRESENT]" : "[MISSING]",
-        refreshToken: session?.refresh_token ? "[PRESENT]" : "[MISSING]",
-        expiresAt: session?.expires_at
-          ? new Date(session.expires_at * 1000).toISOString()
-          : "[MISSING]",
-        tokenType: session?.token_type,
-        userMetadata: session?.user?.user_metadata,
-        appMetadata: session?.user?.app_metadata,
-      });
-
-      setSessionDebug({
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email,
-        provider: session?.user?.app_metadata?.provider,
-        sessionError: sessionError?.message,
-        accessToken: session?.access_token ? "[PRESENT]" : "[MISSING]",
-        refreshToken: session?.refresh_token ? "[PRESENT]" : "[MISSING]",
-        expiresAt: session?.expires_at
-          ? new Date(session.expires_at * 1000).toISOString()
-          : "[MISSING]",
-        tokenType: session?.token_type,
-      });
-
-      // Check users table with error handling
-      let users = null;
-      let usersError: any = null;
-      try {
-        const result = await supabase.from("users").select("*");
-        users = result.data;
-        usersError = result.error;
-        console.log("🔍 Friends Page: Users query:", {
-          usersCount: users?.length || 0,
-          usersError: usersError?.message,
-          usersErrorCode: usersError?.code,
-        });
-      } catch (err) {
-        console.error("🔍 Friends Page: Users query failed:", err);
-        usersError = err;
-      }
-
-      // Check current user in users table
-      if (session?.user?.id) {
-        try {
-          const { data: currentDbUser, error: currentUserError } =
-            await supabase
-              .from("users")
-              .select("*")
-              .eq("id", session.user.id)
-              .single();
-
-          console.log("🔍 Friends Page: Current user in DB:", {
-            hasCurrentDbUser: !!currentDbUser,
-            currentDbUser: currentDbUser
-              ? {
-                  id: currentDbUser.id,
-                  email: currentDbUser.email,
-                  full_name: currentDbUser.full_name,
-                  avatar_url: currentDbUser.avatar_url,
-                }
-              : null,
-            currentUserError: currentUserError?.message,
-            currentUserErrorCode: currentUserError?.code,
-          });
-          setDbUser(currentDbUser);
-        } catch (err) {
-          console.error("🔍 Friends Page: Current user query failed:", err);
-          setDbUser(null);
-        }
-      }
-
-      setDebugInfo({
-        authUser: authUser
-          ? {
-              id: authUser.id,
-              email: authUser.email,
-              provider: authUser.app_metadata?.provider,
-              hasUserMetadata: !!authUser.user_metadata,
-              userMetadataKeys: authUser.user_metadata
-                ? Object.keys(authUser.user_metadata)
-                : [],
-            }
-          : null,
-        session: session
-          ? {
-              userId: session.user.id,
-              email: session.user.email,
-              provider: session.user.app_metadata?.provider,
-              hasUserMetadata: !!session.user.user_metadata,
-              userMetadataKeys: session.user.user_metadata
-                ? Object.keys(session.user.user_metadata)
-                : [],
-            }
-          : null,
-        usersInDb: users?.length || 0,
-        sessionError: sessionError?.message,
-        usersError: usersError
-          ? usersError.message ||
-            (usersError instanceof Error ? usersError.message : "Unknown error")
-          : null,
-        timestamp: new Date().toISOString(),
-      });
+      setLoadingRequests(true);
+      const requests = await getPendingFriendRequests(user.id);
+      setPendingRequests(requests);
     } catch (error) {
-      console.error("🔍 Friends Page: Debug check error:", {
-        error,
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : "No stack trace",
-      });
-      setDebugInfo({
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-      });
+      console.error("Error loading pending requests:", error);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
-  // Handle authentication redirects with enhanced debugging
-  useEffect(() => {
-    console.log("🔍 Friends Page: Auth state:", {
-      loading,
-      hasAuthUser: !!authUser,
-      authUserId: authUser?.id,
-      authUserEmail: authUser?.email,
-      authUserProvider: authUser?.app_metadata?.provider,
-      error,
-    });
+  const handleSendFriendRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    if (!loading) {
-      // Perform debug checks regardless of auth state
-      performDebugChecks();
-
-      if (!authUser) {
-        console.log(
-          "🔍 Friends Page: User not authenticated, redirecting to auth",
-        );
-        router.push("/auth");
-      }
+    if (!user || !emailToAdd.trim()) {
+      return;
     }
-  }, [authUser, loading, router, error]);
 
-  // Show error screen for authentication errors
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center max-w-md mx-auto p-6">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
-          <p className="text-muted-foreground mb-6">{error}</p>
-          <Button onClick={() => router.push("/auth")}>Go to Sign In</Button>
-        </div>
-      </div>
-    );
-  }
+    setIsSubmitting(true);
+    setMessage(null);
 
-  // Show loading screen while authentication is loading
-  if (loading) {
+    try {
+      const result = await sendFriendRequest(user.id, emailToAdd.trim());
+
+      if (result.success) {
+        setMessage({
+          type: "success",
+          text: "Friend request sent successfully!",
+        });
+        setEmailToAdd("");
+        // Refresh pending requests in case there were any changes
+        loadPendingRequests();
+      } else {
+        setMessage({
+          type: "error",
+          text: result.error || "Failed to send friend request",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+      setMessage({
+        type: "error",
+        text: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
@@ -210,8 +133,8 @@ export default function FriendsPage() {
     );
   }
 
-  // Don't render anything if user is not authenticated (redirect will happen via useEffect)
-  if (!authUser) {
+  // Don't render if user is not authenticated (redirect will happen)
+  if (!user) {
     return null;
   }
 
@@ -240,166 +163,343 @@ export default function FriendsPage() {
               </div>
             </div>
 
-            {/* Right side - Debug button and User menu */}
+            {/* Right side - User menu */}
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={performDebugChecks}
-                className="sleek-button hover-glow"
-                title="Refresh debug info"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
               <UserMenu />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Debug Information Panel */}
-      {(debugInfo || sessionDebug) && (
-        <div className="max-w-6xl mx-auto px-4 mb-6">
-          <div className="dashboard-card">
-            <div className="dashboard-card-header px-6 py-4">
-              <h2 className="dashboard-subheading">Debug Information</h2>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 pb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left column: controls + lists */}
+          <div className="space-y-6">
+            {/* Add Friend */}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header px-6 py-4">
+                <h2 className="dashboard-subheading">Add Friend</h2>
+                <p className="dashboard-body">
+                  Send a friend request by email.
+                </p>
+              </div>
+              <div className="p-6 space-y-3">
+                <form onSubmit={handleSendFriendRequest} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="friend@email.com"
+                      value={emailToAdd}
+                      onChange={(e) => setEmailToAdd(e.target.value)}
+                      inputMode="email"
+                      type="email"
+                      className="modern-input"
+                      disabled={isSubmitting}
+                      required
+                    />
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || !emailToAdd.trim()}
+                      className="hover-glow"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Send"
+                      )}
+                    </Button>
+                  </div>
+
+                  {message && (
+                    <Alert
+                      className={
+                        message.type === "success"
+                          ? "border-green-500"
+                          : "border-red-500"
+                      }
+                    >
+                      {message.type === "success" ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      )}
+                      <AlertDescription
+                        className={
+                          message.type === "success"
+                            ? "text-green-700"
+                            : "text-red-700"
+                        }
+                      >
+                        {message.text}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </form>
+
+                <p className="text-xs text-muted-foreground">
+                  We'll verify the email belongs to an existing account.
+                </p>
+              </div>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Session Debug */}
-                {sessionDebug && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Session Status</h3>
-                    <pre className="bg-muted p-3 rounded text-xs overflow-auto">
-                      {JSON.stringify(sessionDebug, null, 2)}
-                    </pre>
+
+            {/* Pending Requests */}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header px-6 py-4">
+                <h2 className="dashboard-subheading">Friend Requests</h2>
+                <p className="dashboard-body">Incoming friend requests.</p>
+              </div>
+              <div className="p-6">
+                {loadingRequests ? (
+                  <div className="text-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
+                    <p className="dashboard-body text-sm">
+                      Loading requests...
+                    </p>
+                  </div>
+                ) : pendingRequests.length === 0 ? (
+                  <div className="text-center py-6">
+                    <div className="stats-card-icon mx-auto mb-3 opacity-50">
+                      <UserPlus className="h-5 w-5" />
+                    </div>
+                    <p className="dashboard-body text-sm">
+                      No pending requests
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingRequests.map((request) => (
+                      <div
+                        key={request.id}
+                        className="flex items-center justify-between rounded-xl border border-border/50 px-4 py-3 bg-card/50"
+                      >
+                        <div>
+                          <span className="text-sm font-medium">
+                            {request.sender?.full_name || request.sender?.email}
+                          </span>
+                          {request.sender?.full_name && (
+                            <p className="text-xs text-muted-foreground">
+                              {request.sender.email}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(request.created_at!).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => console.log("Accept", request.id)}
+                            className="hover-glow"
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => console.log("Decline", request.id)}
+                            className="sleek-button"
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* General Debug */}
-                {debugInfo && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Auth & DB Status</h3>
-                    <pre className="bg-muted p-3 rounded text-xs overflow-auto">
-                      {JSON.stringify(debugInfo, null, 2)}
-                    </pre>
+            {/* My Friends */}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header px-6 py-4">
+                <h2 className="dashboard-subheading">My Friends</h2>
+                <p className="dashboard-body">Your accepted friends.</p>
+              </div>
+              <div className="p-6">
+                {friends.length === 0 ? (
+                  <div className="text-center py-6">
+                    <div className="stats-card-icon mx-auto mb-3 opacity-50">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <p className="dashboard-body text-sm">
+                      You have no friends yet
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {friends.map((f) => (
+                      <div
+                        key={f.id}
+                        className={`nav-item cursor-pointer rounded-xl ${
+                          selectedFriend?.id === f.id ? "active" : ""
+                        }`}
+                        onClick={() => setSelectedFriend(f)}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <Users className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-sm font-medium">
+                              {f.name || f.email}
+                            </span>
+                            {f.name && (
+                              <p className="text-xs text-muted-foreground">
+                                {f.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="sleek-button"
+                        >
+                          View
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
 
-                {/* Database User */}
-                {dbUser && (
-                  <div className="md:col-span-2">
-                    <h3 className="font-semibold mb-2">Database User Record</h3>
-                    <pre className="bg-muted p-3 rounded text-xs overflow-auto">
-                      {JSON.stringify(dbUser, null, 2)}
-                    </pre>
+          {/* Right column: friend profile / shared notes */}
+          <div className="lg:col-span-2">
+            <div className="dashboard-card h-full">
+              <div className="dashboard-card-header px-6 py-4">
+                <h2 className="dashboard-subheading">Friend Profile</h2>
+                <p className="dashboard-body">
+                  {selectedFriend
+                    ? `Viewing ${selectedFriend.name || selectedFriend.email}`
+                    : "Select a friend to view their shared notes."}
+                </p>
+              </div>
+              <Separator />
+              <div className="p-6">
+                {!selectedFriend ? (
+                  <div className="flex items-center justify-center h-96">
+                    <div className="text-center">
+                      <div className="stats-card-icon mx-auto mb-4 opacity-50">
+                        <Users className="h-8 w-8" />
+                      </div>
+                      <h3 className="dashboard-heading mb-2">
+                        No friend selected
+                      </h3>
+                      <p className="dashboard-body max-w-md mx-auto">
+                        Choose a friend from the list to view their shared notes
+                        and collaborate on your learning journey.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Friend Info */}
+                    <div className="dashboard-card">
+                      <div className="p-4">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="stats-card-icon">
+                            <Users className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="dashboard-subheading">
+                              {selectedFriend.name || selectedFriend.email}
+                            </h3>
+                            {selectedFriend.name && (
+                              <p className="dashboard-body">
+                                {selectedFriend.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              console.log("Message", selectedFriend.id)
+                            }
+                            className="sleek-button hover-glow"
+                          >
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Message
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              console.log("Remove friend", selectedFriend.id)
+                            }
+                            className="sleek-button"
+                          >
+                            Remove Friend
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shared Notes */}
+                    <div className="dashboard-card">
+                      <div className="dashboard-card-header px-4 py-3">
+                        <h3 className="dashboard-subheading">Shared Notes</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-center py-8">
+                          <div className="stats-card-icon mx-auto mb-3 opacity-50">
+                            <MessageCircle className="h-5 w-5" />
+                          </div>
+                          <p className="dashboard-body text-sm">
+                            Notes marked "friends" by{" "}
+                            {selectedFriend.name || selectedFriend.email} will
+                            appear here.
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            No shared notes yet.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Friends List */}
-          <div className="lg:col-span-2">
-            <div className="dashboard-card">
-              <div className="dashboard-card-header px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="dashboard-subheading">Your Friends</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="sleek-button hover-glow"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Friend
-                  </Button>
-                </div>
-              </div>
-              <div className="p-6">
-                {/* Empty state for now */}
-                <div className="text-center py-12">
-                  <div className="stats-card-icon mx-auto mb-4 opacity-50">
-                    <Users className="h-8 w-8" />
-                  </div>
-                  <h3 className="dashboard-heading mb-2">No friends yet</h3>
-                  <p className="dashboard-body mb-6 max-w-md mx-auto">
-                    Connect with classmates and study partners to share notes
-                    and collaborate on your learning journey.
-                  </p>
-                  <Button className="hover-glow">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Find Friends
-                  </Button>
-                </div>
-              </div>
+        {/* Quick Actions Sidebar - Mobile friendly */}
+        <div className="mt-6 lg:hidden">
+          <div className="dashboard-card">
+            <div className="dashboard-card-header px-6 py-4">
+              <h2 className="dashboard-subheading">Quick Actions</h2>
             </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Friend Requests */}
-            <div className="dashboard-card">
-              <div className="dashboard-card-header px-4 py-3">
-                <h3 className="dashboard-subheading">Friend Requests</h3>
-              </div>
-              <div className="p-4">
-                <div className="text-center py-6">
-                  <div className="stats-card-icon mx-auto mb-3 opacity-50">
-                    <UserPlus className="h-5 w-5" />
-                  </div>
-                  <p className="dashboard-body text-sm">No pending requests</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="dashboard-card">
-              <div className="dashboard-card-header px-4 py-3">
-                <h3 className="dashboard-subheading">Quick Actions</h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start sleek-button hover-glow"
-                >
-                  <UserPlus className="h-4 w-4 mr-3" />
-                  Send Friend Request
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start sleek-button hover-glow"
-                >
-                  <MessageCircle className="h-4 w-4 mr-3" />
-                  Start Group Chat
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start sleek-button hover-glow"
-                >
-                  <Settings className="h-4 w-4 mr-3" />
-                  Privacy Settings
-                </Button>
-              </div>
-            </div>
-
-            {/* Study Groups */}
-            <div className="dashboard-card">
-              <div className="dashboard-card-header px-4 py-3">
-                <h3 className="dashboard-subheading">Study Groups</h3>
-              </div>
-              <div className="p-4">
-                <div className="text-center py-6">
-                  <div className="stats-card-icon mx-auto mb-3 opacity-50">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <p className="dashboard-body text-sm">No study groups yet</p>
-                </div>
-              </div>
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Button
+                variant="ghost"
+                className="justify-start sleek-button hover-glow"
+                onClick={() => console.log("Send Friend Request")}
+              >
+                <UserPlus className="h-4 w-4 mr-3" />
+                Send Request
+              </Button>
+              <Button
+                variant="ghost"
+                className="justify-start sleek-button hover-glow"
+                onClick={() => console.log("Start Group Chat")}
+              >
+                <MessageCircle className="h-4 w-4 mr-3" />
+                Group Chat
+              </Button>
+              <Button
+                variant="ghost"
+                className="justify-start sleek-button hover-glow"
+                onClick={() => console.log("Privacy Settings")}
+              >
+                <Settings className="h-4 w-4 mr-3" />
+                Settings
+              </Button>
             </div>
           </div>
         </div>

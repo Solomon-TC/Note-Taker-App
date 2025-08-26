@@ -357,7 +357,9 @@ export async function getPendingFriendRequests(
           id,
           email,
           full_name,
-          avatar_url
+          avatar_url,
+          created_at,
+          updated_at
         )
       `,
       )
@@ -395,7 +397,9 @@ export async function getSentFriendRequests(
           id,
           email,
           full_name,
-          avatar_url
+          avatar_url,
+          created_at,
+          updated_at
         )
       `,
       )

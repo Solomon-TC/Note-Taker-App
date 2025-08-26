@@ -17,6 +17,23 @@ export interface FriendRequestWithUser extends FriendRequest {
   receiver?: User;
 }
 
+export interface AcceptFriendRequestResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface DeclineFriendRequestResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface Friend {
+  friend_id: string;
+  friend_email: string;
+  friend_name: string | null;
+  friendship_created_at: string;
+}
+
 /**
  * Send a friend request to a user by their email address
  */
@@ -378,6 +395,240 @@ export async function getSentFriendRequests(
     return data || [];
   } catch (error) {
     console.error("Unexpected error in getSentFriendRequests:", error);
+    return [];
+  }
+}
+
+/**
+ * Accept a friend request
+ */
+export async function acceptFriendRequest(
+  requestId: string,
+  userId: string,
+): Promise<AcceptFriendRequestResult> {
+  const supabase = createClient();
+
+  try {
+    // Validate input
+    if (!requestId || !userId) {
+      return {
+        success: false,
+        error: "Request ID and user ID are required",
+      };
+    }
+
+    console.log("🤝 Accepting friend request:", { requestId, userId });
+
+    // First, get the friend request to validate and get sender info
+    const { data: request, error: fetchError } = await supabase
+      .from("friend_requests")
+      .select("*")
+      .eq("id", requestId)
+      .eq("receiver_id", userId) // Ensure user can only accept requests sent to them
+      .eq("status", "pending")
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching friend request:", fetchError);
+      if (fetchError.code === "PGRST116") {
+        return {
+          success: false,
+          error: "Friend request not found or already processed",
+        };
+      }
+      return {
+        success: false,
+        error: "Failed to fetch friend request",
+      };
+    }
+
+    if (!request) {
+      return {
+        success: false,
+        error: "Friend request not found or already processed",
+      };
+    }
+
+    console.log("🤝 Found request to accept:", {
+      requestId: request.id,
+      senderId: request.sender_id,
+      receiverId: request.receiver_id,
+    });
+
+    // Check if friendship already exists
+    const { data: existingFriendship, error: friendshipError } = await supabase
+      .from("friends")
+      .select("*")
+      .or(
+        `and(user_id.eq.${userId},friend_id.eq.${request.sender_id}),and(user_id.eq.${request.sender_id},friend_id.eq.${userId})`,
+      )
+      .maybeSingle();
+
+    if (friendshipError && friendshipError.code !== "PGRST116") {
+      console.error("Error checking existing friendship:", friendshipError);
+      return {
+        success: false,
+        error: "Failed to check existing friendship",
+      };
+    }
+
+    if (existingFriendship) {
+      console.log("🤝 Friendship already exists, just updating request status");
+      // Just update the request status if friendship already exists
+      const { error: updateError } = await supabase
+        .from("friend_requests")
+        .update({ status: "accepted" })
+        .eq("id", requestId)
+        .eq("receiver_id", userId);
+
+      if (updateError) {
+        console.error("Error updating request status:", updateError);
+        return {
+          success: false,
+          error: "Failed to update request status",
+        };
+      }
+
+      return { success: true };
+    }
+
+    // Use a transaction to update request status and create friendship
+    const { error: transactionError } = await supabase.rpc(
+      "accept_friend_request_transaction",
+      {
+        p_request_id: requestId,
+        p_user_id: userId,
+        p_friend_id: request.sender_id,
+      },
+    );
+
+    if (transactionError) {
+      console.error("Transaction error:", transactionError);
+
+      // Fallback to manual transaction if RPC doesn't exist
+      console.log("🤝 Falling back to manual transaction");
+
+      // Update request status
+      const { error: updateError } = await supabase
+        .from("friend_requests")
+        .update({ status: "accepted" })
+        .eq("id", requestId)
+        .eq("receiver_id", userId);
+
+      if (updateError) {
+        console.error("Error updating request status:", updateError);
+        return {
+          success: false,
+          error: "Failed to update request status",
+        };
+      }
+
+      // Create friendship record
+      const { error: insertError } = await supabase.from("friends").insert({
+        user_id: userId,
+        friend_id: request.sender_id,
+      });
+
+      if (insertError) {
+        console.error("Error creating friendship:", insertError);
+
+        // Try to revert the request status update
+        await supabase
+          .from("friend_requests")
+          .update({ status: "pending" })
+          .eq("id", requestId);
+
+        if (insertError.code === "23505") {
+          return {
+            success: false,
+            error: "Friendship already exists",
+          };
+        }
+
+        return {
+          success: false,
+          error: "Failed to create friendship",
+        };
+      }
+    }
+
+    console.log("🤝 Successfully accepted friend request");
+    return { success: true };
+  } catch (error) {
+    console.error("Unexpected error in acceptFriendRequest:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
+}
+
+/**
+ * Decline a friend request
+ */
+export async function declineFriendRequest(
+  requestId: string,
+  userId: string,
+): Promise<DeclineFriendRequestResult> {
+  const supabase = createClient();
+
+  try {
+    // Validate input
+    if (!requestId || !userId) {
+      return {
+        success: false,
+        error: "Request ID and user ID are required",
+      };
+    }
+
+    console.log("❌ Declining friend request:", { requestId, userId });
+
+    // Update request status to declined
+    const { error: updateError } = await supabase
+      .from("friend_requests")
+      .update({ status: "declined" })
+      .eq("id", requestId)
+      .eq("receiver_id", userId) // Ensure user can only decline requests sent to them
+      .eq("status", "pending"); // Only decline pending requests
+
+    if (updateError) {
+      console.error("Error declining friend request:", updateError);
+      return {
+        success: false,
+        error: "Failed to decline friend request",
+      };
+    }
+
+    console.log("❌ Successfully declined friend request");
+    return { success: true };
+  } catch (error) {
+    console.error("Unexpected error in declineFriendRequest:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
+}
+
+/**
+ * Get user's friends list
+ */
+export async function getFriends(userId: string): Promise<Friend[]> {
+  const supabase = createClient();
+
+  try {
+    const { data, error } = await supabase.rpc("get_user_friends", {
+      user_uuid: userId,
+    });
+
+    if (error) {
+      console.error("Error fetching friends:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Unexpected error in getFriends:", error);
     return [];
   }
 }

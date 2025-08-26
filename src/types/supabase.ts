@@ -196,6 +196,42 @@ export type Database = {
           },
         ]
       }
+      friends: {
+        Row: {
+          created_at: string | null
+          friend_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          friend_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          friend_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friends_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friends_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notebooks: {
         Row: {
           color: string | null
@@ -532,6 +568,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_friend_request_transaction: {
+        Args: { p_friend_id: string; p_request_id: string; p_user_id: string }
+        Returns: undefined
+      }
       get_friend_shared_pages: {
         Args: { friend_user_id: string }
         Returns: {

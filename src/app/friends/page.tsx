@@ -28,10 +28,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   sendFriendRequest,
   getPendingFriendRequests,
+  acceptFriendRequest,
+  declineFriendRequest,
+  getFriends,
   type FriendRequestWithUser,
+  type Friend,
 } from "@/lib/supabase/friends";
 
-type Friend = { id: string; email: string; name?: string };
+// Remove the local Friend type since we're importing it from the library
 
 export default function FriendsPage() {
   const router = useRouter();
@@ -50,10 +54,12 @@ export default function FriendsPage() {
     FriendRequestWithUser[]
   >([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
-
-  // Temporary mock friends list (will be implemented in next step)
-  const friends: Friend[] = [];
+  const [processingRequests, setProcessingRequests] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -62,10 +68,11 @@ export default function FriendsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Load pending friend requests
+  // Load pending friend requests and friends list
   useEffect(() => {
     if (user) {
       loadPendingRequests();
+      loadFriends();
     }
   }, [user]);
 
@@ -80,6 +87,20 @@ export default function FriendsPage() {
       console.error("Error loading pending requests:", error);
     } finally {
       setLoadingRequests(false);
+    }
+  };
+
+  const loadFriends = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingFriends(true);
+      const friendsList = await getFriends(user.id);
+      setFriends(friendsList);
+    } catch (error) {
+      console.error("Error loading friends:", error);
+    } finally {
+      setLoadingFriends(false);
     }
   };
 
@@ -118,6 +139,91 @@ export default function FriendsPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    if (!user) return;
+
+    // Add to processing set for loading state
+    setProcessingRequests((prev) => new Set(prev).add(requestId));
+
+    try {
+      const result = await acceptFriendRequest(requestId, user.id);
+
+      if (result.success) {
+        // Optimistically remove from pending requests
+        setPendingRequests((prev) =>
+          prev.filter((request) => request.id !== requestId),
+        );
+
+        // Refresh friends list to show new friend
+        loadFriends();
+
+        setMessage({
+          type: "success",
+          text: "Friend request accepted!",
+        });
+      } else {
+        setMessage({
+          type: "error",
+          text: result.error || "Failed to accept friend request",
+        });
+      }
+    } catch (error) {
+      console.error("Error accepting friend request:", error);
+      setMessage({
+        type: "error",
+        text: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      // Remove from processing set
+      setProcessingRequests((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    if (!user) return;
+
+    // Add to processing set for loading state
+    setProcessingRequests((prev) => new Set(prev).add(requestId));
+
+    try {
+      const result = await declineFriendRequest(requestId, user.id);
+
+      if (result.success) {
+        // Optimistically remove from pending requests
+        setPendingRequests((prev) =>
+          prev.filter((request) => request.id !== requestId),
+        );
+
+        setMessage({
+          type: "success",
+          text: "Friend request declined.",
+        });
+      } else {
+        setMessage({
+          type: "error",
+          text: result.error || "Failed to decline friend request",
+        });
+      }
+    } catch (error) {
+      console.error("Error declining friend request:", error);
+      setMessage({
+        type: "error",
+        text: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      // Remove from processing set
+      setProcessingRequests((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
     }
   };
 
@@ -292,18 +398,34 @@ export default function FriendsPage() {
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => console.log("Accept", request.id)}
+                            onClick={() => handleAcceptRequest(request.id)}
+                            disabled={processingRequests.has(request.id)}
                             className="hover-glow"
                           >
-                            Accept
+                            {processingRequests.has(request.id) ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Accepting...
+                              </>
+                            ) : (
+                              "Accept"
+                            )}
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => console.log("Decline", request.id)}
+                            onClick={() => handleDeclineRequest(request.id)}
+                            disabled={processingRequests.has(request.id)}
                             className="sleek-button"
                           >
-                            Decline
+                            {processingRequests.has(request.id) ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Declining...
+                              </>
+                            ) : (
+                              "Decline"
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -320,7 +442,12 @@ export default function FriendsPage() {
                 <p className="dashboard-body">Your accepted friends.</p>
               </div>
               <div className="p-6">
-                {friends.length === 0 ? (
+                {loadingFriends ? (
+                  <div className="text-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
+                    <p className="dashboard-body text-sm">Loading friends...</p>
+                  </div>
+                ) : friends.length === 0 ? (
                   <div className="text-center py-6">
                     <div className="stats-card-icon mx-auto mb-3 opacity-50">
                       <Users className="h-5 w-5" />
@@ -333,9 +460,11 @@ export default function FriendsPage() {
                   <div className="space-y-2">
                     {friends.map((f) => (
                       <div
-                        key={f.id}
+                        key={f.friend_id}
                         className={`nav-item cursor-pointer rounded-xl ${
-                          selectedFriend?.id === f.id ? "active" : ""
+                          selectedFriend?.friend_id === f.friend_id
+                            ? "active"
+                            : ""
                         }`}
                         onClick={() => setSelectedFriend(f)}
                       >
@@ -343,11 +472,11 @@ export default function FriendsPage() {
                           <Users className="h-4 w-4 flex-shrink-0" />
                           <div>
                             <span className="text-sm font-medium">
-                              {f.name || f.email}
+                              {f.friend_name || f.friend_email}
                             </span>
-                            {f.name && (
+                            {f.friend_name && (
                               <p className="text-xs text-muted-foreground">
-                                {f.email}
+                                {f.friend_email}
                               </p>
                             )}
                           </div>
@@ -374,7 +503,7 @@ export default function FriendsPage() {
                 <h2 className="dashboard-subheading">Friend Profile</h2>
                 <p className="dashboard-body">
                   {selectedFriend
-                    ? `Viewing ${selectedFriend.name || selectedFriend.email}`
+                    ? `Viewing ${selectedFriend.friend_name || selectedFriend.friend_email}`
                     : "Select a friend to view their shared notes."}
                 </p>
               </div>
@@ -406,11 +535,12 @@ export default function FriendsPage() {
                           </div>
                           <div>
                             <h3 className="dashboard-subheading">
-                              {selectedFriend.name || selectedFriend.email}
+                              {selectedFriend.friend_name ||
+                                selectedFriend.friend_email}
                             </h3>
-                            {selectedFriend.name && (
+                            {selectedFriend.friend_name && (
                               <p className="dashboard-body">
-                                {selectedFriend.email}
+                                {selectedFriend.friend_email}
                               </p>
                             )}
                           </div>
@@ -420,7 +550,7 @@ export default function FriendsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              console.log("Message", selectedFriend.id)
+                              console.log("Message", selectedFriend.friend_id)
                             }
                             className="sleek-button hover-glow"
                           >
@@ -431,7 +561,10 @@ export default function FriendsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              console.log("Remove friend", selectedFriend.id)
+                              console.log(
+                                "Remove friend",
+                                selectedFriend.friend_id,
+                              )
                             }
                             className="sleek-button"
                           >
@@ -453,8 +586,9 @@ export default function FriendsPage() {
                           </div>
                           <p className="dashboard-body text-sm">
                             Notes marked "friends" by{" "}
-                            {selectedFriend.name || selectedFriend.email} will
-                            appear here.
+                            {selectedFriend.friend_name ||
+                              selectedFriend.friend_email}{" "}
+                            will appear here.
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
                             No shared notes yet.

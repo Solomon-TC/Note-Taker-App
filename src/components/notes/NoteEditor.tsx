@@ -3,7 +3,22 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, CheckCircle, AlertCircle, Loader2, Save } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Save,
+  Eye,
+  Users,
+} from "lucide-react";
 import TiptapEditor from "@/components/editor/TiptapEditor";
 import { storageService } from "@/lib/storage";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -15,11 +30,13 @@ import {
   extractPlainText,
   type TiptapDocument,
 } from "@/lib/editor/json";
+import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
 interface NoteEditorProps {
   pageId?: string;
   initialTitle?: string;
   initialContent?: any; // Now expects Tiptap JSON
+  initialVisibility?: PageVisibility;
   sectionId?: string;
   parentPageId?: string;
   className?: string;
@@ -28,6 +45,7 @@ interface NoteEditorProps {
     title: string;
     content: string;
     contentJson: TiptapDocument;
+    visibility: PageVisibility;
     sectionId?: string;
     parentPageId?: string;
   }) => Promise<void>;
@@ -37,6 +55,7 @@ interface NoteEditorProps {
     title: string;
     content: string;
     contentJson: TiptapDocument;
+    visibility: PageVisibility;
     sectionId?: string;
     parentPageId?: string;
   }) => Promise<void>;
@@ -46,6 +65,7 @@ const NoteEditor = ({
   pageId = "",
   initialTitle = "Untitled Page",
   initialContent,
+  initialVisibility = DEFAULT_PAGE_VISIBILITY,
   sectionId = "",
   parentPageId,
   className = "",
@@ -58,6 +78,8 @@ const NoteEditor = ({
   const [content, setContent] = useState<TiptapDocument>(
     safeJsonParse(initialContent),
   );
+  const [visibility, setVisibility] =
+    useState<PageVisibility>(initialVisibility);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<
     "saved" | "saving" | "error" | "unsaved"
@@ -160,6 +182,7 @@ const NoteEditor = ({
             title: finalTitle,
             content: plainTextContent,
             contentJson: contentToSave,
+            visibility: visibility,
             sectionId,
             parentPageId,
           });
@@ -253,6 +276,7 @@ const NoteEditor = ({
     // Reset all state completely for each page change
     setTitle(initialTitle || "Untitled Page");
     setContent(finalContent);
+    setVisibility(initialVisibility || DEFAULT_PAGE_VISIBILITY);
     initialDataRef.current = {
       title: initialTitle || "Untitled Page",
       content: finalContent,
@@ -261,13 +285,14 @@ const NoteEditor = ({
     setSaveStatus("saved");
     setHasUnsavedChanges(false);
     setLastSaved(new Date());
-  }, [pageId, initialTitle, initialContent]); // Include all props to ensure proper updates
+  }, [pageId, initialTitle, initialContent, initialVisibility]); // Include all props to ensure proper updates
 
   // Track unsaved changes using deep equality
   useEffect(() => {
     const hasChanges =
       title !== initialDataRef.current.title ||
-      !deepEqual(content, initialDataRef.current.content);
+      !deepEqual(content, initialDataRef.current.content) ||
+      visibility !== initialVisibility;
 
     if (hasChanges !== hasUnsavedChanges) {
       setHasUnsavedChanges(hasChanges);
@@ -275,7 +300,14 @@ const NoteEditor = ({
         setSaveStatus("unsaved");
       }
     }
-  }, [title, content, hasUnsavedChanges, saveStatus]);
+  }, [
+    title,
+    content,
+    visibility,
+    initialVisibility,
+    hasUnsavedChanges,
+    saveStatus,
+  ]);
 
   // Autosave functionality using debounced function with proper page isolation
   useEffect(() => {
@@ -398,6 +430,7 @@ const NoteEditor = ({
         title: finalTitle,
         content: plainTextContent,
         contentJson: validatedContent,
+        visibility: visibility,
         sectionId,
         parentPageId,
       });
@@ -456,13 +489,49 @@ const NoteEditor = ({
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
         <div className="flex-1">
-          <Input
-            type="text"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="text-2xl font-bold border-none focus-visible:ring-0 px-0 h-auto bg-transparent"
-            placeholder="Untitled page"
-          />
+          <div className="flex items-center gap-4 mb-2">
+            <Input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="text-2xl font-bold border-none focus-visible:ring-0 px-0 h-auto bg-transparent flex-1"
+              placeholder="Untitled page"
+            />
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Visibility:
+              </label>
+              <Select
+                value={visibility}
+                onValueChange={(value: PageVisibility) => setVisibility(value)}
+              >
+                <SelectTrigger className="w-32 h-8 text-sm">
+                  <div className="flex items-center gap-1">
+                    {visibility === "private" ? (
+                      <Eye className="h-3 w-3" />
+                    ) : (
+                      <Users className="h-3 w-3" />
+                    )}
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-3 w-3" />
+                      <span>Private</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="friends">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3 w-3" />
+                      <span>Friends</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           {/* Save Status Indicator */}
           <div className="flex items-center gap-2 mt-1">
             {saveStatus === "saving" && (

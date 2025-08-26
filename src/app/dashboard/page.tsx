@@ -33,6 +33,7 @@ import {
   extractPlainText,
   type TiptapDocument,
 } from "@/lib/editor/json";
+import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
 type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
 type Section = Database["public"]["Tables"]["sections"]["Row"];
@@ -484,6 +485,7 @@ export default function DashboardPage() {
     title: string;
     content: string;
     contentJson: TiptapDocument;
+    visibility: PageVisibility;
     sectionId?: string;
     parentPageId?: string;
   }) => {
@@ -496,6 +498,7 @@ export default function DashboardPage() {
           title: pageData.title,
           content: pageData.content,
           content_json: pageData.contentJson as any,
+          visibility: pageData.visibility,
           updated_at: new Date().toISOString(),
         })
         .eq("id", pageData.id)
@@ -523,6 +526,7 @@ export default function DashboardPage() {
     title: string;
     content: string;
     contentJson: TiptapDocument;
+    visibility: PageVisibility;
     sectionId?: string;
     parentPageId?: string;
   }) => {
@@ -561,6 +565,7 @@ export default function DashboardPage() {
         title: pageData.title || "Untitled Page",
         content: pageData.content || "",
         content_json: validatedContentJson as any,
+        visibility: pageData.visibility || "private",
         updated_at: new Date().toISOString(),
       };
 
@@ -965,6 +970,10 @@ export default function DashboardPage() {
                 pageId={currentPage.id}
                 initialTitle={currentPage.title}
                 initialContent={safeJsonParse(currentPage.content_json)}
+                initialVisibility={
+                  (currentPage.visibility as PageVisibility) ||
+                  DEFAULT_PAGE_VISIBILITY
+                }
                 sectionId={selectedSectionId || undefined}
                 parentPageId={currentPage.parent_page_id || undefined}
                 onSave={handleSavePage}

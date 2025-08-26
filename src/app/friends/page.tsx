@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -14,6 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Users,
   UserPlus,
@@ -22,6 +29,12 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Search,
+  Calendar,
+  Mail,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from "lucide-react";
 import UserMenu from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -60,6 +73,10 @@ export default function FriendsPage() {
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(
     new Set(),
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAddFriends, setShowAddFriends] = useState(false);
+  const [showFriendRequests, setShowFriendRequests] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -244,6 +261,20 @@ export default function FriendsPage() {
     return null;
   }
 
+  // Filter friends based on search query
+  const filteredFriends = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return friends;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return friends.filter(
+      (friend) =>
+        friend.friend_name?.toLowerCase().includes(query) ||
+        friend.friend_email.toLowerCase().includes(query),
+    );
+  }, [friends, searchQuery]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
@@ -278,46 +309,216 @@ export default function FriendsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column: controls + lists */}
-          <div className="space-y-6">
-            {/* Add Friend */}
+      <div className="max-w-7xl mx-auto px-4 pb-8">
+        <div className="flex gap-6">
+          {/* Main Center Section: My Friends */}
+          <div className="flex-1">
             <div className="dashboard-card">
               <div className="dashboard-card-header px-6 py-4">
-                <h2 className="dashboard-subheading">Add Friend</h2>
-                <p className="dashboard-body">
-                  Send a friend request by email.
-                </p>
-              </div>
-              <div className="p-6 space-y-3">
-                <form onSubmit={handleSendFriendRequest} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="dashboard-heading">My Friends</h2>
+                    <p className="dashboard-body">
+                      {friends.length > 0
+                        ? `${friends.length} friend${friends.length === 1 ? "" : "s"}`
+                        : "Your accepted friends."}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddFriends(!showAddFriends)}
+                      className="sleek-button hover-glow"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add Friend
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFriendRequests(!showFriendRequests)}
+                      className="sleek-button hover-glow relative"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Requests
+                      {pendingRequests.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {pendingRequests.length}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Search Bar */}
+                {friends.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search friends by name or email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 modern-input"
+                    />
+                  </div>
+                )}
+
+                {/* Friends Grid */}
+                {loadingFriends ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                    <p className="dashboard-body">Loading friends...</p>
+                  </div>
+                ) : friends.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="stats-card-icon mx-auto mb-6 opacity-50">
+                      <Users className="h-12 w-12" />
+                    </div>
+                    <h3 className="dashboard-heading mb-3">No friends yet</h3>
+                    <p className="dashboard-body max-w-md mx-auto mb-6">
+                      You don't have any friends yet. Send some requests to
+                      start building your network!
+                    </p>
+                    <Button
+                      variant="default"
+                      onClick={() => setShowAddFriends(true)}
+                      className="hover-glow"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Send Friend Request
+                    </Button>
+                  </div>
+                ) : filteredFriends.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="stats-card-icon mx-auto mb-4 opacity-50">
+                      <Search className="h-8 w-8" />
+                    </div>
+                    <h3 className="dashboard-subheading mb-2">
+                      No friends found
+                    </h3>
+                    <p className="dashboard-body text-sm">
+                      No friends match your search for &quot;{searchQuery}&quot;
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchQuery("")}
+                      className="mt-2 sleek-button"
+                    >
+                      Clear search
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredFriends.map((friend) => (
+                      <Card
+                        key={friend.friend_id}
+                        className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-border/50 hover:border-primary/30 group"
+                        onClick={() => {
+                          setSelectedFriend(friend);
+                          setShowProfileModal(true);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-center space-y-3">
+                            <div className="stats-card-icon mx-auto">
+                              <Users className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-sm truncate">
+                                {friend.friend_name || "Unknown User"}
+                              </h3>
+                              <div className="flex items-center justify-center gap-1 mt-1">
+                                <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {friend.friend_email}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-center gap-1 mt-1">
+                                <Calendar className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    friend.friendship_created_at,
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full opacity-0 group-hover:opacity-100 transition-opacity sleek-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFriend(friend);
+                                setShowProfileModal(true);
+                              }}
+                            >
+                              View Profile
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar: Toggleable Sections */}
+          <div className="w-80 space-y-4">
+            {/* Add Friend Section */}
+            <div className="dashboard-card">
+              <div
+                className="dashboard-card-header px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setShowAddFriends(!showAddFriends)}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="dashboard-subheading text-sm">Add Friend</h3>
+                  {showAddFriends ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </div>
+              {showAddFriends && (
+                <div className="p-4 space-y-3">
+                  <form
+                    onSubmit={handleSendFriendRequest}
+                    className="space-y-3"
+                  >
                     <Input
                       placeholder="friend@email.com"
                       value={emailToAdd}
                       onChange={(e) => setEmailToAdd(e.target.value)}
                       inputMode="email"
                       type="email"
-                      className="modern-input"
+                      className="modern-input text-sm"
                       disabled={isSubmitting}
                       required
                     />
                     <Button
                       type="submit"
                       disabled={isSubmitting || !emailToAdd.trim()}
-                      className="hover-glow"
+                      className="w-full hover-glow"
+                      size="sm"
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                           Sending...
                         </>
                       ) : (
-                        "Send"
+                        "Send Request"
                       )}
                     </Button>
-                  </div>
+                  </form>
 
                   {message && (
                     <Alert
@@ -328,316 +529,302 @@ export default function FriendsPage() {
                       }
                     >
                       {message.type === "success" ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-3 w-3 text-green-500" />
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <AlertCircle className="h-3 w-3 text-red-500" />
                       )}
                       <AlertDescription
-                        className={
+                        className={`text-xs ${
                           message.type === "success"
                             ? "text-green-700"
                             : "text-red-700"
-                        }
+                        }`}
                       >
                         {message.text}
                       </AlertDescription>
                     </Alert>
                   )}
-                </form>
 
-                <p className="text-xs text-muted-foreground">
-                  We'll verify the email belongs to an existing account.
-                </p>
-              </div>
+                  <p className="text-xs text-muted-foreground">
+                    We'll verify the email belongs to an existing account.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Pending Requests */}
+            {/* Friend Requests Section */}
             <div className="dashboard-card">
-              <div className="dashboard-card-header px-6 py-4">
-                <h2 className="dashboard-subheading">Friend Requests</h2>
-                <p className="dashboard-body">Incoming friend requests.</p>
+              <div
+                className="dashboard-card-header px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setShowFriendRequests(!showFriendRequests)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="dashboard-subheading text-sm">
+                      Friend Requests
+                    </h3>
+                    {pendingRequests.length > 0 && (
+                      <span className="bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        {pendingRequests.length}
+                      </span>
+                    )}
+                  </div>
+                  {showFriendRequests ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
               </div>
-              <div className="p-6">
-                {loadingRequests ? (
-                  <div className="text-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
-                    <p className="dashboard-body text-sm">
-                      Loading requests...
-                    </p>
-                  </div>
-                ) : pendingRequests.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="stats-card-icon mx-auto mb-3 opacity-50">
-                      <UserPlus className="h-5 w-5" />
-                    </div>
-                    <p className="dashboard-body text-sm">
-                      No pending requests
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="flex items-center justify-between rounded-xl border border-border/50 px-4 py-3 bg-card/50"
-                      >
-                        <div>
-                          <span className="text-sm font-medium">
-                            {request.sender?.full_name || request.sender?.email}
-                          </span>
-                          {request.sender?.full_name && (
-                            <p className="text-xs text-muted-foreground">
-                              {request.sender.email}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(request.created_at!).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleAcceptRequest(request.id)}
-                            disabled={processingRequests.has(request.id)}
-                            className="hover-glow"
-                          >
-                            {processingRequests.has(request.id) ? (
-                              <>
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                Accepting...
-                              </>
-                            ) : (
-                              "Accept"
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeclineRequest(request.id)}
-                            disabled={processingRequests.has(request.id)}
-                            className="sleek-button"
-                          >
-                            {processingRequests.has(request.id) ? (
-                              <>
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                Declining...
-                              </>
-                            ) : (
-                              "Decline"
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* My Friends */}
-            <div className="dashboard-card">
-              <div className="dashboard-card-header px-6 py-4">
-                <h2 className="dashboard-subheading">My Friends</h2>
-                <p className="dashboard-body">Your accepted friends.</p>
-              </div>
-              <div className="p-6">
-                {loadingFriends ? (
-                  <div className="text-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
-                    <p className="dashboard-body text-sm">Loading friends...</p>
-                  </div>
-                ) : friends.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="stats-card-icon mx-auto mb-3 opacity-50">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <p className="dashboard-body text-sm">
-                      You have no friends yet
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {friends.map((f) => (
-                      <div
-                        key={f.friend_id}
-                        className={`nav-item cursor-pointer rounded-xl ${
-                          selectedFriend?.friend_id === f.friend_id
-                            ? "active"
-                            : ""
-                        }`}
-                        onClick={() => setSelectedFriend(f)}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <Users className="h-4 w-4 flex-shrink-0" />
-                          <div>
-                            <span className="text-sm font-medium">
-                              {f.friend_name || f.friend_email}
-                            </span>
-                            {f.friend_name && (
-                              <p className="text-xs text-muted-foreground">
-                                {f.friend_email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="sleek-button"
-                        >
-                          View
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right column: friend profile / shared notes */}
-          <div className="lg:col-span-2">
-            <div className="dashboard-card h-full">
-              <div className="dashboard-card-header px-6 py-4">
-                <h2 className="dashboard-subheading">Friend Profile</h2>
-                <p className="dashboard-body">
-                  {selectedFriend
-                    ? `Viewing ${selectedFriend.friend_name || selectedFriend.friend_email}`
-                    : "Select a friend to view their shared notes."}
-                </p>
-              </div>
-              <Separator />
-              <div className="p-6">
-                {!selectedFriend ? (
-                  <div className="flex items-center justify-center h-96">
-                    <div className="text-center">
-                      <div className="stats-card-icon mx-auto mb-4 opacity-50">
-                        <Users className="h-8 w-8" />
-                      </div>
-                      <h3 className="dashboard-heading mb-2">
-                        No friend selected
-                      </h3>
-                      <p className="dashboard-body max-w-md mx-auto">
-                        Choose a friend from the list to view their shared notes
-                        and collaborate on your learning journey.
+              {showFriendRequests && (
+                <div className="p-4">
+                  {loadingRequests ? (
+                    <div className="text-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">
+                        Loading requests...
                       </p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Friend Info */}
-                    <div className="dashboard-card">
-                      <div className="p-4">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="stats-card-icon">
-                            <Users className="h-5 w-5" />
-                          </div>
+                  ) : pendingRequests.length === 0 ? (
+                    <div className="text-center py-4">
+                      <div className="stats-card-icon mx-auto mb-2 opacity-50">
+                        <UserPlus className="h-4 w-4" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        No pending requests
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {pendingRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className="rounded-lg border border-border/50 p-3 bg-card/50 space-y-2"
+                        >
                           <div>
-                            <h3 className="dashboard-subheading">
-                              {selectedFriend.friend_name ||
-                                selectedFriend.friend_email}
-                            </h3>
-                            {selectedFriend.friend_name && (
-                              <p className="dashboard-body">
-                                {selectedFriend.friend_email}
+                            <span className="text-xs font-medium">
+                              {request.sender?.full_name ||
+                                request.sender?.email}
+                            </span>
+                            {request.sender?.full_name && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {request.sender.email}
                               </p>
                             )}
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              console.log("Message", selectedFriend.friend_id)
-                            }
-                            className="sleek-button hover-glow"
-                          >
-                            <MessageCircle className="h-4 w-4 mr-2" />
-                            Message
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              console.log(
-                                "Remove friend",
-                                selectedFriend.friend_id,
-                              )
-                            }
-                            className="sleek-button"
-                          >
-                            Remove Friend
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Shared Notes */}
-                    <div className="dashboard-card">
-                      <div className="dashboard-card-header px-4 py-3">
-                        <h3 className="dashboard-subheading">Shared Notes</h3>
-                      </div>
-                      <div className="p-4">
-                        <div className="text-center py-8">
-                          <div className="stats-card-icon mx-auto mb-3 opacity-50">
-                            <MessageCircle className="h-5 w-5" />
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleAcceptRequest(request.id)}
+                              disabled={processingRequests.has(request.id)}
+                              className="flex-1 h-7 text-xs hover-glow"
+                            >
+                              {processingRequests.has(request.id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "Accept"
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeclineRequest(request.id)}
+                              disabled={processingRequests.has(request.id)}
+                              className="flex-1 h-7 text-xs sleek-button"
+                            >
+                              {processingRequests.has(request.id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "Decline"
+                              )}
+                            </Button>
                           </div>
-                          <p className="dashboard-body text-sm">
-                            Notes marked "friends" by{" "}
-                            {selectedFriend.friend_name ||
-                              selectedFriend.friend_email}{" "}
-                            will appear here.
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            No shared notes yet.
-                          </p>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions Sidebar - Mobile friendly */}
-        <div className="mt-6 lg:hidden">
-          <div className="dashboard-card">
-            <div className="dashboard-card-header px-6 py-4">
-              <h2 className="dashboard-subheading">Quick Actions</h2>
-            </div>
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Button
-                variant="ghost"
-                className="justify-start sleek-button hover-glow"
-                onClick={() => console.log("Send Friend Request")}
-              >
-                <UserPlus className="h-4 w-4 mr-3" />
-                Send Request
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start sleek-button hover-glow"
-                onClick={() => console.log("Start Group Chat")}
-              >
-                <MessageCircle className="h-4 w-4 mr-3" />
-                Group Chat
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start sleek-button hover-glow"
-                onClick={() => console.log("Privacy Settings")}
-              >
-                <Settings className="h-4 w-4 mr-3" />
-                Settings
-              </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Friend Profile Modal */}
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="stats-card-icon">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">
+                    {selectedFriend?.friend_name || "Unknown User"}
+                  </DialogTitle>
+                  <DialogDescription className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    {selectedFriend?.friend_email}
+                  </DialogDescription>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowProfileModal(false)}
+                className="sleek-button"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {selectedFriend && (
+            <div className="space-y-6 mt-6">
+              {/* Friend Info Section */}
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Friend Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Name
+                      </label>
+                      <p className="text-sm">
+                        {selectedFriend.friend_name || "Not provided"}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Email
+                      </label>
+                      <p className="text-sm">{selectedFriend.friend_email}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Friends Since
+                      </label>
+                      <p className="text-sm">
+                        {new Date(
+                          selectedFriend.friendship_created_at,
+                        ).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      variant="default"
+                      onClick={() =>
+                        console.log("Message", selectedFriend.friend_id)
+                      }
+                      className="hover-glow"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Send Message
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        console.log(
+                          "View shared notes",
+                          selectedFriend.friend_id,
+                        )
+                      }
+                      className="sleek-button hover-glow"
+                    >
+                      View Shared Notes
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        console.log("Remove friend", selectedFriend.friend_id)
+                      }
+                      className="sleek-button text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      Remove Friend
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Shared Notes Section */}
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Shared Notes</CardTitle>
+                  <CardDescription>
+                    Notes that{" "}
+                    {selectedFriend.friend_name || selectedFriend.friend_email}{" "}
+                    has shared with you
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12">
+                    <div className="stats-card-icon mx-auto mb-4 opacity-50">
+                      <MessageCircle className="h-8 w-8" />
+                    </div>
+                    <h4 className="dashboard-subheading mb-2">
+                      No shared notes yet
+                    </h4>
+                    <p className="dashboard-body text-sm max-w-md mx-auto mb-4">
+                      When{" "}
+                      {selectedFriend.friend_name ||
+                        selectedFriend.friend_email}{" "}
+                      shares notes with you, they'll appear here for
+                      collaborative learning.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        console.log(
+                          "Request shared notes",
+                          selectedFriend.friend_id,
+                        )
+                      }
+                      className="sleek-button hover-glow"
+                    >
+                      Request Notes
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Activity Section */}
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Recent Activity</CardTitle>
+                  <CardDescription>
+                    Recent interactions and shared activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <div className="stats-card-icon mx-auto mb-4 opacity-50">
+                      <Calendar className="h-6 w-6" />
+                    </div>
+                    <h4 className="dashboard-subheading mb-2">
+                      No recent activity
+                    </h4>
+                    <p className="dashboard-body text-sm">
+                      Start collaborating to see activity here!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

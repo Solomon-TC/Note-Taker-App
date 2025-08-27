@@ -157,6 +157,59 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_id: string | null
+          vote_count: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+          vote_count?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+          vote_count?: number
+        }
+        Relationships: []
+      }
+      feedback_votes: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_votes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friend_requests: {
         Row: {
           created_at: string | null
@@ -578,6 +631,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _update_feedback_vote_count: {
+        Args: { feedback_id_param: string }
+        Returns: undefined
+      }
       accept_friend_request_transaction: {
         Args: { p_friend_id: string; p_request_id: string; p_user_id: string }
         Returns: undefined
@@ -610,6 +667,10 @@ export type Database = {
           friend_name: string
           friendship_created_at: string
         }[]
+      }
+      recalculate_all_feedback_vote_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       search_user_by_email_exact: {
         Args: { p_email: string }

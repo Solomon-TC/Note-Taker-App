@@ -26,6 +26,7 @@ import {
   Users,
   User,
   BookOpen,
+  MessageSquare,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
@@ -893,6 +894,17 @@ export default function DashboardPage() {
                   <Brain
                     className={`h-4 w-4 ${isAIAssistantOpen ? "animate-pulse" : ""}`}
                   />
+                </Button>
+
+                {/* Feedback Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/feedback")}
+                  className="sleek-button hover-glow"
+                  title="Feedback"
+                >
+                  <MessageSquare className="h-4 w-4" />
                 </Button>
 
                 {/* Friends Button */}

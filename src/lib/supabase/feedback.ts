@@ -1067,8 +1067,10 @@ export function useFeedbackRealtime(
               });
             }
 
-            if (status === "SUBSCRIPTION_ERROR") {
-              console.error("📡 Failed to subscribe to feedback changes");
+            if (status !== "SUBSCRIBED") {
+              console.error("📡 Failed to subscribe to feedback changes", {
+                status,
+              });
             }
           });
       } catch (error) {
@@ -1233,8 +1235,11 @@ export function useFeedbackVotesRealtime(
               });
             }
 
-            if (status === "SUBSCRIPTION_ERROR") {
-              console.error("📡 Failed to subscribe to feedback votes changes");
+            if (status !== "SUBSCRIBED") {
+              console.error(
+                "📡 Failed to subscribe to feedback votes changes",
+                { status },
+              );
             }
           });
       } catch (error) {

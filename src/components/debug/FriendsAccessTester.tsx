@@ -91,10 +91,20 @@ export default function FriendsAccessTester() {
 
         if (error) throw error;
 
+        // Safely access debugData properties with type checking
+        const debugObj =
+          debugData &&
+          typeof debugData === "object" &&
+          !Array.isArray(debugData)
+            ? (debugData as Record<string, any>)
+            : {};
+        const friendshipExists = debugObj.friendship_exists ?? "unknown";
+        const friendPagesCount = debugObj.friend_pages_friends ?? 0;
+
         results.push({
           step: "Comprehensive Debug Function",
           success: true,
-          message: `Friendship exists: ${debugData?.friendship_exists}, Friend has ${debugData?.friend_pages_friends} friends pages`,
+          message: `Friendship exists: ${friendshipExists}, Friend has ${friendPagesCount} friends pages`,
           data: debugData,
         });
       } catch (error) {

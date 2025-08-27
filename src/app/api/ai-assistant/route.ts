@@ -83,32 +83,55 @@ Focus on creating summaries that are both comprehensive and easy to review.`;
               )
             : notes;
 
-        systemPrompt = `You are an expert educational assessment designer. Create challenging, thought-provoking practice questions that test deep understanding, not just memorization.
+        systemPrompt = `You are an expert educational assessment designer. Create practice questions that can be objectively graded and test deep understanding of the material.
+
+IMPORTANT CONSTRAINTS:
+- ONLY create questions that can be automatically graded with 100% accuracy
+- NEVER create open-ended or essay questions
+- Focus on objective question types: multiple-choice, true/false, and matching
+- Present questions in clear, conversational English format
 
 Question Design Principles:
-- Create questions that require analysis, synthesis, and application
-- Include scenario-based questions that test practical application
-- Design multiple-choice questions with plausible distractors
-- Create open-ended questions that require detailed explanations
+- Create questions that test comprehension, analysis, and application
+- Design multiple-choice questions with 4 plausible options and clear correct answers
+- Create true/false questions that test specific facts or concepts
+- Design matching questions that connect related concepts, terms, or examples
 - Vary difficulty levels from intermediate to advanced
-- Include questions that connect different concepts
+- Include questions that connect different concepts from the notes
 - Provide comprehensive explanations that teach, not just correct
 
-Format your response as JSON with this exact structure:
-{
-  "questions": [
-    {
-      "type": "multiple-choice" | "open-ended",
-      "difficulty": "intermediate" | "advanced" | "expert",
-      "question": "...",
-      "options": ["A", "B", "C", "D"] (only for multiple-choice),
-      "correctAnswer": 0 (index for multiple-choice),
-      "explanation": "Detailed explanation with reasoning",
-      "learningObjective": "What this question tests"
-    }
-  ]
-}`;
-        userPrompt = `Generate 4-6 challenging practice questions based on these notes. Include a mix of question types and difficulty levels:\n\n${practiceNotes.map((note: any) => `**${note.title}**\n${note.content}`).join("\n\n")}`;
+CRITICAL FORMAT REQUIREMENTS:
+For multiple-choice questions, you MUST follow this EXACT format with NO DEVIATIONS:
+
+"Question 1 (Multiple Choice): What is the primary function of mitochondria in cells?
+A) Protein synthesis
+B) Energy production
+C) DNA storage
+D) Waste removal
+
+Correct Answer: B
+Explanation: Mitochondria are known as the powerhouses of the cell because they produce ATP through cellular respiration."
+
+FORMAT RULES - FOLLOW EXACTLY:
+1. Always write "Correct Answer: [LETTER]" on its own line
+2. Use ONLY the letter (A, B, C, or D) after "Correct Answer:" - NO parentheses, NO periods, NO extra text
+3. The explanation must clearly describe why the correct answer is right
+4. Make sure the correct answer letter corresponds exactly to the right option
+5. Double-check: if you say "Correct Answer: B", then option B) must be the right answer
+6. The explanation should reference the correct option's content to confirm it's right
+
+For true/false questions, use this format:
+"Question 2 (True/False): [Question text]
+
+Correct Answer: True
+Explanation: [Why this is true/false]"
+
+QUALITY CONTROL:
+- Before finalizing each question, verify the correct answer letter matches the right option
+- Ensure explanations support the designated correct answer
+- All questions must be based directly on the provided notes
+- Test each question yourself to confirm it can be answered definitively from the content`;
+        userPrompt = `Generate 4-6 practice questions based on these notes. Create a mix of question types (multiple-choice, true/false, and matching) that can be automatically graded. Present each question in clear, conversational English format with the question, answer choices (if applicable), correct answer, and explanation clearly labeled. Each question should test understanding of specific concepts from the notes and have clear, objective answers.\n\nNotes to base questions on:\n\n${practiceNotes.map((note: any) => `**${note.title}**\n${note.content}`).join("\n\n")}`;
         messages = [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -141,15 +164,9 @@ Format your response as JSON with this exact structure:
       );
     }
 
-    // For practice mode, try to parse JSON response
+    // For practice mode, return the response as plain text
     if (mode === "practice") {
-      try {
-        const practiceData = JSON.parse(response);
-        return NextResponse.json({ response: practiceData });
-      } catch (e) {
-        // If JSON parsing fails, return as text
-        return NextResponse.json({ response: { text: response } });
-      }
+      return NextResponse.json({ response: { text: response } });
     }
 
     return NextResponse.json({ response });

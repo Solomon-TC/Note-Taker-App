@@ -29,6 +29,125 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Database } from "@/types/supabase";
 import { extractPlainText, safeJsonParse } from "@/lib/editor/json";
 
+// Matching Question Component
+interface MatchingQuestionProps {
+  pairs: { left: string; right: string }[];
+  completed: boolean;
+  userAnswer: { [key: string]: string };
+  onAnswer: (matches: { [key: string]: string }) => void;
+}
+
+const MatchingQuestion: React.FC<MatchingQuestionProps> = ({
+  pairs,
+  completed,
+  userAnswer,
+  onAnswer,
+}) => {
+  const [matches, setMatches] = useState<{ [key: string]: string }>(
+    userAnswer || {},
+  );
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+
+  const leftItems = pairs.map((p) => p.left);
+  const rightItems = pairs.map((p) => p.right).sort(() => Math.random() - 0.5); // Shuffle right items
+
+  const handleLeftClick = (item: string) => {
+    if (completed) return;
+    setSelectedLeft(selectedLeft === item ? null : item);
+  };
+
+  const handleRightClick = (item: string) => {
+    if (completed || !selectedLeft) return;
+
+    const newMatches = { ...matches, [selectedLeft]: item };
+    setMatches(newMatches);
+    setSelectedLeft(null);
+
+    // If all items are matched, submit the answer
+    if (Object.keys(newMatches).length === pairs.length) {
+      onAnswer(newMatches);
+    }
+  };
+
+  const getMatchedRight = (leftItem: string) => {
+    return matches[leftItem];
+  };
+
+  const isRightItemUsed = (rightItem: string) => {
+    return Object.values(matches).includes(rightItem);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground">
+            Match these items:
+          </h4>
+          {leftItems.map((item, index) => {
+            const matchedRight = getMatchedRight(item);
+            const isCorrect =
+              completed &&
+              pairs.find((p) => p.left === item)?.right === matchedRight;
+            return (
+              <Button
+                key={index}
+                variant={
+                  selectedLeft === item
+                    ? "default"
+                    : matchedRight
+                      ? completed && isCorrect
+                        ? "default"
+                        : completed
+                          ? "destructive"
+                          : "secondary"
+                      : "outline"
+                }
+                className="justify-start text-left h-auto p-3 w-full"
+                onClick={() => handleLeftClick(item)}
+                disabled={completed}
+              >
+                <span className="text-wrap text-sm">
+                  {item}
+                  {matchedRight && (
+                    <span className="block text-xs opacity-70 mt-1">
+                      → {matchedRight}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground">
+            With these options:
+          </h4>
+          {rightItems.map((item, index) => {
+            const isUsed = isRightItemUsed(item);
+            return (
+              <Button
+                key={index}
+                variant={isUsed ? "secondary" : "outline"}
+                className="justify-start text-left h-auto p-3 w-full"
+                onClick={() => handleRightClick(item)}
+                disabled={completed || isUsed}
+              >
+                <span className="text-wrap text-sm">{item}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+      {!completed && Object.keys(matches).length < pairs.length && (
+        <p className="text-xs text-muted-foreground text-center">
+          Select an item from the left, then click its match on the right.
+        </p>
+      )}
+    </div>
+  );
+};
+
 interface Message {
   id: string;
   content: string;
@@ -62,14 +181,15 @@ interface AIChatSidebarProps {
 }
 
 interface PracticeQuestion {
-  type: "multiple-choice" | "open-ended";
+  type: "multiple-choice" | "true-false" | "matching";
   difficulty?: "intermediate" | "advanced" | "expert";
   question: string;
   options?: string[];
-  correctAnswer?: number;
+  correctAnswer?: number | boolean;
+  matchingPairs?: { left: string; right: string }[];
   explanation?: string;
   learningObjective?: string;
-  userAnswer?: number | string;
+  userAnswer?: number | boolean | { [key: string]: string };
   isCorrect?: boolean;
   completed?: boolean;
 }
@@ -84,6 +204,285 @@ interface AISession {
   created_at: string;
   updated_at: string;
 }
+
+// Helper function to parse plain text questions from AI response
+const parseTextQuestions = (text: string): PracticeQuestion[] => {
+  const questions: PracticeQuestion[] = [];
+
+  // Split by question numbers or patterns
+  const questionBlocks = text
+    .split(/Question \d+/i)
+    .filter((block) => block.trim());
+
+  questionBlocks.forEach((block, index) => {
+    const lines = block
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line);
+    if (lines.length === 0) return;
+
+    // Debug logging
+    console.log(`\n=== Parsing question block ${index + 1} ===`);
+    console.log("Raw block:", block);
+    console.log("Lines:", lines);
+
+    // Determine question type
+    const blockText = block.toLowerCase();
+    let type: "multiple-choice" | "true-false" | "matching" = "multiple-choice";
+
+    if (
+      blockText.includes("true or false") ||
+      blockText.includes("true/false")
+    ) {
+      type = "true-false";
+    } else if (blockText.includes("match") || blockText.includes("matching")) {
+      type = "matching";
+    }
+
+    // Extract question text (first substantial line)
+    let questionText = lines[0];
+    if (questionText.includes(":")) {
+      questionText = questionText.split(":").slice(1).join(":").trim();
+    }
+
+    // Remove type indicators from question text
+    questionText = questionText.replace(/\(.*?\)\s*:?\s*/g, "").trim();
+    console.log("Extracted question text:", questionText);
+
+    if (type === "multiple-choice") {
+      // Extract options (lines starting with A), B), C), D) or similar)
+      const options: string[] = [];
+      const optionMap: { [key: string]: number } = {}; // Map letter to index
+      let correctAnswer = 0;
+      let correctAnswerFound = false;
+      let correctAnswerLetter = "";
+
+      // First pass: collect all options in order
+      lines.forEach((line, lineIndex) => {
+        const optionMatch = line.match(/^([A-D])[\)\.]\s*(.+)/);
+        if (optionMatch) {
+          const optionLetter = optionMatch[1].toUpperCase();
+          const optionText = optionMatch[2].trim();
+          const optionIndex = options.length; // Use actual array index
+          options.push(optionText);
+          optionMap[optionLetter] = optionIndex;
+          console.log(
+            `Found option ${optionLetter} at index ${optionIndex}: ${optionText}`,
+          );
+        }
+      });
+
+      console.log("All options collected:", options);
+      console.log("Option map (letter to index):", optionMap);
+
+      // Second pass: find correct answer with more robust parsing
+      lines.forEach((line, lineIndex) => {
+        const lineLower = line.toLowerCase();
+        if (
+          lineLower.includes("correct answer") ||
+          (lineLower.includes("answer:") && !lineLower.includes("question"))
+        ) {
+          console.log("Found answer line:", line);
+
+          // Look for the answer letter in this line - try multiple patterns
+          let answerMatch = line.match(
+            /(?:correct\s+answer|answer)\s*:?\s*([A-D])[\)\.]?/i,
+          );
+          if (!answerMatch) {
+            // Try just looking for a standalone letter
+            answerMatch = line.match(/\b([A-D])\b/i);
+          }
+
+          if (answerMatch) {
+            correctAnswerLetter = answerMatch[1].toUpperCase();
+            if (optionMap.hasOwnProperty(correctAnswerLetter)) {
+              correctAnswer = optionMap[correctAnswerLetter];
+              correctAnswerFound = true;
+              console.log(
+                `Found correct answer: ${correctAnswerLetter} maps to index ${correctAnswer}`,
+              );
+              console.log(`Correct answer text: "${options[correctAnswer]}"`);
+            } else {
+              console.warn(
+                `Answer letter ${correctAnswerLetter} not found in option map`,
+              );
+            }
+          } else {
+            console.warn("Could not extract answer letter from line:", line);
+          }
+        }
+      });
+
+      // Enhanced fallback: if no explicit correct answer found, try to infer from explanation
+      if (!correctAnswerFound && options.length > 0) {
+        const explanation = extractExplanation(block);
+        console.log(
+          `No explicit answer found, checking explanation: "${explanation}"`,
+        );
+
+        // Try to match explanation content with option content using better scoring
+        let bestMatch = -1;
+        let bestScore = 0;
+
+        for (let i = 0; i < options.length; i++) {
+          const option = options[i].toLowerCase();
+          const explanationLower = explanation.toLowerCase();
+
+          // Calculate similarity score based on word overlap
+          const optionWords = option
+            .split(/\s+/)
+            .filter((word) => word.length > 2)
+            .map((word) => word.replace(/[^a-z]/g, ""));
+
+          const explanationWords = explanationLower
+            .split(/\s+/)
+            .map((word) => word.replace(/[^a-z]/g, ""));
+
+          let matchingWords = 0;
+          let totalSignificantWords = 0;
+
+          optionWords.forEach((word) => {
+            if (word.length > 2) {
+              totalSignificantWords++;
+              if (
+                explanationWords.some(
+                  (expWord) => expWord.includes(word) || word.includes(expWord),
+                )
+              ) {
+                matchingWords++;
+              }
+            }
+          });
+
+          const score =
+            totalSignificantWords > 0
+              ? matchingWords / totalSignificantWords
+              : 0;
+          console.log(
+            `Option ${i} ("${option}") similarity score: ${score} (${matchingWords}/${totalSignificantWords})`,
+          );
+
+          if (score > bestScore && score > 0.3) {
+            // Require at least 30% match
+            bestScore = score;
+            bestMatch = i;
+          }
+        }
+
+        if (bestMatch >= 0) {
+          correctAnswer = bestMatch;
+          correctAnswerFound = true;
+          console.log(
+            `Inferred correct answer from explanation: option ${bestMatch} (${String.fromCharCode(65 + bestMatch)}) with score ${bestScore}`,
+          );
+        }
+      }
+
+      if (options.length >= 2) {
+        const question = {
+          type: "multiple-choice" as const,
+          question: questionText,
+          options,
+          correctAnswer,
+          explanation: extractExplanation(block),
+        };
+
+        console.log(`\n=== Created question ===`);
+        console.log("Question:", questionText);
+        console.log("Options:", options);
+        console.log("Correct answer index:", correctAnswer);
+        console.log("Correct answer text:", options[correctAnswer]);
+        console.log(
+          "Correct answer letter:",
+          String.fromCharCode(65 + correctAnswer),
+        );
+        console.log("Answer found explicitly:", correctAnswerFound);
+        console.log("========================\n");
+
+        questions.push(question);
+      } else {
+        console.warn("Not enough options found for multiple choice question");
+      }
+    } else if (type === "true-false") {
+      let correctAnswer = true;
+
+      // Look for correct answer
+      const answerLine = lines.find(
+        (line) =>
+          line.toLowerCase().includes("correct answer") ||
+          line.toLowerCase().includes("answer:"),
+      );
+
+      if (answerLine) {
+        correctAnswer = answerLine.toLowerCase().includes("true");
+      }
+
+      questions.push({
+        type: "true-false",
+        question: questionText,
+        correctAnswer,
+        explanation: extractExplanation(block),
+      });
+    }
+  });
+
+  console.log(
+    `\n=== FINAL RESULT: Parsed ${questions.length} questions total ===`,
+  );
+  return questions;
+};
+
+// Helper function to extract explanation from question block
+const extractExplanation = (block: string): string => {
+  const lines = block.split("\n").map((line) => line.trim());
+
+  // Look for explanation line
+  let explanationIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].toLowerCase();
+    if (line.includes("explanation:") || line.startsWith("explanation")) {
+      explanationIndex = i;
+      break;
+    }
+  }
+
+  if (explanationIndex >= 0) {
+    // Get the explanation line and potentially following lines
+    let explanation = lines[explanationIndex]
+      .replace(/explanation:\s*/i, "")
+      .trim();
+
+    // If the explanation line is empty or very short, check the next line
+    if (explanation.length < 10 && explanationIndex + 1 < lines.length) {
+      const nextLine = lines[explanationIndex + 1];
+      if (
+        nextLine &&
+        !nextLine.match(/^[A-D][\)\.]/) &&
+        !nextLine.toLowerCase().includes("question")
+      ) {
+        explanation = nextLine.trim();
+      }
+    }
+
+    // Clean up common prefixes
+    explanation = explanation.replace(/^(\*\*\*\*|\*\*|\*)\s*/, "").trim();
+
+    return explanation || "No explanation provided.";
+  }
+
+  // Fallback: look for lines that might be explanations
+  const potentialExplanation = lines.find(
+    (line) =>
+      line.toLowerCase().includes("because") ||
+      line.toLowerCase().includes("this is") ||
+      line.toLowerCase().includes("refers to") ||
+      (line.length > 20 &&
+        !line.match(/^[A-D][\)\.]/) &&
+        !line.toLowerCase().includes("question")),
+  );
+
+  return potentialExplanation?.trim() || "No explanation provided.";
+};
 
 const AIChatSidebar = ({
   currentNote,
@@ -591,46 +990,41 @@ const AIChatSidebar = ({
         throw new Error(data.error || "Failed to generate practice problems");
       }
 
-      // Handle both JSON and text responses
-      if (
-        data.response &&
-        typeof data.response === "object" &&
-        Array.isArray(data.response.questions)
-      ) {
-        // Validate questions structure
-        const validQuestions = data.response.questions.filter(
-          (q: any) =>
-            q && typeof q === "object" && typeof q.question === "string",
-        );
-        setPracticeQuestions(validQuestions);
+      // Handle text response from AI
+      const responseText =
+        typeof data.response === "string"
+          ? data.response
+          : data.response?.text ||
+            "No questions could be generated from your notes.";
+
+      // Parse the plain text response to extract questions
+      const parsedQuestions = parseTextQuestions(responseText);
+
+      if (parsedQuestions.length > 0) {
+        setPracticeQuestions(parsedQuestions);
 
         // Save session for practice questions
         const practiceTitle = `Practice: ${context?.currentPage?.title || context?.currentSection?.name || "Study Session"}`;
         await saveCurrentSession("practice", practiceTitle, [], {
-          questionsCount: validQuestions.length,
+          questionsCount: parsedQuestions.length,
           context: context || {},
         });
       } else {
-        // Fallback for text response
-        const responseText =
-          typeof data.response === "string"
-            ? data.response
-            : data.response?.text || JSON.stringify(data.response);
+        // Fallback if parsing fails
         const fallbackQuestion: PracticeQuestion = {
-          type: "open-ended",
-          question: responseText,
-          explanation: "AI-generated practice question",
+          type: "true-false",
+          question:
+            "Based on your notes, would you say the main concepts are clearly explained?",
+          correctAnswer: true,
+          explanation:
+            "This is a fallback question. The AI response could not be parsed into structured questions.",
         };
         setPracticeQuestions([fallbackQuestion]);
       }
 
       // Save to database if we have a current note and valid questions
-      if (
-        currentNote?.id &&
-        data.response &&
-        Array.isArray(data.response.questions)
-      ) {
-        for (const question of data.response.questions) {
+      if (currentNote?.id && parsedQuestions.length > 0) {
+        for (const question of parsedQuestions) {
           if (question && typeof question.question === "string") {
             const problemData = {
               user_id: user.id,
@@ -713,13 +1107,100 @@ const AIChatSidebar = ({
 
   const handleAnswerQuestion = (
     questionIndex: number,
-    answer: number | string,
+    answer: number | boolean | { [key: string]: string },
   ) => {
     setPracticeQuestions((prev) =>
       prev.map((q, i) => {
         if (i === questionIndex) {
-          const isCorrect =
-            q.type === "multiple-choice" ? answer === q.correctAnswer : true; // For open-ended, we'll mark as correct for now
+          let isCorrect = false;
+
+          // Evaluate answer based on question type
+          if (q.type === "multiple-choice") {
+            // Ensure both values are numbers for proper comparison
+            const userAnswerIndex = typeof answer === "number" ? answer : -1;
+            const correctAnswerIndex =
+              typeof q.correctAnswer === "number" ? q.correctAnswer : -1;
+
+            isCorrect = userAnswerIndex === correctAnswerIndex;
+
+            // Enhanced debug logging for multiple choice questions
+            console.log(
+              `\n=== GRADING MULTIPLE CHOICE QUESTION ${questionIndex + 1} ===`,
+            );
+            console.log("Question:", q.question);
+            console.log("All options:", q.options);
+            console.log("User selected index:", userAnswerIndex);
+            console.log(
+              "User selected text:",
+              q.options?.[userAnswerIndex] || "INVALID INDEX",
+            );
+            console.log("Correct answer index:", correctAnswerIndex);
+            console.log(
+              "Correct answer text:",
+              q.options?.[correctAnswerIndex] || "INVALID INDEX",
+            );
+            console.log(
+              "Answer types - user:",
+              typeof answer,
+              "correct:",
+              typeof q.correctAnswer,
+            );
+            console.log(
+              "Comparison result (user === correct):",
+              userAnswerIndex === correctAnswerIndex,
+            );
+            console.log("Final isCorrect:", isCorrect);
+            console.log("Explanation:", q.explanation);
+            console.log("=== END GRADING ===\n");
+
+            // Additional validation
+            if (
+              userAnswerIndex < 0 ||
+              userAnswerIndex >= (q.options?.length || 0)
+            ) {
+              console.error(
+                "Invalid user answer index:",
+                userAnswerIndex,
+                "Options length:",
+                q.options?.length,
+              );
+            }
+            if (
+              correctAnswerIndex < 0 ||
+              correctAnswerIndex >= (q.options?.length || 0)
+            ) {
+              console.error(
+                "Invalid correct answer index:",
+                correctAnswerIndex,
+                "Options length:",
+                q.options?.length,
+              );
+            }
+          } else if (q.type === "true-false") {
+            isCorrect = answer === q.correctAnswer;
+
+            console.log(`Grading true/false question ${questionIndex + 1}:`, {
+              question: q.question,
+              userAnswer: answer,
+              correctAnswer: q.correctAnswer,
+              isCorrect,
+            });
+          } else if (q.type === "matching") {
+            // For matching questions, check if all pairs are correctly matched
+            const userMatches = answer as { [key: string]: string };
+            const correctPairs = q.matchingPairs || [];
+            isCorrect = correctPairs.every(
+              (pair) => userMatches[pair.left] === pair.right,
+            );
+
+            console.log(`Grading matching question ${questionIndex + 1}:`, {
+              question: q.question,
+              userMatches,
+              correctPairs,
+              isCorrect,
+            });
+          }
+
           return {
             ...q,
             userAnswer: answer,
@@ -1102,7 +1583,9 @@ const AIChatSidebar = ({
                             <CardTitle className="text-sm font-semibold">
                               {question.type === "multiple-choice"
                                 ? "Multiple Choice"
-                                : "Open-Ended"}{" "}
+                                : question.type === "true-false"
+                                  ? "True/False"
+                                  : "Matching"}{" "}
                               Question {index + 1}
                             </CardTitle>
                             {question.difficulty && (
@@ -1163,39 +1646,60 @@ const AIChatSidebar = ({
                               ),
                             )}
                           </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <textarea
-                              className="w-full p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                              placeholder="Type your answer here..."
-                              rows={4}
+                        ) : question.type === "true-false" ? (
+                          <div className="space-y-2">
+                            <Button
+                              variant={
+                                question.completed
+                                  ? question.correctAnswer === true
+                                    ? "default"
+                                    : question.userAnswer === true
+                                      ? "destructive"
+                                      : "outline"
+                                  : "outline"
+                              }
+                              className="justify-center h-auto p-3 w-full"
                               disabled={question.completed}
-                              value={(question.userAnswer as string) || ""}
-                              onChange={(e) => {
-                                setPracticeQuestions((prev) =>
-                                  prev.map((q, i) =>
-                                    i === index
-                                      ? { ...q, userAnswer: e.target.value }
-                                      : q,
-                                  ),
-                                );
-                              }}
-                            />
-                            {!question.completed && (
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleAnswerQuestion(
-                                    index,
-                                    question.userAnswer || "",
-                                  )
-                                }
-                                disabled={!question.userAnswer}
-                                className="w-full"
-                              >
-                                Submit Answer
-                              </Button>
-                            )}
+                              onClick={() => handleAnswerQuestion(index, true)}
+                            >
+                              <span className="text-sm font-medium">True</span>
+                            </Button>
+                            <Button
+                              variant={
+                                question.completed
+                                  ? question.correctAnswer === false
+                                    ? "default"
+                                    : question.userAnswer === false
+                                      ? "destructive"
+                                      : "outline"
+                                  : "outline"
+                              }
+                              className="justify-center h-auto p-3 w-full"
+                              disabled={question.completed}
+                              onClick={() => handleAnswerQuestion(index, false)}
+                            >
+                              <span className="text-sm font-medium">False</span>
+                            </Button>
+                          </div>
+                        ) : question.type === "matching" &&
+                          question.matchingPairs ? (
+                          <MatchingQuestion
+                            pairs={question.matchingPairs}
+                            completed={question.completed}
+                            userAnswer={
+                              (question.userAnswer as {
+                                [key: string]: string;
+                              }) || {}
+                            }
+                            onAnswer={(matches) =>
+                              handleAnswerQuestion(index, matches)
+                            }
+                          />
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <p className="text-sm">
+                              Question format not supported
+                            </p>
                           </div>
                         )}
                         {question.completed && (

@@ -918,10 +918,18 @@ export async function getFriendSharedPages(
                 p_user_id: currentUserId,
               },
             );
+            // Safely access accessTest properties with type checking
+            const accessTestObj =
+              accessTest &&
+              typeof accessTest === "object" &&
+              !Array.isArray(accessTest)
+                ? (accessTest as Record<string, any>)
+                : {};
+
             console.log(`📖 Access test for page ${page.id} (${page.title}):`, {
-              canAccess: accessTest?.can_access,
-              accessReason: accessTest?.access_reason,
-              friendshipCheck: accessTest?.friendship_check,
+              canAccess: accessTestObj.can_access ?? null,
+              accessReason: accessTestObj.access_reason ?? null,
+              friendshipCheck: accessTestObj.friendship_check ?? null,
               error: accessError?.message,
             });
           } catch (testErr) {

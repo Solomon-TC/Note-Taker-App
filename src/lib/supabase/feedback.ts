@@ -788,32 +788,6 @@ export async function getFeedbackStats(): Promise<{
       };
     }
 
-    // Get top voted feedback
-    const { data: topFeedback, error: topFeedbackError } = await supabase
-      .from("feedback")
-      .select(
-        `
-        id,
-        content,
-        user_id,
-        created_at,
-        vote_count,
-        users!feedback_user_id_fkey(
-          id,
-          full_name,
-          email,
-          avatar_url
-        )
-      `,
-      )
-      .order("vote_count", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (topFeedbackError && topFeedbackError.code !== "PGRST116") {
-      console.error("📈 Error fetching top feedback:", topFeedbackError);
-    }
-
     // Get recent feedback count (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -830,27 +804,6 @@ export async function getFeedbackStats(): Promise<{
         recentCountError,
       );
     }
-
-    const stats = {
-      total_feedback: totalFeedback || 0,
-      total_votes: totalVotes || 0,
-      top_voted_feedback: topFeedback
-        ? ({
-            ...topFeedback,
-            author: topFeedback.users
-              ? {
-                  id: topFeedback.users.id,
-                  full_name: topFeedback.users.full_name,
-                  email: topFeedback.users.email,
-                  avatar_url: topFeedback.users.avatar_url,
-                }
-              : undefined,
-            user_has_voted: false, // Not relevant for stats
-            feedback_votes: [],
-          } as FeedbackWithDetails)
-        : undefined,
-      recent_feedback_count: recentFeedbackCount || 0,
-    };
 
     console.log("📈 Feedback statistics fetched:", stats);
 

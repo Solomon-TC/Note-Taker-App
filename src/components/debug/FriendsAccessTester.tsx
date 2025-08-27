@@ -189,11 +189,19 @@ export default function FriendsAccessTester() {
                   p_user_id: user.id,
                 });
 
+              // Safely access accessTest properties with type checking
+              const accessTestObj =
+                accessTest &&
+                typeof accessTest === "object" &&
+                !Array.isArray(accessTest)
+                  ? (accessTest as Record<string, any>)
+                  : {};
+
               accessTests.push({
                 pageId: page.id,
                 pageTitle: page.title,
-                canAccess: accessTest?.can_access,
-                accessReason: accessTest?.access_reason,
+                canAccess: accessTestObj.can_access ?? false,
+                accessReason: accessTestObj.access_reason ?? "Unknown",
                 error: accessError?.message,
               });
             } catch (err) {

@@ -368,6 +368,13 @@ export type Database = {
             referencedRelation: "sections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       practice_problems: {
@@ -575,6 +582,10 @@ export type Database = {
         Args: { p_friend_id: string; p_request_id: string; p_user_id: string }
         Returns: undefined
       }
+      debug_friendship_access: {
+        Args: { p_current_user_id: string; p_page_owner_id: string }
+        Returns: Json
+      }
       get_friend_shared_pages: {
         Args: { friend_user_id: string }
         Returns: {
@@ -586,6 +597,10 @@ export type Database = {
           title: string
           updated_at: string
         }[]
+      }
+      get_friendship_and_pages_debug: {
+        Args: { p_current_user_id: string; p_friend_id: string }
+        Returns: Json
       }
       get_user_friends: {
         Args: { user_uuid: string }
@@ -602,6 +617,14 @@ export type Database = {
           email: string
           id: string
         }[]
+      }
+      test_page_access: {
+        Args: { p_page_id: string; p_user_id: string }
+        Returns: Json
+      }
+      verify_shared_pages_schema: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {

@@ -1685,7 +1685,7 @@ const AIChatSidebar = ({
                           question.matchingPairs ? (
                           <MatchingQuestion
                             pairs={question.matchingPairs}
-                            completed={question.completed}
+                            completed={question.completed ?? false}
                             userAnswer={
                               (question.userAnswer as {
                                 [key: string]: string;

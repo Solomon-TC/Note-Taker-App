@@ -129,18 +129,43 @@ export default function SharedPagesDebugger() {
       console.log("🔍 Debug test complete:", { debugResults, sharedPages });
 
       // Enhanced summary logging
+      // Safely access comprehensiveDebug properties with type checking
+      const comprehensiveDebugObj =
+        comprehensiveDebug &&
+        typeof comprehensiveDebug === "object" &&
+        !Array.isArray(comprehensiveDebug)
+          ? (comprehensiveDebug as Record<string, any>)
+          : {};
+
+      // Safely access friendshipDebug properties with type checking
+      const friendshipDebugObj =
+        friendshipDebug &&
+        typeof friendshipDebug === "object" &&
+        !Array.isArray(friendshipDebug)
+          ? (friendshipDebug as Record<string, any>)
+          : {};
+
       console.log("🔍 Enhanced Summary:", {
-        comprehensiveFriendshipExists: comprehensiveDebug?.friendship_exists,
-        basicFriendshipExists: friendshipDebug?.friendship_exists,
-        friendshipDirection: friendshipDebug?.friendship_direction,
-        totalFriendPages: comprehensiveDebug?.friend_pages_total,
-        friendsVisibilityPages: comprehensiveDebug?.friend_pages_friends,
+        comprehensiveFriendshipExists:
+          comprehensiveDebugObj.friendship_exists ?? "unknown",
+        basicFriendshipExists:
+          friendshipDebugObj.friendship_exists ?? "unknown",
+        friendshipDirection:
+          friendshipDebugObj.friendship_direction ?? "unknown",
+        totalFriendPages: comprehensiveDebugObj.friend_pages_total ?? 0,
+        friendsVisibilityPages: comprehensiveDebugObj.friend_pages_friends ?? 0,
         accessiblePagesFromDebug:
-          comprehensiveDebug?.accessible_pages?.length || 0,
+          comprehensiveDebugObj.accessible_pages?.length || 0,
         pageAccessTestsCount: pageAccessTests.length,
-        pageAccessTestsSuccessful: pageAccessTests.filter(
-          (t) => t.accessTest?.can_access,
-        ).length,
+        pageAccessTestsSuccessful: pageAccessTests.filter((t) => {
+          const accessTestObj =
+            t.accessTest &&
+            typeof t.accessTest === "object" &&
+            !Array.isArray(t.accessTest)
+              ? (t.accessTest as Record<string, any>)
+              : {};
+          return accessTestObj.can_access ?? false;
+        }).length,
         finalSharedPagesCount: sharedPages?.data?.length || 0,
         finalSuccess: sharedPages?.success,
         finalError: sharedPages?.error,

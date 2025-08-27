@@ -805,6 +805,13 @@ export async function getFeedbackStats(): Promise<{
       );
     }
 
+    // Construct the stats object with the fetched data
+    const stats = {
+      total_feedback: totalFeedback || 0,
+      total_votes: totalVotes || 0,
+      recent_feedback_count: recentFeedbackCount || 0,
+    };
+
     console.log("📈 Feedback statistics fetched:", stats);
 
     return {

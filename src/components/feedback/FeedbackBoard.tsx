@@ -158,7 +158,7 @@ export default function FeedbackBoard({ className }: FeedbackBoardProps) {
       : feedbackItem.vote_count + 1;
 
     // Track voting state
-    setVotingIds((prev) => new Set([...prev, feedbackId]));
+    setVotingIds((prev) => new Set([...Array.from(prev), feedbackId]));
 
     // Update UI optimistically
     setFeedbackList((prev) =>

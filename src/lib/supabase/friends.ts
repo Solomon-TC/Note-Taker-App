@@ -805,17 +805,25 @@ export async function getFriendSharedPages(
       if (debugError) {
         console.error("📖 Debug function error:", debugError);
       } else {
+        // Safely access debugResult properties with type checking
+        const debugResultObj =
+          debugResult &&
+          typeof debugResult === "object" &&
+          !Array.isArray(debugResult)
+            ? (debugResult as Record<string, any>)
+            : {};
+
         console.log("📖 Comprehensive debug result:", {
-          friendshipExists: debugResult?.friendship_exists,
-          friendshipData: debugResult?.friendship_data,
-          totalPages: debugResult?.friend_pages_total,
-          privatePages: debugResult?.friend_pages_private,
-          friendsPages: debugResult?.friend_pages_friends,
-          accessiblePages: debugResult?.accessible_pages,
+          friendshipExists: debugResultObj.friendship_exists ?? false,
+          friendshipData: debugResultObj.friendship_data ?? null,
+          totalPages: debugResultObj.friend_pages_total ?? 0,
+          privatePages: debugResultObj.friend_pages_private ?? 0,
+          friendsPages: debugResultObj.friend_pages_friends ?? 0,
+          accessiblePages: debugResultObj.accessible_pages ?? [],
         });
 
         // If no friendship exists, return early
-        if (!debugResult?.friendship_exists) {
+        if (!debugResultObj.friendship_exists) {
           return {
             success: false,
             error:
@@ -824,7 +832,7 @@ export async function getFriendSharedPages(
         }
 
         // If friendship exists but no friends pages, return empty result
-        if (debugResult?.friend_pages_friends === 0) {
+        if (debugResultObj.friend_pages_friends === 0) {
           console.log("📖 Friendship exists but no friends pages found");
           return {
             success: true,

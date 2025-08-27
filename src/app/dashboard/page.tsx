@@ -69,6 +69,11 @@ export default function DashboardPage() {
   const loadUserData = useCallback(async () => {
     if (!user) {
       setDataLoading(false);
+      // Clear any existing timeout
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+        dataTimeoutRef.current = null;
+      }
       return;
     }
 
@@ -155,18 +160,25 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && !user) {
       console.log("User not authenticated, redirecting to auth");
+      // Clear any pending timeouts before redirect
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+        dataTimeoutRef.current = null;
+      }
+      setDataLoading(false);
       router.push("/auth");
     }
   }, [user, loading, router]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeout on unmount and when user changes
   useEffect(() => {
     return () => {
       if (dataTimeoutRef.current) {
         clearTimeout(dataTimeoutRef.current);
+        dataTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [user]);
 
   // Notebook handlers
   const handleCreateNotebook = async (notebook: {

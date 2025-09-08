@@ -66,15 +66,10 @@ export default function DashboardPage() {
   const [dataError, setDataError] = useState<string | null>(null);
   const dataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoize loadUserData to prevent recreation on every render
+  // Load user data - simplified without timeout interference
   const loadUserData = useCallback(async () => {
     if (!user) {
       setDataLoading(false);
-      // Clear any existing timeout
-      if (dataTimeoutRef.current) {
-        clearTimeout(dataTimeoutRef.current);
-        dataTimeoutRef.current = null;
-      }
       return;
     }
 
@@ -82,85 +77,92 @@ export default function DashboardPage() {
       setDataLoading(true);
       setDataError(null);
 
-      // Set a timeout to prevent infinite loading
-      dataTimeoutRef.current = setTimeout(() => {
-        console.warn("Data loading timeout");
-        setDataError("Loading timeout - please try again");
-        setDataLoading(false);
-      }, 15000); // 15 second timeout
+      console.log("🏠 Dashboard: Loading user data for:", user.id);
 
-      console.log("Loading user data for user:", user.id);
+      // Load all data in parallel
+      const [notebooksResult, sectionsResult, pagesResult] = await Promise.all([
+        supabase
+          .from("notebooks")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("sections")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("pages")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("sort_order", { ascending: true }),
+      ]);
 
-      // Load notebooks
-      const { data: notebooksData, error: notebooksError } = await supabase
-        .from("notebooks")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("sort_order", { ascending: true });
-
-      if (notebooksError) {
-        console.error("Error loading notebooks:", notebooksError);
-        setDataError(`Failed to load notebooks: ${notebooksError.message}`);
-      } else {
-        console.log("Loaded notebooks:", notebooksData?.length || 0);
-        setNotebooks(notebooksData || []);
-
-        // Keep dashboard as default, don't auto-select first notebook
-        // Users can manually select a notebook from the dropdown
+      // Handle results
+      if (notebooksResult.error) {
+        console.error(
+          "🏠 Dashboard: Error loading notebooks:",
+          notebooksResult.error,
+        );
+        setDataError(
+          `Failed to load notebooks: ${notebooksResult.error.message}`,
+        );
+        return;
       }
 
-      // Load sections
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from("sections")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("sort_order", { ascending: true });
-
-      if (sectionsError) {
-        console.error("Error loading sections:", sectionsError);
-        setDataError(`Failed to load sections: ${sectionsError.message}`);
-      } else {
-        console.log("Loaded sections:", sectionsData?.length || 0);
-        setSections(sectionsData || []);
+      if (sectionsResult.error) {
+        console.error(
+          "🏠 Dashboard: Error loading sections:",
+          sectionsResult.error,
+        );
+        setDataError(
+          `Failed to load sections: ${sectionsResult.error.message}`,
+        );
+        return;
       }
 
-      // Load pages
-      const { data: pagesData, error: pagesError } = await supabase
-        .from("pages")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("sort_order", { ascending: true });
-
-      if (pagesError) {
-        console.error("Error loading pages:", pagesError);
-        setDataError(`Failed to load pages: ${pagesError.message}`);
-      } else {
-        console.log("Loaded pages:", pagesData?.length || 0);
-        setPages(pagesData || []);
+      if (pagesResult.error) {
+        console.error("🏠 Dashboard: Error loading pages:", pagesResult.error);
+        setDataError(`Failed to load pages: ${pagesResult.error.message}`);
+        return;
       }
+
+      // Set data
+      setNotebooks(notebooksResult.data || []);
+      setSections(sectionsResult.data || []);
+      setPages(pagesResult.data || []);
+
+      console.log("🏠 Dashboard: Data loaded successfully:", {
+        notebooks: notebooksResult.data?.length || 0,
+        sections: sectionsResult.data?.length || 0,
+        pages: pagesResult.data?.length || 0,
+      });
     } catch (error) {
-      console.error("Error loading user data:", error);
+      console.error("🏠 Dashboard: Error loading user data:", error);
       setDataError(
         `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
-      if (dataTimeoutRef.current) {
-        clearTimeout(dataTimeoutRef.current);
-        dataTimeoutRef.current = null;
-      }
       setDataLoading(false);
     }
   }, [user, supabase]);
 
-  // Load user data from Supabase
+  // Load user data when user is available and not loading
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    if (!loading && user) {
+      loadUserData();
+    }
+  }, [user, loading, loadUserData]);
 
-  // Handle authentication redirects
+  // Handle authentication and routing logic
   useEffect(() => {
-    if (!loading && !user) {
-      console.log("User not authenticated, redirecting to auth");
+    if (loading) {
+      console.log("🏠 Dashboard: Auth still loading, waiting...");
+      return;
+    }
+
+    if (!user) {
+      console.log("🏠 Dashboard: No user, redirecting to auth");
       // Clear any pending timeouts before redirect
       if (dataTimeoutRef.current) {
         clearTimeout(dataTimeoutRef.current);
@@ -168,10 +170,41 @@ export default function DashboardPage() {
       }
       setDataLoading(false);
       router.push("/auth");
+      return;
     }
-  }, [user, loading, router]);
 
-  // Cleanup timeout on unmount and when user changes
+    // User is authenticated, check if they need onboarding
+    const checkOnboardingStatus = async () => {
+      try {
+        console.log(
+          "🏠 Dashboard: Checking onboarding status for user:",
+          user.id,
+        );
+        const { data: notebooks } = await supabase
+          .from("notebooks")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+        const hasNotebooks = notebooks && notebooks.length > 0;
+        console.log("🏠 Dashboard: Onboarding check result:", { hasNotebooks });
+
+        if (!hasNotebooks) {
+          console.log("🏠 Dashboard: User needs onboarding, redirecting...");
+          router.push("/onboarding");
+        } else {
+          console.log("🏠 Dashboard: User has notebooks, staying on dashboard");
+        }
+      } catch (error) {
+        console.error("🏠 Dashboard: Error checking onboarding status:", error);
+        // On error, assume user doesn't need onboarding and stay on dashboard
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [user, loading, router, supabase]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (dataTimeoutRef.current) {
@@ -179,7 +212,7 @@ export default function DashboardPage() {
         dataTimeoutRef.current = null;
       }
     };
-  }, [user]);
+  }, []);
 
   // Notebook handlers
   const handleCreateNotebook = async (notebook: {

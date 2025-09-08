@@ -46,7 +46,7 @@ export default function SignInForm() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/onboarding`,
           },
         });
 
@@ -70,9 +70,41 @@ export default function SignInForm() {
 
         // Check if sign in was successful
         if (data.session) {
-          console.log("Sign in successful, redirecting to dashboard");
-          // Force a full page reload to ensure proper session handling
-          window.location.href = "/dashboard";
+          console.log("🔐 SignIn: Sign in successful, session established");
+
+          // Check if user has any notebooks (indicates completed onboarding)
+          try {
+            const { data: notebooks, error: notebooksError } = await authClient
+              .from("notebooks")
+              .select("id")
+              .eq("user_id", data.session.user.id)
+              .limit(1);
+
+            if (!notebooksError) {
+              const hasNotebooks = notebooks && notebooks.length > 0;
+              const redirectUrl = hasNotebooks ? "/dashboard" : "/onboarding";
+
+              console.log("🔐 SignIn: Redirect decision:", {
+                hasNotebooks,
+                redirectUrl,
+                userId: data.session.user.id,
+              });
+
+              // Use window.location.href for immediate redirect
+              window.location.href = redirectUrl;
+            } else {
+              console.error(
+                "🔐 SignIn: Error checking notebooks:",
+                notebooksError,
+              );
+              // Default to onboarding if we can't check
+              window.location.href = "/onboarding";
+            }
+          } catch (err) {
+            console.error("🔐 SignIn: Error during redirect logic:", err);
+            // Default to onboarding on error
+            window.location.href = "/onboarding";
+          }
           return;
         }
       }
@@ -98,7 +130,7 @@ export default function SignInForm() {
       const { data, error } = await authClient.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/onboarding`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",

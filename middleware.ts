@@ -129,11 +129,13 @@ export async function middleware(req: NextRequest) {
       console.log(`🛡️ Middleware: Checking user status for ${pathname}`);
 
       // Get user data from the database
-      const { data: userData, error: userError } = await supabase
+      const { data: fetchedUserData, error: userError } = await supabase
         .from("users")
         .select("is_pro, stripe_customer_id, plan, current_period_end")
         .eq("id", session.user.id)
         .single();
+
+      let userData = fetchedUserData;
 
       if (userError) {
         console.error(`🛡️ Middleware: Error fetching user data:`, userError);

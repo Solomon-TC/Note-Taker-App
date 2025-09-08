@@ -18,10 +18,6 @@ const nextConfig = {
     experimental: {
         serverComponentsExternalPackages: ['@supabase/supabase-js']
     },
-    // Environment variable validation
-    env: {
-        CUSTOM_KEY: process.env.CUSTOM_KEY,
-    },
     // Build optimization
     compiler: {
         removeConsole: process.env.NODE_ENV === 'production'

@@ -11,6 +11,7 @@ type AuthContextType = {
   loading: boolean;
   error: string | null;
   isNewUser: boolean;
+  isPro: boolean;
   signOut: () => Promise<void>;
 };
 
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isNewUser: false,
+  isPro: false,
   signOut: async () => {},
 });
 
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [isPro, setIsPro] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const router = useRouter();
 
@@ -83,34 +86,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setError(sessionError?.message || null);
         });
 
-        // Step 3: Check if user needs onboarding (only if we have a user)
+        // Step 3: Check if user needs onboarding and pro status (only if we have a user)
         if (session?.user) {
-          console.log("🔐 AuthProvider: Checking onboarding status...");
+          console.log("🔐 AuthProvider: Checking user status...");
           try {
+            // Check onboarding status
             const { data: notebooks, error: notebooksError } = await supabase
               .from("notebooks")
               .select("id")
               .eq("user_id", session.user.id)
               .limit(1);
 
+            // Check pro status - ensure user exists in users table
+            let { data: userData, error: userError } = await supabase
+              .from("users")
+              .select("is_pro, stripe_customer_id, plan, current_period_end")
+              .eq("id", session.user.id)
+              .single();
+
+            // If user doesn't exist in users table, create them
+            if (userError && userError.code === "PGRST116") {
+              console.log(
+                "🔐 AuthProvider: Creating user record in users table",
+              );
+              const { data: newUser, error: createError } = await supabase
+                .from("users")
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email || "",
+                  full_name: session.user.user_metadata?.full_name || null,
+                  avatar_url: session.user.user_metadata?.avatar_url || null,
+                  is_pro: false,
+                  plan: null,
+                  current_period_end: null,
+                  stripe_customer_id: null,
+                })
+                .select("is_pro, stripe_customer_id, plan, current_period_end")
+                .single();
+
+              if (!createError && newUser) {
+                userData = newUser;
+              } else {
+                // Default to non-pro if creation fails
+                userData = {
+                  is_pro: false,
+                  stripe_customer_id: null,
+                  plan: null,
+                  current_period_end: null,
+                };
+              }
+            } else if (userError) {
+              // Default to non-pro for any other error
+              userData = {
+                is_pro: false,
+                stripe_customer_id: null,
+                plan: null,
+                current_period_end: null,
+              };
+            }
+
             if (isMounted) {
               const hasNotebooks = notebooks && notebooks.length > 0;
+              const userIsPro = userData?.is_pro || false;
+
               safeSetState(() => {
                 setIsNewUser(!hasNotebooks);
+                setIsPro(userIsPro);
               });
-              console.log("🔐 AuthProvider: Onboarding check:", {
+
+              console.log("🔐 AuthProvider: User status check:", {
                 hasNotebooks,
                 isNewUser: !hasNotebooks,
-                error: notebooksError?.message,
+                isPro: userIsPro,
+                notebooksError: notebooksError?.message,
+                userError: userError?.message,
               });
             }
           } catch (err) {
-            console.error(
-              "🔐 AuthProvider: Error checking onboarding status:",
-              err,
-            );
+            console.error("🔐 AuthProvider: Error checking user status:", err);
             safeSetState(() => {
               setIsNewUser(false);
+              setIsPro(false);
             });
           }
         }
@@ -134,41 +190,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(null);
           });
 
-          // Handle new user check on sign in (without timeout)
+          // Handle user status check on sign in (without timeout)
           if (
             newSession?.user &&
             (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
           ) {
             try {
+              // Check onboarding status
               const { data: notebooks, error: notebooksError } = await supabase
                 .from("notebooks")
                 .select("id")
                 .eq("user_id", newSession.user.id)
                 .limit(1);
 
+              // Check pro status - ensure user exists in users table
+              let { data: userData, error: userError } = await supabase
+                .from("users")
+                .select("is_pro, stripe_customer_id, plan, current_period_end")
+                .eq("id", newSession.user.id)
+                .single();
+
+              // If user doesn't exist in users table, create them
+              if (userError && userError.code === "PGRST116") {
+                console.log(
+                  "🔐 AuthProvider: Creating user record in users table on auth change",
+                );
+                const { data: newUser, error: createError } = await supabase
+                  .from("users")
+                  .insert({
+                    id: newSession.user.id,
+                    email: newSession.user.email || "",
+                    full_name: newSession.user.user_metadata?.full_name || null,
+                    avatar_url:
+                      newSession.user.user_metadata?.avatar_url || null,
+                    is_pro: false,
+                    plan: null,
+                    current_period_end: null,
+                    stripe_customer_id: null,
+                  })
+                  .select(
+                    "is_pro, stripe_customer_id, plan, current_period_end",
+                  )
+                  .single();
+
+                if (!createError && newUser) {
+                  userData = newUser;
+                } else {
+                  // Default to non-pro if creation fails
+                  userData = {
+                    is_pro: false,
+                    stripe_customer_id: null,
+                    plan: null,
+                    current_period_end: null,
+                  };
+                }
+              } else if (userError) {
+                // Default to non-pro for any other error
+                userData = {
+                  is_pro: false,
+                  stripe_customer_id: null,
+                  plan: null,
+                  current_period_end: null,
+                };
+              }
+
               if (isMounted) {
                 const hasNotebooks = notebooks && notebooks.length > 0;
+                const userIsPro = userData?.is_pro || false;
+
                 safeSetState(() => {
                   setIsNewUser(!hasNotebooks);
+                  setIsPro(userIsPro);
                 });
-                console.log("🔐 AuthProvider: Auth change onboarding check:", {
+
+                console.log("🔐 AuthProvider: Auth change user status check:", {
                   hasNotebooks,
                   isNewUser: !hasNotebooks,
-                  error: notebooksError?.message,
+                  isPro: userIsPro,
+                  notebooksError: notebooksError?.message,
+                  userError: userError?.message,
                 });
               }
             } catch (err) {
               console.error(
-                "🔐 AuthProvider: Error checking new user status on auth change:",
+                "🔐 AuthProvider: Error checking user status on auth change:",
                 err,
               );
               safeSetState(() => {
                 setIsNewUser(false);
+                setIsPro(false);
               });
             }
           } else if (event === "SIGNED_OUT") {
             safeSetState(() => {
               setIsNewUser(false);
+              setIsPro(false);
             });
           }
         });
@@ -243,6 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           loading: true,
           error: null,
           isNewUser: false,
+          isPro: false,
           signOut,
         }}
       >
@@ -253,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, loading, error, isNewUser, signOut }}
+      value={{ user, session, loading, error, isNewUser, isPro, signOut }}
     >
       {children}
     </AuthContext.Provider>

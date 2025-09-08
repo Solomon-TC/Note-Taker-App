@@ -104,13 +104,15 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Check if user has already completed onboarding
+    // Check if user has already completed onboarding and pro status
     const checkOnboardingStatus = async () => {
       try {
         console.log(
           "📚 Onboarding: Checking onboarding status for user:",
           user.id,
         );
+
+        // Check if user has already completed onboarding
         const { data: notebooks } = await supabase
           .from("notebooks")
           .select("id")
@@ -118,7 +120,9 @@ export default function OnboardingPage() {
           .limit(1);
 
         const hasNotebooks = notebooks && notebooks.length > 0;
-        console.log("📚 Onboarding: Status check result:", { hasNotebooks });
+        console.log("📚 Onboarding: Status check result:", {
+          hasNotebooks,
+        });
 
         if (hasNotebooks) {
           console.log(
@@ -133,7 +137,7 @@ export default function OnboardingPage() {
           "📚 Onboarding: Error checking onboarding status:",
           error,
         );
-        // On error, assume user needs onboarding and stay on page
+        // On error, allow user to stay on onboarding page
       }
     };
 
@@ -272,8 +276,8 @@ export default function OnboardingPage() {
         }
       }
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // After completing onboarding, redirect to paywall for subscription
+      router.push("/paywall");
     } catch (error) {
       console.error("Error completing onboarding:", error);
     } finally {

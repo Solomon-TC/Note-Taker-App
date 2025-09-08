@@ -42,7 +42,7 @@ type Section = Database["public"]["Tables"]["sections"]["Row"];
 type Page = Database["public"]["Tables"]["pages"]["Row"];
 
 export default function DashboardPage() {
-  const { user, loading, error } = useAuth();
+  const { user, loading, error, isPro } = useAuth();
   const router = useRouter();
 
   // Memoize supabase client to prevent recreation on every render
@@ -173,11 +173,26 @@ export default function DashboardPage() {
       return;
     }
 
-    // User is authenticated, check if they need onboarding
+    // CRITICAL: Check if user is pro - redirect non-pro users to paywall
+    if (!isPro) {
+      console.log(
+        "🏠 Dashboard: Non-pro user detected, redirecting to paywall",
+      );
+      // Clear any pending timeouts before redirect
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+        dataTimeoutRef.current = null;
+      }
+      setDataLoading(false);
+      router.push("/paywall");
+      return;
+    }
+
+    // User is authenticated and pro, check if they need onboarding
     const checkOnboardingStatus = async () => {
       try {
         console.log(
-          "🏠 Dashboard: Checking onboarding status for user:",
+          "🏠 Dashboard: Checking onboarding status for pro user:",
           user.id,
         );
         const { data: notebooks } = await supabase
@@ -187,13 +202,20 @@ export default function DashboardPage() {
           .limit(1);
 
         const hasNotebooks = notebooks && notebooks.length > 0;
-        console.log("🏠 Dashboard: Onboarding check result:", { hasNotebooks });
+        console.log("🏠 Dashboard: Onboarding check result:", {
+          hasNotebooks,
+          isPro,
+        });
 
         if (!hasNotebooks) {
-          console.log("🏠 Dashboard: User needs onboarding, redirecting...");
+          console.log(
+            "🏠 Dashboard: Pro user needs onboarding, redirecting...",
+          );
           router.push("/onboarding");
         } else {
-          console.log("🏠 Dashboard: User has notebooks, staying on dashboard");
+          console.log(
+            "🏠 Dashboard: Pro user has notebooks, staying on dashboard",
+          );
         }
       } catch (error) {
         console.error("🏠 Dashboard: Error checking onboarding status:", error);
@@ -202,7 +224,7 @@ export default function DashboardPage() {
     };
 
     checkOnboardingStatus();
-  }, [user, loading, router, supabase]);
+  }, [user, loading, isPro, router, supabase]);
 
   // Cleanup on unmount
   useEffect(() => {

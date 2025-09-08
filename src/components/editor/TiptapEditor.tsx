@@ -24,7 +24,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
-import FontSize from "@tiptap/extension-font-size";
+// FontSize extension removed - package not available
 import { storageService } from "@/lib/storage";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -391,9 +391,7 @@ const TiptapEditor = ({
       FontFamily.configure({
         types: ["textStyle"],
       }),
-      FontSize.configure({
-        types: ["textStyle"],
-      }),
+      // FontSize extension removed - package not available
 
       // Other formatting extensions
       Underline,

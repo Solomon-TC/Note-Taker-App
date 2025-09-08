@@ -1,4 +1,4 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { Database } from "@/types/supabase";
@@ -7,7 +7,7 @@ import { Database } from "@/types/supabase";
 const publicRoutes = ["/", "/auth"];
 const authRequiredRoutes = [
   "/dashboard",
-  "/onboarding",
+  "/onboarding", 
   "/paywall",
   "/friends",
   "/feedback",
@@ -20,8 +20,58 @@ const proRequiredRoutes = [
 ];
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient<Database>({ req, res });
+  let response = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
+
+  const supabase = createSupabaseServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          req.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+        },
+        remove(name: string, options: any) {
+          req.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
+        },
+      },
+    }
+  );
+
   const { pathname, search } = req.nextUrl;
   const fullPath = pathname + search;
 
@@ -30,7 +80,7 @@ export async function middleware(req: NextRequest) {
   // Allow public routes
   if (publicRoutes.includes(pathname)) {
     console.log(`🛡️ Middleware: Public route ${pathname}, allowing access`);
-    return res;
+    return response;
   }
 
   // Allow API routes and static files
@@ -40,13 +90,13 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/favicon.ico") ||
     pathname.includes(".")
   ) {
-    return res;
+    return response;
   }
 
   // CRITICAL FIX: Allow paywall with checkout success/cancelled query params
   if (pathname === "/paywall" && (search.includes("checkout=success") || search.includes("checkout=cancelled"))) {
     console.log(`🛡️ Middleware: Allowing paywall checkout flow: ${fullPath}`);
-    return res;
+    return response;
   }
 
   try {
@@ -206,7 +256,7 @@ export async function middleware(req: NextRequest) {
     }
 
     console.log(`🛡️ Middleware: Allowing access to ${fullPath}`);
-    return res;
+    return response;
   } catch (error) {
     console.error(
       `🛡️ Middleware: Error processing request for ${pathname}:`,
@@ -214,7 +264,7 @@ export async function middleware(req: NextRequest) {
     );
     // On error, allow the request to proceed
     // The page-level auth will handle any issues
-    return res;
+    return response;
   }
 }
 

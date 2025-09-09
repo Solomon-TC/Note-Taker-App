@@ -702,20 +702,18 @@ const AIChatSidebar = ({
       } else {
         // Transform the data to match our AISession interface
         const transformedSessions: AISession[] = (data || []).map(
-          (session) => ({
+          (session: any) => ({
             id: session.id,
             session_type:
               session.session_type === "chat" ||
               session.session_type === "summary" ||
               session.session_type === "practice"
-                ? (session.session_type as "chat" | "summary" | "practice")
-                : "chat", // Default fallback with proper typing
-            title: session.title || "Untitled Session",
-            context: safeJsonParse(session.context) || {},
-            messages: parseSessionMessages(session.messages),
-            metadata: safeJsonParse(session.metadata) || {},
-            created_at: session.created_at || new Date().toISOString(),
-            updated_at: session.updated_at || new Date().toISOString(),
+                ? session.session_type
+                : "chat",
+            messages: session.messages || [],
+            metadata: session.metadata || {},
+            created_at: session.created_at,
+            updated_at: session.updated_at,
           }),
         );
         setAISessions(transformedSessions);

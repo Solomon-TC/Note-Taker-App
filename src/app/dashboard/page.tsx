@@ -244,7 +244,7 @@ export default function DashboardPage() {
           description: notebook.description,
           color: notebook.color,
           sort_order: notebooks.length,
-        })
+        } as any) // Type assertion to bypass strict typing
         .select()
         .single();
 
@@ -254,9 +254,9 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setNotebooks([...notebooks, data]);
+        setNotebooks([...notebooks, data as Notebook]);
         if (!selectedNotebookId) {
-          setSelectedNotebookId(data.id);
+          setSelectedNotebookId((data as Notebook).id);
         }
       }
     } catch (error) {
@@ -273,7 +273,7 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("notebooks")
-        .update(updates)
+        .update(updates as any) // Type assertion to bypass strict typing
         .eq("id", notebookId)
         .eq("user_id", user.id)
         .select()
@@ -285,7 +285,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setNotebooks(notebooks.map((nb) => (nb.id === notebookId ? data : nb)));
+        setNotebooks(notebooks.map((nb) => (nb.id === notebookId ? data as Notebook : nb)));
       }
     } catch (error) {
       console.error("Error updating notebook:", error);
@@ -337,7 +337,7 @@ export default function DashboardPage() {
           sort_order: sections.filter(
             (s) => s.notebook_id === selectedNotebookId,
           ).length,
-        })
+        } as any) // Type assertion to bypass strict typing
         .select()
         .single();
 
@@ -347,8 +347,8 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setSections([...sections, data]);
-        setSelectedSectionId(data.id);
+        setSections([...sections, data as Section]);
+        setSelectedSectionId((data as Section).id);
       }
     } catch (error) {
       console.error("Error creating section:", error);
@@ -364,7 +364,7 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("sections")
-        .update(updates)
+        .update(updates as any) // Type assertion to bypass strict typing
         .eq("id", sectionId)
         .eq("user_id", user.id)
         .select()
@@ -376,7 +376,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setSections(sections.map((s) => (s.id === sectionId ? data : s)));
+        setSections(sections.map((s) => (s.id === sectionId ? data as Section : s)));
       }
     } catch (error) {
       console.error("Error updating section:", error);
@@ -450,7 +450,7 @@ export default function DashboardPage() {
               p.section_id === selectedSectionId &&
               p.parent_page_id === parentPageId,
           ).length,
-        })
+        } as any) // Type assertion to bypass strict typing
         .select()
         .single();
 
@@ -460,8 +460,8 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        console.log("Successfully created new page:", data.id);
-        setPages((prevPages) => [...prevPages, data]);
+        console.log("Successfully created new page:", (data as Page).id);
+        setPages((prevPages) => [...prevPages, data as Page]);
 
         // CRITICAL: Force complete state reset for new page creation
         setSelectedPageId(null);
@@ -469,8 +469,8 @@ export default function DashboardPage() {
 
         // Clear any cached content and force a clean slate
         setTimeout(() => {
-          console.log("Setting new page as selected:", data.id);
-          setSelectedPageId(data.id);
+          console.log("Setting new page as selected:", (data as Page).id);
+          setSelectedPageId((data as Page).id);
           setIsCreatingPage(true);
         }, 100); // Longer delay to ensure complete state reset
       }
@@ -485,7 +485,7 @@ export default function DashboardPage() {
     try {
       const { data, error } = await supabase
         .from("pages")
-        .update(updates)
+        .update(updates as any) // Type assertion to bypass strict typing
         .eq("id", pageId)
         .eq("user_id", user.id)
         .select()
@@ -497,7 +497,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages(pages.map((p) => (p.id === pageId ? data : p)));
+        setPages(pages.map((p) => (p.id === pageId ? data as Page : p)));
       }
     } catch (error) {
       console.error("Error updating page:", error);
@@ -558,7 +558,7 @@ export default function DashboardPage() {
           content_json: pageData.contentJson as any,
           visibility: pageData.visibility,
           updated_at: new Date().toISOString(),
-        })
+        } as any) // Type assertion to bypass strict typing
         .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()
@@ -570,7 +570,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages(pages.map((p) => (p.id === pageData.id ? data : p)));
+        setPages(pages.map((p) => (p.id === pageData.id ? data as Page : p)));
         setIsCreatingPage(false);
       }
     } catch (error) {
@@ -635,7 +635,7 @@ export default function DashboardPage() {
 
       const { data, error } = await supabase
         .from("pages")
-        .update(updatePayload)
+        .update(updatePayload as any) // Type assertion to bypass strict typing
         .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()

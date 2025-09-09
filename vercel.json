@@ -1,8 +1,8 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "yarn vercel-build",
-  "installCommand": "yarn install --frozen-lockfile --network-timeout 300000",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci --registry=https://registry.npmjs.org",
   "outputDirectory": ".next",
   "functions": {
     "app/**/*.{js,ts,jsx,tsx}": {
@@ -12,7 +12,8 @@
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
-      "NODE_OPTIONS": "--max-old-space-size=4096"
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org"
     }
   },
   "headers": [

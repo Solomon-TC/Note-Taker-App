@@ -59,7 +59,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Memoize supabase client to prevent recreation on every render
-  const supabase = useMemo(() => createClient<Database>(), []);
+  const supabase = useMemo(() => createClient(), []);
 
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [sections, setSections] = useState<Section[]>([]);

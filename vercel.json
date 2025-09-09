@@ -1,7 +1,8 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "yarn build",
+  "installCommand": "yarn install --frozen-lockfile",
   "outputDirectory": ".next",
   "functions": {
     "app/**/*.{js,ts,jsx,tsx}": {

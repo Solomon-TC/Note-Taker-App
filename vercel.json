@@ -2,7 +2,7 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm ci --registry=https://registry.npmjs.org",
+  "installCommand": "npm ci",
   "outputDirectory": ".next",
   "functions": {
     "app/**/*.{js,ts,jsx,tsx}": {
@@ -13,7 +13,9 @@
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
       "NODE_OPTIONS": "--max-old-space-size=4096",
-      "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org"
+      "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org",
+      "NPM_CONFIG_FUND": "false",
+      "NPM_CONFIG_AUDIT": "false"
     }
   },
   "headers": [

@@ -348,7 +348,7 @@ export default function DashboardPage() {
           .length,
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseTyped
         .from("sections")
         .insert(insertData)
         .select()

@@ -73,6 +73,7 @@ export default function DashboardPage() {
 
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const dataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasInitialized = useRef(false);
 
@@ -95,17 +96,17 @@ export default function DashboardPage() {
 
       // Load all data in parallel
       const [notebooksResult, sectionsResult, pagesResult] = await Promise.all([
-        supabase
+        supabaseTyped
           .from("notebooks")
           .select("*")
           .eq("user_id", user.id)
           .order("sort_order", { ascending: true }),
-        supabase
+        supabaseTyped
           .from("sections")
           .select("*")
           .eq("user_id", user.id)
           .order("sort_order", { ascending: true }),
-        supabase
+        supabaseTyped
           .from("pages")
           .select("*")
           .eq("user_id", user.id)
@@ -206,7 +207,7 @@ export default function DashboardPage() {
         "🏠 Dashboard: Checking onboarding status for pro user:",
         user.id,
       );
-      const { data: notebooks } = await supabase
+      const { data: notebooks } = await supabaseTyped
         .from("notebooks")
         .select("id")
         .eq("user_id", user.id)
@@ -308,7 +309,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseTyped
         .from("notebooks")
         .delete()
         .eq("id", notebookId)
@@ -400,7 +401,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseTyped
         .from("sections")
         .delete()
         .eq("id", sectionId)
@@ -594,10 +595,10 @@ export default function DashboardPage() {
         content_json_size: JSON.stringify(updatePayload.content_json).length,
       });
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseTyped
         .from("pages")
         .update(updatePayload)
-        .eq("id", pageId)
+        .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()
         .single();
@@ -639,7 +640,7 @@ export default function DashboardPage() {
           await new Promise((resolve) => setTimeout(resolve, 1000));
 
           // Retry the operation once
-          const { data: retryData, error: retryError } = await supabase
+          const { data: retryData, error: retryError } = await supabaseTyped
             .from("pages")
             .update(updatePayload)
             .eq("id", pageData.id)
@@ -685,6 +686,58 @@ export default function DashboardPage() {
         timestamp: new Date().toISOString(),
       });
       throw error;
+    }
+  };
+
+  const handleUpdatePage = async (pageId: string, updates: PageUpdate) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabaseTyped
+        .from("pages")
+        .update(updates)
+        .eq("id", pageId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating page:", error);
+        return;
+      }
+
+      if (data) {
+        setPages(pages.map((p) => (p.id === pageId ? data : p)));
+      }
+    } catch (error) {
+      console.error("Error updating page:", error);
+    }
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabaseTyped
+        .from("pages")
+        .delete()
+        .eq("id", pageId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error deleting page:", error);
+        return;
+      }
+
+      setPages(pages.filter((p) => p.id !== pageId));
+      if (selectedPageId === pageId) {
+        const remaining = pages.filter(
+          (p) => p.id !== pageId && p.section_id === selectedSectionId,
+        );
+        setSelectedPageId(remaining.length > 0 ? remaining[0].id : null);
+      }
+    } catch (error) {
+      console.error("Error deleting page:", error);
     }
   };
 

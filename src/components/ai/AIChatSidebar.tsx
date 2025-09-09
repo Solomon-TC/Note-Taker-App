@@ -548,7 +548,7 @@ const AIChatSidebar = ({
       if (error) {
         console.error("Error loading notes:", error);
       } else {
-        const formattedNotes = (pagesData || []).map((page) => {
+        const formattedNotes = (pagesData || []).map((page: any) => {
           let content = "";
           try {
             if (page.content) {
@@ -618,7 +618,7 @@ const AIChatSidebar = ({
     if (!user || !currentNote?.id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseTyped
         .from("practice_problems")
         .select("*")
         .eq("user_id", user.id)

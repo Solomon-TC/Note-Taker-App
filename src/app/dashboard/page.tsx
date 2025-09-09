@@ -29,7 +29,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
-import { Database } from "@/types/supabase";
+import { Database, Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
 import {
   safeJsonParse,
   extractPlainText,
@@ -37,12 +37,15 @@ import {
 } from "@/lib/editor/json";
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
-type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
-type NotebookUpdate = Database["public"]["Tables"]["notebooks"]["Update"];
-type Section = Database["public"]["Tables"]["sections"]["Row"];
-type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
-type Page = Database["public"]["Tables"]["pages"]["Row"];
-type PageUpdate = Database["public"]["Tables"]["pages"]["Update"];
+type Notebook = Tables<"notebooks">;
+type NotebookInsert = TablesInsert<"notebooks">;
+type NotebookUpdate = TablesUpdate<"notebooks">;
+type Section = Tables<"sections">;
+type SectionInsert = TablesInsert<"sections">;
+type SectionUpdate = TablesUpdate<"sections">;
+type Page = Tables<"pages">;
+type PageInsert = TablesInsert<"pages">;
+type PageUpdate = TablesUpdate<"pages">;
 
 export default function DashboardPage() {
   const { user, loading, error, isPro } = useAuth();
@@ -237,15 +240,17 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
+      const insertData: NotebookInsert = {
+        user_id: user.id,
+        name: notebook.name,
+        description: notebook.description,
+        color: notebook.color,
+        sort_order: notebooks.length,
+      };
+
       const { data, error } = await supabase
         .from("notebooks")
-        .insert({
-          user_id: user.id,
-          name: notebook.name,
-          description: notebook.description,
-          color: notebook.color,
-          sort_order: notebooks.length,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -255,9 +260,9 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setNotebooks([...notebooks, data as Notebook]);
+        setNotebooks([...notebooks, data]);
         if (!selectedNotebookId) {
-          setSelectedNotebookId((data as Notebook).id);
+          setSelectedNotebookId(data.id);
         }
       }
     } catch (error) {
@@ -286,11 +291,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setNotebooks(
-          notebooks.map((nb) =>
-            nb.id === notebookId ? (data as Notebook) : nb,
-          ),
-        );
+        setNotebooks(notebooks.map((nb) => (nb.id === notebookId ? data : nb)));
       }
     } catch (error) {
       console.error("Error updating notebook:", error);
@@ -332,17 +333,18 @@ export default function DashboardPage() {
     if (!user || !selectedNotebookId) return;
 
     try {
+      const insertData: SectionInsert = {
+        user_id: user.id,
+        notebook_id: selectedNotebookId,
+        name: section.name,
+        color: section.color,
+        sort_order: sections.filter((s) => s.notebook_id === selectedNotebookId)
+          .length,
+      };
+
       const { data, error } = await supabase
         .from("sections")
-        .insert({
-          user_id: user.id,
-          notebook_id: selectedNotebookId,
-          name: section.name,
-          color: section.color,
-          sort_order: sections.filter(
-            (s) => s.notebook_id === selectedNotebookId,
-          ).length,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -352,8 +354,8 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setSections([...sections, data as Section]);
-        setSelectedSectionId((data as Section).id);
+        setSections([...sections, data]);
+        setSelectedSectionId(data.id);
       }
     } catch (error) {
       console.error("Error creating section:", error);
@@ -381,9 +383,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setSections(
-          sections.map((s) => (s.id === sectionId ? (data as Section) : s)),
-        );
+        setSections(sections.map((s) => (s.id === sectionId ? data : s)));
       }
     } catch (error) {
       console.error("Error updating section:", error);
@@ -443,21 +443,23 @@ export default function DashboardPage() {
         defaultContent,
       });
 
+      const insertData: PageInsert = {
+        user_id: user.id,
+        section_id: selectedSectionId,
+        parent_page_id: parentPageId || null,
+        title: uniqueTitle,
+        content: "", // Always empty string
+        content_json: defaultContent, // Always empty doc
+        sort_order: pages.filter(
+          (p) =>
+            p.section_id === selectedSectionId &&
+            p.parent_page_id === parentPageId,
+        ).length,
+      };
+
       const { data, error } = await supabase
         .from("pages")
-        .insert({
-          user_id: user.id,
-          section_id: selectedSectionId,
-          parent_page_id: parentPageId || null,
-          title: uniqueTitle,
-          content: "", // Always empty string
-          content_json: defaultContent, // Always empty doc
-          sort_order: pages.filter(
-            (p) =>
-              p.section_id === selectedSectionId &&
-              p.parent_page_id === parentPageId,
-          ).length,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -467,8 +469,8 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        console.log("Successfully created new page:", (data as Page).id);
-        setPages((prevPages) => [...prevPages, data as Page]);
+        console.log("Successfully created new page:", data.id);
+        setPages((prevPages) => [...prevPages, data]);
 
         // CRITICAL: Force complete state reset for new page creation
         setSelectedPageId(null);
@@ -476,8 +478,8 @@ export default function DashboardPage() {
 
         // Clear any cached content and force a clean slate
         setTimeout(() => {
-          console.log("Setting new page as selected:", (data as Page).id);
-          setSelectedPageId((data as Page).id);
+          console.log("Setting new page as selected:", data.id);
+          setSelectedPageId(data.id);
           setIsCreatingPage(true);
         }, 100); // Longer delay to ensure complete state reset
       }
@@ -504,7 +506,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages(pages.map((p) => (p.id === pageId ? (data as Page) : p)));
+        setPages(pages.map((p) => (p.id === pageId ? data : p)));
       }
     } catch (error) {
       console.error("Error updating page:", error);

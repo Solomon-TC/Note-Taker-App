@@ -38,8 +38,11 @@ import {
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
 type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
+type NotebookUpdate = Database["public"]["Tables"]["notebooks"]["Update"];
 type Section = Database["public"]["Tables"]["sections"]["Row"];
+type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
 type Page = Database["public"]["Tables"]["pages"]["Row"];
+type PageUpdate = Database["public"]["Tables"]["pages"]["Update"];
 
 export default function DashboardPage() {
   const { user, loading, error, isPro } = useAuth();
@@ -207,9 +210,7 @@ export default function DashboardPage() {
       });
 
       if (!hasNotebooks) {
-        console.log(
-          "🏠 Dashboard: Pro user needs onboarding, redirecting...",
-        );
+        console.log("🏠 Dashboard: Pro user needs onboarding, redirecting...");
         router.push("/onboarding");
       } else {
         console.log(
@@ -244,7 +245,7 @@ export default function DashboardPage() {
           description: notebook.description,
           color: notebook.color,
           sort_order: notebooks.length,
-        } as any) // Type assertion to bypass strict typing
+        })
         .select()
         .single();
 
@@ -266,14 +267,14 @@ export default function DashboardPage() {
 
   const handleUpdateNotebook = async (
     notebookId: string,
-    updates: Partial<Notebook>,
+    updates: NotebookUpdate,
   ) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from("notebooks")
-        .update(updates as any) // Type assertion to bypass strict typing
+        .update(updates)
         .eq("id", notebookId)
         .eq("user_id", user.id)
         .select()
@@ -285,7 +286,11 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setNotebooks(notebooks.map((nb) => (nb.id === notebookId ? data as Notebook : nb)));
+        setNotebooks(
+          notebooks.map((nb) =>
+            nb.id === notebookId ? (data as Notebook) : nb,
+          ),
+        );
       }
     } catch (error) {
       console.error("Error updating notebook:", error);
@@ -337,7 +342,7 @@ export default function DashboardPage() {
           sort_order: sections.filter(
             (s) => s.notebook_id === selectedNotebookId,
           ).length,
-        } as any) // Type assertion to bypass strict typing
+        })
         .select()
         .single();
 
@@ -357,14 +362,14 @@ export default function DashboardPage() {
 
   const handleUpdateSection = async (
     sectionId: string,
-    updates: Partial<Section>,
+    updates: SectionUpdate,
   ) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from("sections")
-        .update(updates as any) // Type assertion to bypass strict typing
+        .update(updates)
         .eq("id", sectionId)
         .eq("user_id", user.id)
         .select()
@@ -376,7 +381,9 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setSections(sections.map((s) => (s.id === sectionId ? data as Section : s)));
+        setSections(
+          sections.map((s) => (s.id === sectionId ? (data as Section) : s)),
+        );
       }
     } catch (error) {
       console.error("Error updating section:", error);
@@ -444,13 +451,13 @@ export default function DashboardPage() {
           parent_page_id: parentPageId || null,
           title: uniqueTitle,
           content: "", // Always empty string
-          content_json: defaultContent as any, // Always empty doc
+          content_json: defaultContent, // Always empty doc
           sort_order: pages.filter(
             (p) =>
               p.section_id === selectedSectionId &&
               p.parent_page_id === parentPageId,
           ).length,
-        } as any) // Type assertion to bypass strict typing
+        })
         .select()
         .single();
 
@@ -479,13 +486,13 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdatePage = async (pageId: string, updates: Partial<Page>) => {
+  const handleUpdatePage = async (pageId: string, updates: PageUpdate) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from("pages")
-        .update(updates as any) // Type assertion to bypass strict typing
+        .update(updates)
         .eq("id", pageId)
         .eq("user_id", user.id)
         .select()
@@ -497,7 +504,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages(pages.map((p) => (p.id === pageId ? data as Page : p)));
+        setPages(pages.map((p) => (p.id === pageId ? (data as Page) : p)));
       }
     } catch (error) {
       console.error("Error updating page:", error);
@@ -555,10 +562,10 @@ export default function DashboardPage() {
         .update({
           title: pageData.title,
           content: pageData.content,
-          content_json: pageData.contentJson as any,
+          content_json: pageData.contentJson,
           visibility: pageData.visibility,
           updated_at: new Date().toISOString(),
-        } as any) // Type assertion to bypass strict typing
+        })
         .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()
@@ -570,7 +577,7 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setPages(pages.map((p) => (p.id === pageData.id ? data as Page : p)));
+        setPages(pages.map((p) => (p.id === pageData.id ? (data as Page) : p)));
         setIsCreatingPage(false);
       }
     } catch (error) {
@@ -622,7 +629,7 @@ export default function DashboardPage() {
       const updatePayload = {
         title: pageData.title || "Untitled Page",
         content: pageData.content || "",
-        content_json: validatedContentJson as any,
+        content_json: validatedContentJson,
         visibility: pageData.visibility || "private",
         updated_at: new Date().toISOString(),
       };
@@ -635,7 +642,7 @@ export default function DashboardPage() {
 
       const { data, error } = await supabase
         .from("pages")
-        .update(updatePayload as any) // Type assertion to bypass strict typing
+        .update(updatePayload)
         .eq("id", pageData.id)
         .eq("user_id", user.id)
         .select()

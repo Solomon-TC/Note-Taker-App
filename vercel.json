@@ -2,7 +2,7 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "yarn build",
-  "installCommand": "yarn install --frozen-lockfile",
+  "installCommand": "yarn config set npmRegistryServer https://registry.npmjs.org && yarn install --frozen-lockfile",
   "outputDirectory": ".next",
   "functions": {
     "app/**/*.{js,ts,jsx,tsx}": {
@@ -12,7 +12,9 @@
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
-      "NODE_OPTIONS": "--max-old-space-size=4096"
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "NPM_CONFIG_REGISTRY": "https://registry.npmjs.org",
+      "YARN_NPM_REGISTRY_SERVER": "https://registry.npmjs.org"
     }
   },
   "headers": [

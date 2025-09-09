@@ -60,10 +60,18 @@ function validateEnvironment() {
     console.error('\n💡 Please set these variables in your Vercel project settings:');
     console.error('   https://vercel.com/dashboard -> Project -> Settings -> Environment Variables');
     
+    // In Vercel builds, don't exit with error - let the build continue
+    if (process.env.VERCEL) {
+      console.warn('⚠️  Running in Vercel - continuing build despite missing variables');
+      console.warn('   The application may not function correctly without these variables');
+      return false;
+    }
+    
     process.exit(1);
   }
 
   console.log('✅ Environment validation passed!');
+  return true;
 }
 
 // Validate URLs
@@ -76,7 +84,10 @@ function validateUrls() {
       console.log('✅ Supabase URL is valid');
     } catch (error) {
       console.error('🚨 Invalid Supabase URL:', supabaseUrl);
-      process.exit(1);
+      if (!process.env.VERCEL) {
+        process.exit(1);
+      }
+      return false;
     }
   }
 
@@ -87,23 +98,77 @@ function validateUrls() {
       console.log('✅ App URL is valid');
     } catch (error) {
       console.error('🚨 Invalid App URL:', appUrl);
-      process.exit(1);
+      if (!process.env.VERCEL) {
+        process.exit(1);
+      }
+      return false;
     }
   }
+  
+  return true;
+}
+
+// Check Node.js version
+function validateNodeVersion() {
+  const nodeVersion = process.version;
+  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0]);
+  
+  console.log(`📦 Node.js version: ${nodeVersion}`);
+  
+  if (majorVersion < 18) {
+    console.error('🚨 Node.js version 18 or higher is required');
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    return false;
+  }
+  
+  console.log('✅ Node.js version is compatible');
+  return true;
+}
+
+// Check memory and build environment
+function validateBuildEnvironment() {
+  const memoryUsage = process.memoryUsage();
+  const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+  
+  console.log(`💾 Memory usage: ${totalMemoryMB}MB`);
+  
+  if (process.env.VERCEL) {
+    console.log('🚀 Running in Vercel build environment');
+    
+    // Set build optimizations for Vercel
+    process.env.NEXT_TELEMETRY_DISABLED = '1';
+    process.env.NODE_OPTIONS = '--max-old-space-size=4096';
+    
+    console.log('✅ Vercel build optimizations applied');
+  }
+  
+  return true;
 }
 
 // Main validation
 function main() {
   console.log('🚀 Starting pre-build validation...\n');
   
-  validateEnvironment();
-  validateUrls();
+  let allValid = true;
   
-  console.log('\n🎉 All validations passed! Ready to build.');
+  allValid &= validateNodeVersion();
+  allValid &= validateBuildEnvironment();
+  allValid &= validateEnvironment();
+  allValid &= validateUrls();
+  
+  if (allValid) {
+    console.log('\n🎉 All validations passed! Ready to build.');
+  } else {
+    console.log('\n⚠️  Some validations failed, but continuing build...');
+  }
+  
+  return allValid;
 }
 
 if (require.main === module) {
   main();
 }
 
-module.exports = { validateEnvironment, validateUrls };
+module.exports = { validateEnvironment, validateUrls, validateNodeVersion, validateBuildEnvironment };

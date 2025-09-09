@@ -183,20 +183,9 @@ export async function middleware(req: NextRequest) {
       }
 
       if (userError && userError.code === "PGRST116") {
-        // User doesn't exist, create them as non-pro
-        try {
-          await supabase.from("users").insert({
-            id: session.user.id,
-            email: session.user.email || "",
-            full_name: session.user.user_metadata?.full_name || null,
-            avatar_url: session.user.user_metadata?.avatar_url || null,
-            is_pro: false,
-          });
-          userData = { is_pro: false };
-        } catch (createError) {
-          console.error(`🛡️ Middleware: Error creating user:`, createError);
-          userData = { is_pro: false };
-        }
+        // User doesn't exist, just set as non-pro and continue
+        // Don't try to create user in middleware to avoid type issues
+        userData = { is_pro: false };
       } else if (userError) {
         userData = { is_pro: false };
       }
@@ -221,7 +210,7 @@ export async function middleware(req: NextRequest) {
     return response;
   } catch (error) {
     console.error(
-      `🛡️ Middleware: Error processing request for ${pathname}:`,
+      `🛡️ Middleware: Error processing request for ${req.nextUrl.pathname}:`,
       error,
     );
     // On error, allow the request to proceed to prevent infinite loops

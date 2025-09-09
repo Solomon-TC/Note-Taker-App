@@ -725,16 +725,16 @@
     cookie "^0.7.0"
 
 "@supabase/storage-js@^2.10.4":
-  version "2.12.0"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@supabase/storage-js/-/storage-js-2.12.0.tgz#98a384b420a8f6337441e8152e3108290d018784"
-  integrity sha512-HdKq8jAARnZ/OokE0wml/KzLwJ1X/iX7GtfLvve1HHxxsB3Y0juk0+3dMKr0mKRpjiGzzgvHhF2hxt9ui17OUQ==
+  version "2.12.1"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@supabase/storage-js/-/storage-js-2.12.1.tgz#95c0e541e063c71585fd64a334ebf98c1f578320"
+  integrity sha512-QWg3HV6Db2J81VQx0PqLq0JDBn4Q8B1FYn1kYcbla8+d5WDmTdwwMr+EJAxNOSs9W4mhKMv+EYCpCrTFlTj4VQ==
   dependencies:
     "@supabase/node-fetch" "^2.6.14"
 
 "@supabase/supabase-js@^2.47.10":
-  version "2.57.2"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@supabase/supabase-js/-/supabase-js-2.57.2.tgz#b99bfe639d1e922a5eaa94901f996b9da95a5679"
-  integrity sha512-MxaZqZKUPK1ExzOilgSZqCPCxVPjevUrh6bcWz1SrDZexFc9VJ2cJbVP1EG1hKQx/bfLdTUjIZMoIrYpYqAPYw==
+  version "2.57.3"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@supabase/supabase-js/-/supabase-js-2.57.3.tgz#9064f9410a41a2c44c1f6acb84136752518698d8"
+  integrity sha512-gROsjAJ9ckeBpsLyMwK9plaZjw1uhlGgKp2EEQRJryPmI0jpKoGc07rvZ7KF8nk7H8UCwvUeYl68Fiw6M13tNg==
   dependencies:
     "@supabase/auth-js" "2.71.1"
     "@supabase/functions-js" "2.4.5"
@@ -756,209 +756,209 @@
     "@swc/counter" "^0.1.3"
     tslib "^2.4.0"
 
-"@tiptap/core@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/core/-/core-3.4.1.tgz#1954aa89a5d6f61e369fa2f5098082335a2991a1"
-  integrity sha512-31TFNnejJeOL/Ds9uB2Y7EnldXsTLeM3HQ7vExKU6So1o0gdFIBV67m/CESy84lmdb2O7ZXfQVOqedJgojip6A==
+"@tiptap/core@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/core/-/core-3.4.2.tgz#69b8d29aa183d1cbd04a607e4ce43636a1bb813f"
+  integrity sha512-OYU0VoFiMoIsMfQibyuNf1dk3ERvUK/eBKsfMnEr8Tr3+l0ltg+xxjiLe/U0NHR/A0myvNXqc2zyVxtyDRYPGg==
 
-"@tiptap/extension-blockquote@^3.2.0", "@tiptap/extension-blockquote@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-blockquote/-/extension-blockquote-3.4.1.tgz#fa2630d8adddcaa704cbc110f902bdd2164778de"
-  integrity sha512-8zu0LnZKl8Fl6oTGxekXhfKxVLDK2GzJwEiewZjVox5i4vVjiO19JgElv0O8mSg8MrfQckywWgXE5MLNKyuSDA==
+"@tiptap/extension-blockquote@^3.2.0", "@tiptap/extension-blockquote@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-blockquote/-/extension-blockquote-3.4.2.tgz#3280fe177b62060c80fbb4fd445c5366def95447"
+  integrity sha512-v7tONi9eTVHK8s6ligSMz1ATy72zQNNrI0A7EmX9kTcUodVl44i0Tw+mgGyeMEKo+oSX88yPhD+lKXKUVleRHA==
 
-"@tiptap/extension-bold@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bold/-/extension-bold-3.4.1.tgz#c10c51fe893d19a8b9cd8de9a76cb821e55dd60c"
-  integrity sha512-VczYr41YirQ+NKVIGiLL8ZMoaRQW53oj2gSEUSp4fAXXhy2ARjKM3QCkjd7cuYnoDYfpdOw8gS8QRyuyW7bIFA==
+"@tiptap/extension-bold@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bold/-/extension-bold-3.4.2.tgz#3b79ad4c420772bb6fe08095c2fa45f66a09288c"
+  integrity sha512-/TYN0jFlXul/D9TSqh4i5vnZR5AmptOc6SJCYZAoi/U7qF4D2xtuAic+lkW0p60Gtrgqgap666scvVCnpnJlzQ==
 
-"@tiptap/extension-bubble-menu@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bubble-menu/-/extension-bubble-menu-3.4.1.tgz#947808c3e5325b78122edc960b32c6bcacd0fbac"
-  integrity sha512-dWGtPOBpMIonGoN2C1DULbXgaTFZLGcGHtvY/0+GEITTp1Tg20WmtX7ij9bYeFVrNCi5cs1smshdryfbS/iVqA==
+"@tiptap/extension-bubble-menu@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bubble-menu/-/extension-bubble-menu-3.4.2.tgz#b05dc8d60b696c72bd1bc34e9b039295725548f9"
+  integrity sha512-N8rbb6H5qfXMRdudB3Uz4kUjfGf3bcIbu20/4emRFajILvhnbobvmYGPsWxVVS4UL0tKETCfEuTVaflWy+ZrmQ==
   dependencies:
     "@floating-ui/dom" "^1.0.0"
 
-"@tiptap/extension-bullet-list@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bullet-list/-/extension-bullet-list-3.4.1.tgz#18016fb2a181c944f5ed073b3aaeb39920e801d4"
-  integrity sha512-9driPr2ies5ZcNfJOekjkerF0uc5hiG0leSmQULkWMg5ucJ7ppo3fGEFdYPtw8/yBK1ZPuIiIFTUhAYhJ+SdXw==
+"@tiptap/extension-bullet-list@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-bullet-list/-/extension-bullet-list-3.4.2.tgz#e255ed5e20a03efde8cc595de2befc492c1ff912"
+  integrity sha512-j7hPCaULln7w90KMyvcubM51bQrmmzHKQJcs/EccN6rhsL3hqJ4fIiyGRKhGbv4QVXzqwLJXNkQusOKDchi8pw==
 
 "@tiptap/extension-character-count@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-character-count/-/extension-character-count-3.4.1.tgz#014e94583082f5cacc1726ecab924bda329387e2"
-  integrity sha512-7HFH/KjCKGngF9wRTjMmGVCR5NsyuEFFSbLoPFxgi6BJSZ4bKnunOjbn4en1qrlRgvtZ0ve1Mja1ngjXjT9ZFQ==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-character-count/-/extension-character-count-3.4.2.tgz#442c73989203303c693cd9cf8a8acee01e6d1d4a"
+  integrity sha512-XMKc8s3mAGQH9t2rN0CuvX/6cFSUOZuQxse//gv/+RxHO6eDtgzZs5tUH/E25CEysAW30kXd+T5ZGc5BRxRytA==
 
-"@tiptap/extension-code-block@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-code-block/-/extension-code-block-3.4.1.tgz#ce0057c7a0cee6e30b28dd716c65f1b680f1cb26"
-  integrity sha512-uQM1G5YNtha4xRj1ZFYmDZWDvY4aGen0it41ZEeU5BgZnud1QBVM9OCs1A7Qya7yQaZl4Ddn7xv6Aq8X4lwJTw==
+"@tiptap/extension-code-block@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-code-block/-/extension-code-block-3.4.2.tgz#2bd8a53c4cfbab258d6e6b7d533b6ee92cf92e63"
+  integrity sha512-H5Y8Rs3EnH9u5gkxEikUWTyBf1WmttPSmEsEmBh0a6Lj9m3NxAbOEvKszibkqJNvfQdpomKCMQU6w/OXiZC/DQ==
 
-"@tiptap/extension-code@^3.2.0", "@tiptap/extension-code@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-code/-/extension-code-3.4.1.tgz#5b8271392588c77a5bc96ae0545feabe4eb17429"
-  integrity sha512-ZLdzl6tfp1gS4fQPpnxEYtLC50ql+depzlP7sTDy84mNdtFnGnEo19NjM402ijX2CtFQw86ieX05K8qFBzNSxw==
+"@tiptap/extension-code@^3.2.0", "@tiptap/extension-code@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-code/-/extension-code-3.4.2.tgz#c854cc09a1acb4d3b27a3f742777c957f7c58731"
+  integrity sha512-7A/ihn8ayA7K6CzETmWFVzixyOVRVSviRMIleNGknBtF6C4bmqfuwBa2KAonylv5ws0JZfQRQU7itrHE8FVdEg==
 
 "@tiptap/extension-color@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-color/-/extension-color-3.4.1.tgz#ca0d8a269b52d85d222d436424c68056ae0952c4"
-  integrity sha512-O9lXy6Oqoe10Z9XAutRuALd06fn51NfDYY+fhASfP9Bl5qVcMVtF5M80l6WJDMQ19xsEhXBlyYZchwRHucqNbg==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-color/-/extension-color-3.4.2.tgz#3d3fadb5522298be1bd5e4a8ed599d9d15fc2909"
+  integrity sha512-FvgmGQfi+aFffD2N2Ffn9q2r0TObaG4oSfnv3dxR5xVgRTT0KL5doxdD4i+RmX9OC8uchW6TGVlK5Fy+bOZBrw==
 
-"@tiptap/extension-document@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-document/-/extension-document-3.4.1.tgz#c01db41a32435714193eb83d5bf4dbad5b112490"
-  integrity sha512-Q4Mdo0QypRvCuIW1n0gTEVi7QXgBeIQx+7721ERtlGOvwWh6MYLqKNTudZ6Ldc4pRkGJpTuxai8mmNP7eFShBw==
+"@tiptap/extension-document@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-document/-/extension-document-3.4.2.tgz#d3eaadf61e64869a8de45fd18e65040fc77a39af"
+  integrity sha512-y6XfihmKYrqUEAeyZkkF39/dBqvjf7TavCPVPaN42agjFYukiZExgtDb+xkagxdbDzf1F8327CyoAqNajhj79Q==
 
-"@tiptap/extension-dropcursor@^3.2.0", "@tiptap/extension-dropcursor@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-dropcursor/-/extension-dropcursor-3.4.1.tgz#3bd10fe6c2f9ce3ea1a24a4285f3a222e8352ba9"
-  integrity sha512-BCK5yDpNL14A1oTfEVfPOhNt8XdDwXmS1L1eqY42NajV7U2GKfMar+OuAi/BAmrF0AF7t0has61tSqF7InmR4Q==
+"@tiptap/extension-dropcursor@^3.2.0", "@tiptap/extension-dropcursor@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-dropcursor/-/extension-dropcursor-3.4.2.tgz#15a6a49361def6610dac794069117ecccda24324"
+  integrity sha512-BHjfpusRvxsa8aV1C0O0mNNjBGWfa1uwolHflCOb4PNkh9nGU0htuaPYTS4fGEVVKOhOC9qsp0hUHSejWL1E6g==
 
-"@tiptap/extension-floating-menu@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-floating-menu/-/extension-floating-menu-3.4.1.tgz#0f72d43c71a22fe532acd6406cdc78e6e1a36bf6"
-  integrity sha512-9qGINja20Kz4XI0uESoYiwgGo+ejvDrHiSoRmd3jkDMv6fGMXj1U+HYzqhXZTV30kuQZQN8twNmbmzBu+jltYQ==
+"@tiptap/extension-floating-menu@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-floating-menu/-/extension-floating-menu-3.4.2.tgz#7a3d6723b194d60b8a789fd6218a4051e2317a65"
+  integrity sha512-2jDugvR7e506fDfmO22cHU0XnRyBsvig8XNSBPEcXyP3xy53kxiaCF4CzRC8DyzuC7u1NilII27TnwV5iM+9Pg==
 
 "@tiptap/extension-font-family@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-font-family/-/extension-font-family-3.4.1.tgz#52a2fed216ca73fdde9957519d17ac7276e68b3a"
-  integrity sha512-waVZKPJ+ut2eFfj3oVlsu02USMYDGbl86wjZ+ZIp3UrHSZkC11XIJfZQOoUt9j+syRSCsysvC72+mtlyuwOsEQ==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-font-family/-/extension-font-family-3.4.2.tgz#3cb6673108773d63e51b58aa2db638f68b7b2078"
+  integrity sha512-v5R1Cko4n2Lz+YB/yMaQla1KIRFn8sQF1+F/82nxqHuP0fxi20TJU0aSlbQK9DN2IM8UBkTUEVooq8Pa4e1Eag==
 
-"@tiptap/extension-gapcursor@^3.2.0", "@tiptap/extension-gapcursor@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-gapcursor/-/extension-gapcursor-3.4.1.tgz#3e861c7484159b76b513fdaffff2775c340e03eb"
-  integrity sha512-UvN7+ZRis7vWezvk5LuisFsdlt7H73uglBABMNS+OpPQl5cZyoEyZ4195g/rYzxaIk7YSIUg0CL7ivpyPOH6JQ==
+"@tiptap/extension-gapcursor@^3.2.0", "@tiptap/extension-gapcursor@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-gapcursor/-/extension-gapcursor-3.4.2.tgz#a934e9e3dd46c4415afd315076913f992714987b"
+  integrity sha512-cn85HNyqaZpY0QPmETyB0QS/B24rFQxvtOLL1gf0hLFvTp7kuMYTFcU6CgDibr4uDu2hBBXhgTRTOl2e3bN8Xw==
 
-"@tiptap/extension-hard-break@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-hard-break/-/extension-hard-break-3.4.1.tgz#542abac8008dc45e0714e2ec784d295846425329"
-  integrity sha512-KK1LaUmgp/ODxdQ2csueIQ8s+jQclsjiC9/Upd7vzF0pzRyGdtB7qqPEXa9iijVof1ExNuxfIWzPG2YJG241DA==
+"@tiptap/extension-hard-break@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-hard-break/-/extension-hard-break-3.4.2.tgz#e677751e72f3f9c525c2b880602614390c5fb433"
+  integrity sha512-h5CfGZyUrhzUCXwYgmxUaQKsu+zZC2iDpJkJK9TH7PobWkN3fFPfmc1D2LrDyYI24G8ozzqHQissAQl4JEag5w==
 
-"@tiptap/extension-heading@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-heading/-/extension-heading-3.4.1.tgz#b6ad320fd65f6dc5210993132ac79ba19fa59030"
-  integrity sha512-N/ZLcJKmCz6WVBuNP7TLE060x3Xg9+gnlAO+kzwhpElUdMXcMnkg27PMy2jBjP0iFN7bo/hEizJ2GzuoRQ5YMw==
+"@tiptap/extension-heading@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-heading/-/extension-heading-3.4.2.tgz#0884813d68d1e3285fe5d42b2d5058d58b1d841e"
+  integrity sha512-8Gbc52jjDVhVbXoNNVXeIkfMP3sHCfqW/GqYjZ9onYPYk1GD4DkSAMH9naRJ8g/+Z6lOkKM+ySF/gtdAVOnBTQ==
 
 "@tiptap/extension-highlight@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-highlight/-/extension-highlight-3.4.1.tgz#ad3f65a765e18fed6a755b57e00bfef0e4ebca44"
-  integrity sha512-K4+xA+7dS+JaT9IStVysQnF1RU2nzNp6Xp/PagtywkKSJozbT9NA9ketx66/wfCmcKfvE/YlrV3TVnwuT2t1Hw==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-highlight/-/extension-highlight-3.4.2.tgz#c6c0462f848b1d600ab0f6710c5e8d0be149523a"
+  integrity sha512-jLPTmTuMQTP4nhCWG9XL1QKoOv8a7XG6NrqtBO/8+wHPGrl+C9Qb+QxrJrbrpsC7IadNVccp6hF4qAGAaVLtQg==
 
-"@tiptap/extension-horizontal-rule@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-horizontal-rule/-/extension-horizontal-rule-3.4.1.tgz#f261e62dd276a9c602cf14b057869a1dc115f4cf"
-  integrity sha512-rZDci6ZER5e41qr6z8ZC8L7Ir8AaPwRfY534jH/FVuKJeg6T7TEIxUQoYFp2QZQMhr1Hb81MfmLO0RUpoIitMg==
+"@tiptap/extension-horizontal-rule@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-horizontal-rule/-/extension-horizontal-rule-3.4.2.tgz#84ebcc51e8c3269a4ef68f813aa83e19897b02ae"
+  integrity sha512-LK56R4ZR/B6nMxdyiDWuV6nk5akX8/2OXp29ZuX34BBYkFNjLBF9evGCHDy60az43JrSi/wwTUDafAxdO9S2Ig==
 
 "@tiptap/extension-image@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-image/-/extension-image-3.4.1.tgz#1ceba9693f95e51548913becf6a8e322d4fc4810"
-  integrity sha512-LOEsyDyxO6i/7gZbBJ9jLcVtKfHGbItWVaPosug6IbWeKpWDLpp6ao4DvnMLuckuzTkcLW14k0uVUVdMTcFQuQ==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-image/-/extension-image-3.4.2.tgz#08c5514893b24ae896e572050b2f8a06e82cf962"
+  integrity sha512-76pWwe2WEPw/LMEh+QTEJRGKM5YLAJfmt64DOlO887YH6uXjTn5tKJ3gedz+0ZM4NhHh61JbfXcdTFEhkMxMZA==
 
-"@tiptap/extension-italic@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-italic/-/extension-italic-3.4.1.tgz#84568e7bb0b0ce22339a756e9913d5d6cf24854d"
-  integrity sha512-4SAGv1N1Ywsql4te4SxR/W8DwEHtDanks9DjBjqezum2BP1HdtlpBBkh26LjbhS6I+XZqrz9CFDqjuvfXQI89Q==
+"@tiptap/extension-italic@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-italic/-/extension-italic-3.4.2.tgz#1567fb395a8fab1912cb01f0a978860b307c4700"
+  integrity sha512-X+ySvBlO2bpJJWgaZKVesh/GV5VtBchYZizEBUaPvkgYsS+s0Ujwz3YQvszX/JnfJ4k239D9S+bpJi4dTN5Utw==
 
-"@tiptap/extension-link@^3.2.0", "@tiptap/extension-link@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-link/-/extension-link-3.4.1.tgz#3a70549d2feb6c8645a7b02b17a3361e91a2b846"
-  integrity sha512-SDKC4HMc42xFxIDO0t9liKSmLy6DEcueteKuIl91jUBBnP09+hv1QP94nhwxVCyO73ppHeSKxi4wXkK3lVVtPQ==
+"@tiptap/extension-link@^3.2.0", "@tiptap/extension-link@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-link/-/extension-link-3.4.2.tgz#3c06a67be20a2b87c88fb4f86a9a696da27b3a1b"
+  integrity sha512-BNewJ6A6sHWzOlRhTtCp5ZLy8IguH54eEidntIbjSqV1nXwZot60PVdB+d53Mbz2SJJkdSrfbI7Kj0V1BTh6gA==
   dependencies:
     linkifyjs "^4.3.2"
 
-"@tiptap/extension-list-item@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list-item/-/extension-list-item-3.4.1.tgz#1114d139ebc504a406ff8f84fec08ccf778c89e6"
-  integrity sha512-C80uU1cGci11u2yM1SCzbuqfWXsbR6bTgCiULaholHuOPWEVhlzc7HKamYxNYXifmGQkLTTZ21bRn4O11F2MVg==
+"@tiptap/extension-list-item@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list-item/-/extension-list-item-3.4.2.tgz#7b1b27a24dd82aa2a76ca977fd2e9c2f6084c08d"
+  integrity sha512-OrRKIYih4Wc+TofAAgukpMEzq8k3BH6WY7QzPtxti58aji+euNYznt2YQm8m1oJdMECYOaREV4cwXvmES6rk8A==
 
-"@tiptap/extension-list-keymap@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list-keymap/-/extension-list-keymap-3.4.1.tgz#4f9cc8d1c7fb1803b7f223cf3eb7fefc14a465b2"
-  integrity sha512-P4NQREr2QhUTl3BVC/Tibjh1oR/Muc0PyZ+qzPBdMv1cfATsQZR4M2FDtYOnvqpaesn+HQMnNqubS7WKLheGbA==
+"@tiptap/extension-list-keymap@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list-keymap/-/extension-list-keymap-3.4.2.tgz#d156bdc6295ac4f97bdee6af07645244475ddf9d"
+  integrity sha512-VbtrCeoN64ByHL2jQUx2Zya+u8JxEvsRTelr8hksSGRrrZyahG1JESpu7Z2Y8Qjo5NEfSivWuEw9kbLCXsjvjw==
 
-"@tiptap/extension-list@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list/-/extension-list-3.4.1.tgz#7101dd44c71e881d004b80377ae34f3468fe02ec"
-  integrity sha512-HyPvpBoenF+e2EwIrg+/en7axIn9MEcgLzfsm0W0U0XMXY5oAyvvfFDv827Zop6NndDvbdEHLEGE8J9IEpJw3Q==
+"@tiptap/extension-list@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-list/-/extension-list-3.4.2.tgz#35535dfae5ac743cf52403dee4c4150784dd94c6"
+  integrity sha512-ribIYMre1EB6TdyNhEBbO23p2f+UQj5KghbtcI4wYmthjnN+LOag+dUM5sBAiUhUyBlmc4MC1As06yWTu2hzqQ==
 
-"@tiptap/extension-ordered-list@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-ordered-list/-/extension-ordered-list-3.4.1.tgz#5078e573c0067b117b7417766e6cf35efd28e810"
-  integrity sha512-M2ig/JD8iDBxqasCl7/QRnzoeKGo+4CgFTDbroRTbQhkxuLXhDfhWnlABjQvKDqBK465cziIA9qGwqQzePIAXw==
+"@tiptap/extension-ordered-list@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-ordered-list/-/extension-ordered-list-3.4.2.tgz#42040e91f8a484654888c604c31c37cd447264c2"
+  integrity sha512-q9w7fQ26PZkbS3iD4h4HpoFoI5ap5jyYeGBugyhgGdHeF3luKiorleSY7m8NNmLlB6FWfDZZqPBWhrZgzPdFiQ==
 
-"@tiptap/extension-paragraph@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-paragraph/-/extension-paragraph-3.4.1.tgz#e320a902b1c111966ba2b147eefce32800880753"
-  integrity sha512-LU8cmn1jctHbr66yIbtlANt957DmryjiPwzOmQHQ6rAkiDflOmexgNeJfU3jACxjB3uT4XrNsSf5dC96Fkb94g==
+"@tiptap/extension-paragraph@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-paragraph/-/extension-paragraph-3.4.2.tgz#312396e72ac85935004dc60c6303a0cc58671ff7"
+  integrity sha512-M4M+N5Sit82HUK9rp662ZL1X/MMkD3zMnD8i5gV0Gj1T+YwToAGBIdte7n9QoAcNZr1cOdjAveI+HzOw6UA6SQ==
 
 "@tiptap/extension-placeholder@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-placeholder/-/extension-placeholder-3.4.1.tgz#60e3d96f8e0b919d8a23bf0d57f4d361b25cda4e"
-  integrity sha512-F528I4eEx4+clpK0/FC5+Ayp0VK+bD9PK/4tBawI6HnZDD3toOzWvuP0DzMbR1XRuZ+u7oDYDmz7OmMbM8SLPQ==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-placeholder/-/extension-placeholder-3.4.2.tgz#b7e9c2f0e90570a98cc3e7fe283432a59f150940"
+  integrity sha512-it4BIl2quDLIBM3I1y618kvOHYgcWBaf9VvLTN2SzTAt35cn5ySOFBOxM2eSr8HG1WigdL9eIL/y1hENsdQrqw==
 
-"@tiptap/extension-strike@^3.2.0", "@tiptap/extension-strike@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-strike/-/extension-strike-3.4.1.tgz#0b3312d8ed592e4a55948be05b89f99183b49ae3"
-  integrity sha512-m3RJA9kq39mDUZR/i9NJVtNlbaa+7F+hv8FkNDNOyaHwn52mas7bbtNEI73/O48r7GsPhLhfzeShhGXtwRINmQ==
+"@tiptap/extension-strike@^3.2.0", "@tiptap/extension-strike@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-strike/-/extension-strike-3.4.2.tgz#dfa01b06c543efc195608d5153813cc97d10f933"
+  integrity sha512-bgdq2eW5omli+rv6PHErDME1YocT1BHkiWvRV5pRYyTz5TZTgYujA0Qn2DjsW1baFike0oG3ToLAxH5RnViDoQ==
 
 "@tiptap/extension-table-cell@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-cell/-/extension-table-cell-3.4.1.tgz#f0a26d541e71d7f5d997aea5550c124b31e6609e"
-  integrity sha512-9W+EQDgDMqNafKX/O/SC80RDzgaMGpQNCjYRdvhalIgYCZT9GIY+s1+yflo6nFZ8bKQDe/FlGBhtR3PV0C2NUQ==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-cell/-/extension-table-cell-3.4.2.tgz#12bf0c564fb122d45c5829fa822a8e8220ec8a03"
+  integrity sha512-MJ1FIBwrICFHyIhS815wt5qudwES2jrCwSFmrxf7skBK4BeMaRSrWzl9nrB9TOuHEKfpSCav7VQKVwZueE3j9w==
 
 "@tiptap/extension-table-header@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-header/-/extension-table-header-3.4.1.tgz#84d6f1964eb01ba60b5e5840e049f65ef37ae750"
-  integrity sha512-vKWSk4If/r+sZsXZusZpcZ0fdigcdGQcduQBZPRJ7B6ZbnLJL0zoypIudnF3usPMjtb+YL0ZZvqBlbhX8IZSZg==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-header/-/extension-table-header-3.4.2.tgz#f951aa7176ecf9cd25c51d26e8cea85cd526e288"
+  integrity sha512-7eB/E+4QBWlw26dBoPJ1h8nppUReffBuq8CZD4oZZcfQklfeWg2HIBdjl8E1Bga4mcyplzmnVvZ8dyIk5s0hXw==
 
 "@tiptap/extension-table-row@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-row/-/extension-table-row-3.4.1.tgz#52e81cfddabc95e28c2514ba2729fd1b8581f9d8"
-  integrity sha512-ND0xMbJXqqfg/Pl3lCkBJUkrUHdYTj8EdVhtuUAqSvudHg6Xo140h07mxKuACNsS1xuv6IQ9UoigT/HErB2J7w==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table-row/-/extension-table-row-3.4.2.tgz#e0dcb1968d9233f5b6be578467e56d426b322aba"
+  integrity sha512-xhXCsPGR+RiddUKJsCIlLmHc0u4MtCsZp4ni/D3i+IJzCMPub1qivZaY7O+Wjr/2xI2SI/cvkWKPzfQKY0Yvvg==
 
 "@tiptap/extension-table@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table/-/extension-table-3.4.1.tgz#44c14029a5544a97c9f998032b9b8b828e3766a9"
-  integrity sha512-2yXveI1632p/B/jq6Kjg5/BE85hKM5OQAkLExisxdmQ2vAEARBj6Y8iMXdsc7BJJMjwu0Q7eT3EsvDNpYJgehw==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-table/-/extension-table-3.4.2.tgz#5ca3b8008db0459cc9a16c60ad1783f8f796ba37"
+  integrity sha512-7fDsn+ovqjtsJ+B5aNdMoTzMIlY8NqMXzp96EMoOu2/hVo0CtPzEfDWZ5r2ehLo3KJvtNDLihnKLw2hwKL7rAg==
 
 "@tiptap/extension-task-item@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-task-item/-/extension-task-item-3.4.1.tgz#c335cfff36d2f17335139a536555189d37436dce"
-  integrity sha512-q/+U0SIDNDsV4pLhnn2QQUMgtBaE0Br2tBqHz1SZ8zGCZE4iK52h4Kgl6gjAHDgTKrMKcz+Lvnh12htLJVVNmA==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-task-item/-/extension-task-item-3.4.2.tgz#5454c449e1d40c32357c71f7ca10eb2195c15cb7"
+  integrity sha512-Czgco3WU0CUNEviGcSCYk+M4uZk3BlxO91Ghc+erMks4tmNlByfViL4wsPWAYNk8x8baJ50PeNTm2cxpTsNKcg==
 
 "@tiptap/extension-task-list@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-task-list/-/extension-task-list-3.4.1.tgz#171f9a74b7bfdab54af114766dde06275e951dab"
-  integrity sha512-zalJ/WXd3mOQb60HRJyH3LhqjmxeruxC7F3e9ee/n4VObP99Ml5Gr5tOlk8+RN9osIrguByp5y+ySb2KShIN8Q==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-task-list/-/extension-task-list-3.4.2.tgz#455bc0102fc4d339448d12a9b88d425ffc63474e"
+  integrity sha512-qvHniJK/w2EC/oR9v6yXBdyvKegu9kp0thZb6a0gfB4/Lb38BY3cg6oT/jdsW7TSYLOFfdjkXt36Mtl6APxW7g==
 
 "@tiptap/extension-text-align@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text-align/-/extension-text-align-3.4.1.tgz#28cbba48648778f05f8c4642019872af46f97aa2"
-  integrity sha512-WndNLIHVcSHh67cUQW4lE660C20BN4F5bgYKKIAtPeXpS8hFvWIULdeTaxMoCPiFerTMlCGrxLNpKQsGGNQdEA==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text-align/-/extension-text-align-3.4.2.tgz#330407677fac984012721f0d78d7bd7e5956e042"
+  integrity sha512-PAZPwYTaH/BYvVHmK+53VvYIGV5JzmQyycYdy5JHc8EiczBBJ88HtG/hH8ZViRAXsiONld3ANF8HWyvgMSyILw==
 
 "@tiptap/extension-text-style@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text-style/-/extension-text-style-3.4.1.tgz#1bd09965d3ad19532b8245e0eda95b5e1b9f4c64"
-  integrity sha512-VEF0Qlok8hlvh9tYOdLKTaY2unbr6yKFb7dL5O29/TXJ3WdfUgg9Brlrtzy9773ZoSLoGx6N2kLz61rZFH5BwA==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text-style/-/extension-text-style-3.4.2.tgz#17b5468c159cd4e7db51c0445df024bbcc2f1500"
+  integrity sha512-ioCf7VxWj2t+seC2vfzGtGlcToGKpwz6R5HMpo6/CSBDTZc5LsPTiJqJ6R6ahjqWwAKHI6SzlW5vtS36OywDzw==
 
-"@tiptap/extension-text@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text/-/extension-text-3.4.1.tgz#0c32964eb311f3bc85373dd6f03e005e92f95ce4"
-  integrity sha512-6qcBjRAE4HpjbFShf9e44uBuq8jMvrumzvK4FwhAwZ7S8nyywN1WLZY3S1UQLMYJr3wZn+9IhKMb2CjBeGIPiA==
+"@tiptap/extension-text@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-text/-/extension-text-3.4.2.tgz#0e3979068ab0d7aa2754e001a662f219252b06e5"
+  integrity sha512-g7F1utUaVibr0ohnvfj4zJh6lofP5mQY+6sE2CDsHD1IE5VcBGh7ONWUMzAAGzi9oHtKSqpzPiUfw1BtmF8/+Q==
 
-"@tiptap/extension-underline@^3.2.0", "@tiptap/extension-underline@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-underline/-/extension-underline-3.4.1.tgz#7bcc912fc8c1c25ba8cf9e0c6e9ba63dbd5db647"
-  integrity sha512-WB/AeVQ98DkHyQEaTOAoNhWwJTdKFCztlyvkGlk2PBzKBGu9Aa4mUHbhz6afoLmSH3LRcrC1Vwbdg+6o0lwWiQ==
+"@tiptap/extension-underline@^3.2.0", "@tiptap/extension-underline@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extension-underline/-/extension-underline-3.4.2.tgz#c3c02ab8ac1b04d69578b6038273b3e8e393b283"
+  integrity sha512-kOOYE81n7w8yFt63UDjPq3hFoPXIGwcIbXOZCaB77tmLy4Cfy7ewa0oVnzunCXsGJs1Je4NbIqFnJq0H2KyUPw==
 
-"@tiptap/extensions@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extensions/-/extensions-3.4.1.tgz#cd181d9765516e35c755d04be6fa3566f0a39c4c"
-  integrity sha512-OFqcI2NwFm0pzik7yyaF/05d/j4ED3UNRVcjqwU+LdHCm7NKOChEuuyMKcqx8G6DNe9419wyKbB9fy6ykLX1lA==
+"@tiptap/extensions@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/extensions/-/extensions-3.4.2.tgz#7ff89f01f996341de6ae4807fa70ac044f57d7ce"
+  integrity sha512-0EOPKVU0whK4tw7TenmJe0M+DfV8Fjj0b6ZO0hqq2rOFWtBRUdRd7QLdg8XUk70D1BbZ52kO0ggM4zZqhW/57A==
 
-"@tiptap/pm@^3.4.1":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/pm/-/pm-3.4.1.tgz#5322ff2f4f63a60135a46b63912888ce0e25611e"
-  integrity sha512-fI5WjxY9NjHdNNlfYuvQ7WBjr5LLTOHg5LQ5/n/2RTbOYwTrhmKpAJiVVFFHB6BdmOF399MtKL1GyEflkln4KQ==
+"@tiptap/pm@^3.4.2":
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/pm/-/pm-3.4.2.tgz#5fba73efd233a2ecc6c819cb5c62652a1fea0d17"
+  integrity sha512-cU1DYb1vnpAZhe7R578PfSCh9FbZDf/zR3wuhc6QOkZjGertTgG9ge7pn0RZnJeX4U9hO1WWJ5eOIPoalotlcA==
   dependencies:
     prosemirror-changeset "^2.3.0"
     prosemirror-collab "^1.3.1"
@@ -980,46 +980,46 @@
     prosemirror-view "^1.38.1"
 
 "@tiptap/react@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/react/-/react-3.4.1.tgz#ca580b021050d633a3228b19a44ae324ad5451bc"
-  integrity sha512-FLSHRlyk4/QG43pZcGSumipUoi55pjgrzx96n5XLNtrJnCgVZMqrFzfOYR3m2MynF9XyPIRJYqLiY2HReULniA==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/react/-/react-3.4.2.tgz#5a94e0624ff15da52987b8b74ae30c752a9f58e8"
+  integrity sha512-kNcn+uNMs76GXYLBtEwR5pE357MdCKvIAQ3Oobq+//rrynRK/RP2IlRpybTWhrn/y7d4nD0DfHbFnhDpokoJIQ==
   dependencies:
     "@types/use-sync-external-store" "^0.0.6"
     fast-deep-equal "^3.1.3"
     use-sync-external-store "^1.4.0"
   optionalDependencies:
-    "@tiptap/extension-bubble-menu" "^3.4.1"
-    "@tiptap/extension-floating-menu" "^3.4.1"
+    "@tiptap/extension-bubble-menu" "^3.4.2"
+    "@tiptap/extension-floating-menu" "^3.4.2"
 
 "@tiptap/starter-kit@^3.2.0":
-  version "3.4.1"
-  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/starter-kit/-/starter-kit-3.4.1.tgz#9494856309856835495c236f815cb34c85495327"
-  integrity sha512-DY2qNz7mz6KgZcRqhmYdgQbjhRO1jKDCEkaTvpym3NuLMv+CzoBZxnn2aRzUnzM3amZPgVOHqxKx4KyeUa0+lA==
+  version "3.4.2"
+  resolved "http://verdaccio.verdaccio.svc.cluster.local:4873/@tiptap/starter-kit/-/starter-kit-3.4.2.tgz#e13da11dbc7a892dc24fe4d11e085e4bcdd5567f"
+  integrity sha512-qfw9RljtZNLpqj+lnkgxok+ksCV/OR4rBX7QSJXaQYVJuid2tXejFj7vqsJQaf1Z6zT9swdk7js92qlwjCO0BQ==
   dependencies:
-    "@tiptap/core" "^3.4.1"
-    "@tiptap/extension-blockquote" "^3.4.1"
-    "@tiptap/extension-bold" "^3.4.1"
-    "@tiptap/extension-bullet-list" "^3.4.1"
-    "@tiptap/extension-code" "^3.4.1"
-    "@tiptap/extension-code-block" "^3.4.1"
-    "@tiptap/extension-document" "^3.4.1"
-    "@tiptap/extension-dropcursor" "^3.4.1"
-    "@tiptap/extension-gapcursor" "^3.4.1"
-    "@tiptap/extension-hard-break" "^3.4.1"
-    "@tiptap/extension-heading" "^3.4.1"
-    "@tiptap/extension-horizontal-rule" "^3.4.1"
-    "@tiptap/extension-italic" "^3.4.1"
-    "@tiptap/extension-link" "^3.4.1"
-    "@tiptap/extension-list" "^3.4.1"
-    "@tiptap/extension-list-item" "^3.4.1"
-    "@tiptap/extension-list-keymap" "^3.4.1"
-    "@tiptap/extension-ordered-list" "^3.4.1"
-    "@tiptap/extension-paragraph" "^3.4.1"
-    "@tiptap/extension-strike" "^3.4.1"
-    "@tiptap/extension-text" "^3.4.1"
-    "@tiptap/extension-underline" "^3.4.1"
-    "@tiptap/extensions" "^3.4.1"
-    "@tiptap/pm" "^3.4.1"
+    "@tiptap/core" "^3.4.2"
+    "@tiptap/extension-blockquote" "^3.4.2"
+    "@tiptap/extension-bold" "^3.4.2"
+    "@tiptap/extension-bullet-list" "^3.4.2"
+    "@tiptap/extension-code" "^3.4.2"
+    "@tiptap/extension-code-block" "^3.4.2"
+    "@tiptap/extension-document" "^3.4.2"
+    "@tiptap/extension-dropcursor" "^3.4.2"
+    "@tiptap/extension-gapcursor" "^3.4.2"
+    "@tiptap/extension-hard-break" "^3.4.2"
+    "@tiptap/extension-heading" "^3.4.2"
+    "@tiptap/extension-horizontal-rule" "^3.4.2"
+    "@tiptap/extension-italic" "^3.4.2"
+    "@tiptap/extension-link" "^3.4.2"
+    "@tiptap/extension-list" "^3.4.2"
+    "@tiptap/extension-list-item" "^3.4.2"
+    "@tiptap/extension-list-keymap" "^3.4.2"
+    "@tiptap/extension-ordered-list" "^3.4.2"
+    "@tiptap/extension-paragraph" "^3.4.2"
+    "@tiptap/extension-strike" "^3.4.2"
+    "@tiptap/extension-text" "^3.4.2"
+    "@tiptap/extension-underline" "^3.4.2"
+    "@tiptap/extensions" "^3.4.2"
+    "@tiptap/pm" "^3.4.2"
 
 "@types/cookie@^0.6.0":
   version "0.6.0"

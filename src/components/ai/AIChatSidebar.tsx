@@ -601,11 +601,11 @@ const AIChatSidebar = ({
       if (error) {
         console.error("Error loading AI summaries:", error);
       } else {
-        const formattedSummaries = (data || []).map((summary) => ({
+        const formattedSummaries = (data || []).map((summary: any) => ({
           id: summary.id,
           noteTitle: currentNote.title,
           content: summary.content,
-          timestamp: new Date(summary.created_at!),
+          createdAt: summary.created_at,
         }));
         setSummaries(formattedSummaries);
       }

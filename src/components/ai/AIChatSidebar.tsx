@@ -495,6 +495,10 @@ const AIChatSidebar = ({
 }: AIChatSidebarProps) => {
   const { user } = useAuth();
   const supabase = createClient();
+  
+  // Use direct type casting to bypass Supabase type inference issues
+  const supabaseTyped = supabase as any;
+
   const [activeTab, setActiveTab] = useState("chat");
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([
@@ -535,7 +539,7 @@ const AIChatSidebar = ({
     if (!user || !isOpen) return;
 
     try {
-      const { data: pagesData, error } = await supabase
+      const { data: pagesData, error } = await supabaseTyped
         .from("pages")
         .select("id, title, content, content_json, section_id")
         .eq("user_id", user.id)
@@ -569,7 +573,7 @@ const AIChatSidebar = ({
     } catch (error) {
       console.error("Error loading notes:", error);
     }
-  }, [user, supabase, isOpen]);
+  }, [user, supabaseTyped, isOpen]);
 
   // Load AI summaries, practice problems, and sessions from database
   useEffect(() => {
@@ -587,7 +591,7 @@ const AIChatSidebar = ({
     if (!user || !currentNote?.id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseTyped
         .from("ai_summaries")
         .select("*")
         .eq("user_id", user.id)
@@ -686,7 +690,7 @@ const AIChatSidebar = ({
 
     try {
       setIsHistoryLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await supabaseTyped
         .from("ai_sessions")
         .select("*")
         .eq("user_id", user.id)
@@ -770,16 +774,16 @@ const AIChatSidebar = ({
         session_type: sessionType,
         title,
         context: context || {},
-        messages: jsonMessages as any, // Cast to any to satisfy Json type
+        messages: jsonMessages as any, // Cast to any to satisfy JSON type
         metadata,
       };
 
       if (currentSessionId) {
         // Update existing session
-        const { data, error } = await supabase
+        const { data, error } = await supabaseTyped
           .from("ai_sessions")
           .update({
-            messages: jsonMessages as any, // Cast to any to satisfy Json type
+            messages: jsonMessages as any, // Cast to any to satisfy JSON type
             metadata,
             updated_at: new Date().toISOString(),
           })
@@ -795,7 +799,7 @@ const AIChatSidebar = ({
         }
       } else {
         // Create new session
-        const { data, error } = await supabase
+        const { data, error } = await supabaseTyped
           .from("ai_sessions")
           .insert(sessionData)
           .select()
@@ -928,7 +932,7 @@ const AIChatSidebar = ({
 
       // Save to database if we have a current note
       if (currentNote?.id) {
-        const { data: dbData, error } = await supabase
+        const { data: dbData, error } = await supabaseTyped
           .from("ai_summaries")
           .insert({
             user_id: user.id,
@@ -1038,7 +1042,7 @@ const AIChatSidebar = ({
               completed: false,
             };
 
-            const { error } = await supabase
+            const { error } = await supabaseTyped
               .from("practice_problems")
               .insert(problemData);
 
@@ -1217,7 +1221,7 @@ const AIChatSidebar = ({
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseTyped
         .from("practice_problems")
         .update({ completed: true })
         .eq("id", problemId)
@@ -1864,7 +1868,7 @@ const AIChatSidebar = ({
                                   )
                                 ) {
                                   try {
-                                    const { error } = await supabase
+                                    const { error } = await supabaseTyped
                                       .from("ai_sessions")
                                       .delete()
                                       .eq("id", session.id)

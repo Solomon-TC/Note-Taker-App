@@ -31,12 +31,6 @@ import {
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
 
-type Tables<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Row"];
-type TablesInsert<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Insert"];
-type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Update"];
 import {
   safeJsonParse,
   extractPlainText,
@@ -44,15 +38,17 @@ import {
 } from "@/lib/editor/json";
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
-type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
-type NotebookInsert = Database["public"]["Tables"]["notebooks"]["Insert"];
-type NotebookUpdate = Database["public"]["Tables"]["notebooks"]["Update"];
-type Section = Database["public"]["Tables"]["sections"]["Row"];
-type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
-type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
-type Page = Database["public"]["Tables"]["pages"]["Row"];
-type PageInsert = Database["public"]["Tables"]["pages"]["Insert"];
-type PageUpdate = Database["public"]["Tables"]["pages"]["Update"];
+import { Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
+
+type Notebook = Tables<"notebooks">;
+type NotebookInsert = TablesInsert<"notebooks">;
+type NotebookUpdate = TablesUpdate<"notebooks">;
+type Section = Tables<"sections">;
+type SectionInsert = TablesInsert<"sections">;
+type SectionUpdate = TablesUpdate<"sections">;
+type Page = Tables<"pages">;
+type PageInsert = TablesInsert<"pages">;
+type PageUpdate = TablesUpdate<"pages">;
 
 export default function DashboardPage() {
   const { user, loading, error, isPro } = useAuth();

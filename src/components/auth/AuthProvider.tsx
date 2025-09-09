@@ -22,11 +22,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   // Memoize supabase client to prevent recreation
   const supabase = useMemo(() => createClient(), []);
+  
+  // Use direct type casting to bypass Supabase type inference issues
+  const supabaseTyped = supabase as any;
 
   // Memoize checkProStatus to prevent recreation
   const checkProStatus = useCallback(async (userId: string) => {
     try {
-      const { data: userData, error: userError } = await supabase
+      const { data: userData, error: userError } = await supabaseTyped
         .from("users")
         .select("is_pro")
         .eq("id", userId)
@@ -42,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error checking pro status:", err);
       setIsPro(false);
     }
-  }, [supabase]);
+  }, [supabaseTyped]);
 
   useEffect(() => {
     let mounted = true;
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession();
+        } = await supabaseTyped.auth.getSession();
 
         if (!mounted) return;
 
@@ -91,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabaseTyped.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       try {
@@ -120,18 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, checkProStatus]);
+  }, [supabaseTyped, checkProStatus]);
 
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      await supabaseTyped.auth.signOut();
       setError(null);
       setIsPro(false);
     } catch (err) {
       console.error("Sign out error:", err);
       setError(err instanceof Error ? err.message : "Sign out failed");
     }
-  }, [supabase]);
+  }, [supabaseTyped]);
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({

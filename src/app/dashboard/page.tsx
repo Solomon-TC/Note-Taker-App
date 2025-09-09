@@ -65,10 +65,11 @@ export default function DashboardPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const dataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInitialized = useRef(false);
 
-  // Load user data - simplified without timeout interference
+  // Load user data - memoized to prevent infinite loops
   const loadUserData = useCallback(async () => {
-    if (!user) {
+    if (!user || hasInitialized.current) {
       setDataLoading(false);
       return;
     }
@@ -76,6 +77,7 @@ export default function DashboardPage() {
     try {
       setDataLoading(true);
       setDataError(null);
+      hasInitialized.current = true;
 
       console.log("🏠 Dashboard: Loading user data for:", user.id);
 
@@ -145,17 +147,17 @@ export default function DashboardPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [user, supabase]);
+  }, [user?.id, supabase]);
 
-  // Load user data when user is available and not loading
+  // Load user data when user is available and not loading - with proper dependencies
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !hasInitialized.current) {
       loadUserData();
     }
-  }, [user, loading, loadUserData]);
+  }, [user?.id, loading, loadUserData]);
 
-  // Handle authentication and routing logic
-  useEffect(() => {
+  // Handle authentication and routing logic - memoized to prevent infinite loops
+  const handleAuthRouting = useCallback(async () => {
     if (loading) {
       console.log("🏠 Dashboard: Auth still loading, waiting...");
       return;
@@ -163,7 +165,6 @@ export default function DashboardPage() {
 
     if (!user) {
       console.log("🏠 Dashboard: No user, redirecting to auth");
-      // Clear any pending timeouts before redirect
       if (dataTimeoutRef.current) {
         clearTimeout(dataTimeoutRef.current);
         dataTimeoutRef.current = null;
@@ -178,7 +179,6 @@ export default function DashboardPage() {
       console.log(
         "🏠 Dashboard: Non-pro user detected, redirecting to paywall",
       );
-      // Clear any pending timeouts before redirect
       if (dataTimeoutRef.current) {
         clearTimeout(dataTimeoutRef.current);
         dataTimeoutRef.current = null;
@@ -189,52 +189,43 @@ export default function DashboardPage() {
     }
 
     // User is authenticated and pro, check if they need onboarding
-    const checkOnboardingStatus = async () => {
-      try {
+    try {
+      console.log(
+        "🏠 Dashboard: Checking onboarding status for pro user:",
+        user.id,
+      );
+      const { data: notebooks } = await supabase
+        .from("notebooks")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      const hasNotebooks = notebooks && notebooks.length > 0;
+      console.log("🏠 Dashboard: Onboarding check result:", {
+        hasNotebooks,
+        isPro,
+      });
+
+      if (!hasNotebooks) {
         console.log(
-          "🏠 Dashboard: Checking onboarding status for pro user:",
-          user.id,
+          "🏠 Dashboard: Pro user needs onboarding, redirecting...",
         );
-        const { data: notebooks } = await supabase
-          .from("notebooks")
-          .select("id")
-          .eq("user_id", user.id)
-          .limit(1);
-
-        const hasNotebooks = notebooks && notebooks.length > 0;
-        console.log("🏠 Dashboard: Onboarding check result:", {
-          hasNotebooks,
-          isPro,
-        });
-
-        if (!hasNotebooks) {
-          console.log(
-            "🏠 Dashboard: Pro user needs onboarding, redirecting...",
-          );
-          router.push("/onboarding");
-        } else {
-          console.log(
-            "🏠 Dashboard: Pro user has notebooks, staying on dashboard",
-          );
-        }
-      } catch (error) {
-        console.error("🏠 Dashboard: Error checking onboarding status:", error);
-        // On error, assume user doesn't need onboarding and stay on dashboard
+        router.push("/onboarding");
+      } else {
+        console.log(
+          "🏠 Dashboard: Pro user has notebooks, staying on dashboard",
+        );
       }
-    };
+    } catch (error) {
+      console.error("🏠 Dashboard: Error checking onboarding status:", error);
+      // On error, assume user doesn't need onboarding and stay on dashboard
+    }
+  }, [user?.id, loading, isPro, router, supabase]);
 
-    checkOnboardingStatus();
-  }, [user, loading, isPro, router, supabase]);
-
-  // Cleanup on unmount
+  // Use effect for auth routing with proper dependencies
   useEffect(() => {
-    return () => {
-      if (dataTimeoutRef.current) {
-        clearTimeout(dataTimeoutRef.current);
-        dataTimeoutRef.current = null;
-      }
-    };
-  }, []);
+    handleAuthRouting();
+  }, [handleAuthRouting]);
 
   // Notebook handlers
   const handleCreateNotebook = async (notebook: {

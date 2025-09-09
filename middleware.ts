@@ -29,12 +29,6 @@ const authRequiredRoutes = [
   "/friends",
   "/feedback",
 ];
-const proRequiredRoutes = [
-  "/dashboard",
-  "/friends",
-  "/feedback",
-  "/onboarding",
-];
 
 export async function middleware(req: NextRequest) {
   // Validate environment variables first
@@ -123,16 +117,24 @@ export async function middleware(req: NextRequest) {
       return response;
     }
 
-    // Get the current session with timeout
-    const sessionPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Session timeout')), 5000)
-    );
+    // Get the current session with reduced timeout to prevent infinite loops
+    let session = null;
+    let sessionError = null;
 
-    const {
-      data: { session },
-      error: sessionError,
-    } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+    try {
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Session timeout')), 2000) // Reduced timeout
+      );
+
+      const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
+      session = result.data?.session;
+      sessionError = result.error;
+    } catch (error) {
+      console.error(`🛡️ Middleware: Session timeout for ${pathname}`);
+      // On timeout, allow request to proceed - page-level auth will handle it
+      return response;
+    }
 
     console.log(`🛡️ Middleware: Session check for ${pathname}:`, {
       hasSession: !!session,
@@ -152,177 +154,66 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // If we have a session, check user status
+    // If we have a session, check user status with reduced complexity
     if (session?.user) {
       console.log(`🛡️ Middleware: Checking user status for ${pathname}`);
 
-      // Get user data from the database with timeout
-      const userDataPromise = supabase
-        .from("users")
-        .select("is_pro, stripe_customer_id, plan, current_period_end")
-        .eq("id", session.user.id)
-        .single();
-
-      const userTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('User data timeout')), 3000)
-      );
-
-      let userData;
-      let userError;
+      // Get user data with reduced timeout
+      let userData = null;
+      let userError = null;
 
       try {
+        const userDataPromise = supabase
+          .from("users")
+          .select("is_pro")
+          .eq("id", session.user.id)
+          .single();
+
+        const userTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('User data timeout')), 1500) // Reduced timeout
+        );
+
         const result = await Promise.race([userDataPromise, userTimeoutPromise]) as any;
         userData = result.data;
         userError = result.error;
       } catch (error) {
-        console.error(`🛡️ Middleware: Timeout fetching user data:`, error);
-        // Default to non-pro on timeout
-        userData = {
-          is_pro: false,
-          stripe_customer_id: null,
-          plan: null,
-          current_period_end: null,
-        };
-        userError = null;
+        console.error(`🛡️ Middleware: Timeout fetching user data for ${pathname}`);
+        // On timeout, allow request to proceed
+        return response;
       }
 
-      if (userError) {
-        console.error(`🛡️ Middleware: Error fetching user data:`, userError);
-
-        // If user doesn't exist in users table, create them and treat as non-pro
-        if (userError.code === "PGRST116") {
-          console.log(
-            `🛡️ Middleware: User not found in users table, creating record`,
-          );
-          try {
-            const { error: createError } = await supabase.from("users").insert({
-              id: session.user.id,
-              email: session.user.email || "",
-              full_name: session.user.user_metadata?.full_name || null,
-              avatar_url: session.user.user_metadata?.avatar_url || null,
-              is_pro: false,
-              plan: null,
-              current_period_end: null,
-              stripe_customer_id: null,
-            });
-
-            if (!createError) {
-              userData = {
-                is_pro: false,
-                stripe_customer_id: null,
-                plan: null,
-                current_period_end: null,
-              };
-            } else {
-              console.error(
-                `🛡️ Middleware: Error creating user record:`,
-                createError,
-              );
-              userData = {
-                is_pro: false,
-                stripe_customer_id: null,
-                plan: null,
-                current_period_end: null,
-              };
-            }
-          } catch (createError) {
-            console.error(`🛡️ Middleware: Exception creating user:`, createError);
-            userData = {
-              is_pro: false,
-              stripe_customer_id: null,
-              plan: null,
-              current_period_end: null,
-            };
-          }
-        } else {
-          userData = {
+      if (userError && userError.code === "PGRST116") {
+        // User doesn't exist, create them as non-pro
+        try {
+          await supabase.from("users").insert({
+            id: session.user.id,
+            email: session.user.email || "",
+            full_name: session.user.user_metadata?.full_name || null,
+            avatar_url: session.user.user_metadata?.avatar_url || null,
             is_pro: false,
-            stripe_customer_id: null,
-            plan: null,
-            current_period_end: null,
-          };
+          });
+          userData = { is_pro: false };
+        } catch (createError) {
+          console.error(`🛡️ Middleware: Error creating user:`, createError);
+          userData = { is_pro: false };
         }
+      } else if (userError) {
+        userData = { is_pro: false };
       }
 
-      // Check if user has completed onboarding (has notebooks) with timeout
-      let notebooks;
-      let notebooksError;
-
-      try {
-        const notebooksPromise = supabase
-          .from("notebooks")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .limit(1);
-
-        const notebooksTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Notebooks timeout')), 3000)
-        );
-
-        const result = await Promise.race([notebooksPromise, notebooksTimeoutPromise]) as any;
-        notebooks = result.data;
-        notebooksError = result.error;
-      } catch (error) {
-        console.error(`🛡️ Middleware: Timeout fetching notebooks:`, error);
-        notebooks = [];
-        notebooksError = null;
-      }
-
-      const hasCompletedOnboarding = notebooks && notebooks.length > 0;
       const isPro = userData?.is_pro || false;
 
-      console.log(`🛡️ Middleware: User status:`, {
-        hasCompletedOnboarding,
-        isPro,
-        pathname,
-        search,
-        notebooksError: notebooksError?.message,
-      });
-
-      // FLOW IMPLEMENTATION:
-      // New user: signup → onboarding → paywall → dashboard
-      // Existing pro user: dashboard
-      // Existing non-pro user: paywall → dashboard
-
-      // 1. NEW USERS (haven't completed onboarding)
-      if (!hasCompletedOnboarding) {
-        if (pathname !== "/onboarding") {
-          console.log(
-            `🛡️ Middleware: New user accessing ${pathname}, redirecting to /onboarding`,
-          );
-          const redirectUrl = new URL("/onboarding", req.url);
-          return NextResponse.redirect(redirectUrl);
-        }
+      // Simplified routing logic to prevent infinite loops
+      if (!isPro && pathname === "/dashboard") {
+        console.log(`🛡️ Middleware: Non-pro user accessing dashboard, redirecting to /paywall`);
+        const redirectUrl = new URL("/paywall", req.url);
+        return NextResponse.redirect(redirectUrl);
       }
 
-      // 2. EXISTING USERS (have completed onboarding)
-      if (hasCompletedOnboarding) {
-        if (!isPro && pathname !== "/paywall") {
-          console.log(
-            `🛡️ Middleware: Existing non-pro user accessing ${pathname}, redirecting to /paywall`,
-          );
-          const redirectUrl = new URL("/paywall", req.url);
-          if (search) {
-            redirectUrl.search = search;
-          }
-          return NextResponse.redirect(redirectUrl);
-        }
-
-        if (isPro && pathname === "/onboarding") {
-          console.log(
-            `🛡️ Middleware: Pro user already onboarded, redirecting from /onboarding to /dashboard`,
-          );
-          const redirectUrl = new URL("/dashboard", req.url);
-          return NextResponse.redirect(redirectUrl);
-        }
-
-        if (isPro && pathname === "/paywall") {
-          console.log(
-            `🛡️ Middleware: Pro user accessing paywall, redirecting to /dashboard`,
-          );
-          const redirectUrl = new URL("/dashboard", req.url);
-          return NextResponse.redirect(redirectUrl);
-        }
+      if (isPro && pathname === "/paywall" && !search.includes("checkout=")) {
+        console.log(`🛡️ Middleware: Pro user accessing paywall, redirecting to /dashboard`);
+        const redirectUrl = new URL("/dashboard", req.url);
+        return NextResponse.redirect(redirectUrl);
       }
     }
 
@@ -333,8 +224,7 @@ export async function middleware(req: NextRequest) {
       `🛡️ Middleware: Error processing request for ${pathname}:`,
       error,
     );
-    // On error, allow the request to proceed
-    // The page-level auth will handle any issues
+    // On error, allow the request to proceed to prevent infinite loops
     return response;
   }
 }

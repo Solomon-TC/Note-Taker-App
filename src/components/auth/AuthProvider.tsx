@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase-client";
 
@@ -19,9 +19,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
-  const supabase = createClient();
+  
+  // Memoize supabase client to prevent recreation
+  const supabase = useMemo(() => createClient(), []);
+
+  // Memoize checkProStatus to prevent recreation
+  const checkProStatus = useCallback(async (userId: string) => {
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("is_pro")
+        .eq("id", userId)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user pro status:", userError);
+        setIsPro(false);
+      } else {
+        setIsPro(userData?.is_pro || false);
+      }
+    } catch (err) {
+      console.error("Error checking pro status:", err);
+      setIsPro(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -29,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
+
+        if (!mounted) return;
 
         if (sessionError) {
           console.error("Auth session error:", sessionError);
@@ -47,12 +74,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (err) {
+        if (!mounted) return;
         console.error("Auth initialization error:", err);
         setError(err instanceof Error ? err.message : "Authentication failed");
         setUser(null);
         setIsPro(false);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -62,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       try {
         setUser(session?.user ?? null);
         setError(null);
@@ -73,39 +105,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsPro(false);
         }
       } catch (err) {
+        if (!mounted) return;
         console.error("Auth state change error:", err);
         setError(err instanceof Error ? err.message : "Authentication failed");
         setIsPro(false);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase, checkProStatus]);
 
-  const checkProStatus = async (userId: string) => {
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("is_pro")
-        .eq("id", userId)
-        .single();
-
-      if (userError) {
-        console.error("Error fetching user pro status:", userError);
-        // Default to false if we can't fetch the status
-        setIsPro(false);
-      } else {
-        setIsPro(userData?.is_pro || false);
-      }
-    } catch (err) {
-      console.error("Error checking pro status:", err);
-      setIsPro(false);
-    }
-  };
-
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
       setError(null);
@@ -114,10 +131,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error:", err);
       setError(err instanceof Error ? err.message : "Sign out failed");
     }
-  };
+  }, [supabase]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    loading,
+    error,
+    isPro,
+    signOut
+  }), [user, loading, error, isPro, signOut]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, isPro, signOut }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

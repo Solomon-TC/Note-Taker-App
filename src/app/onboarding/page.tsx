@@ -79,6 +79,9 @@ export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
+  
+  // Use direct type casting to bypass Supabase type inference issues
+  const supabaseTyped = supabase as any;
 
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
@@ -113,7 +116,7 @@ export default function OnboardingPage() {
         );
 
         // Check if user has already completed onboarding
-        const { data: notebooks } = await supabase
+        const { data: notebooks } = await supabaseTyped
           .from("notebooks")
           .select("id")
           .eq("user_id", user.id)
@@ -142,7 +145,7 @@ export default function OnboardingPage() {
     };
 
     checkOnboardingStatus();
-  }, [user, loading, router, supabase]);
+  }, [user, loading, router, supabaseTyped]);
 
   const handleNext = () => {
     const steps: OnboardingStep[] = [
@@ -210,7 +213,7 @@ export default function OnboardingPage() {
     try {
       // Create notebooks for each class
       for (const className of onboardingData.classes) {
-        const { data: notebook, error: notebookError } = await supabase
+        const { data: notebook, error: notebookError } = await supabaseTyped
           .from("notebooks")
           .insert({
             user_id: user.id,
@@ -228,7 +231,7 @@ export default function OnboardingPage() {
         }
 
         // Create a default section for each notebook
-        const { data: section, error: sectionError } = await supabase
+        const { data: section, error: sectionError } = await supabaseTyped
           .from("sections")
           .insert({
             user_id: user.id,
@@ -265,7 +268,7 @@ export default function OnboardingPage() {
             ],
           };
 
-          await supabase.from("pages").insert({
+          await supabaseTyped.from("pages").insert({
             user_id: user.id,
             section_id: section.id,
             title: `${className} - Week 1 Notes`,

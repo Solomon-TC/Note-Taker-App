@@ -157,7 +157,7 @@ export async function sendFriendRequest(
       if (users4 && users4.length > 0) {
         // Find exact match in results
         const exactMatch = users4.find(
-          (u) =>
+          (u: { id: string; email: string; full_name: string | null }) =>
             u.email.toLowerCase() === normalizedEmail ||
             u.email === receiverEmail,
         );

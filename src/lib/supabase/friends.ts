@@ -199,12 +199,12 @@ export async function sendFriendRequest(
         originalEmail: receiverEmail,
         normalizedEmail,
         totalUsersInDb: allUsers?.length || 0,
-        availableEmails: allUsers?.map((u) => u.email) || [],
+        availableEmails: allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email) || [],
       });
 
       // Provide more helpful error message
       const availableEmails =
-        allUsers?.map((u) => u.email).join(", ") || "none";
+        allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email).join(", ") || "none";
       return {
         success: false,
         error: `User not found with email "${receiverEmail}". Available emails in database: ${availableEmails}. Please ensure the user has created an account.`,

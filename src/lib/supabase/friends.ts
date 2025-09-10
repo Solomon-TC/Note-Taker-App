@@ -199,7 +199,7 @@ export async function sendFriendRequest(
         originalEmail: receiverEmail,
         normalizedEmail,
         totalUsersInDb: allUsers?.length || 0,
-        availableEmails: allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email) || [],
+        availableEmails: allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email).join(", ") || "none",
       });
 
       // Provide more helpful error message
@@ -1169,8 +1169,8 @@ export async function debugSharedPagesAccess(
           allPages?.filter((p: { visibility: string }) => p.visibility === "friends").length || 0,
       },
       friendsPages: allPages
-        ?.filter((p) => p.visibility === "friends")
-        .map((p) => ({
+        ?.filter((p: { id: string; title: string; visibility: string }) => p.visibility === "friends")
+        .map((p: { id: string; title: string; visibility: string }) => ({
           id: p.id,
           title: p.title,
           visibility: p.visibility,
@@ -1192,7 +1192,7 @@ export async function debugSharedPagesAccess(
       error: friendsPagesError?.message,
       errorCode: friendsPagesError?.code,
       pagesFound: friendsPages?.length || 0,
-      pages: friendsPages?.map((p) => ({
+      pages: friendsPages?.map((p: { id: string; title: string; visibility: string }) => ({
         id: p.id,
         title: p.title,
         visibility: p.visibility,

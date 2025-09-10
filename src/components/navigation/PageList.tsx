@@ -329,6 +329,25 @@ const PageList = ({
     return buildPageHierarchy(pages);
   }, [pages]); // Only recalculate when pages array changes
 
+  // Memoize flattened pages for drag and drop
+  const flattenedPageIds = useMemo(() => {
+    const flattenPages = (pages: PageWithChildren[]): string[] => {
+      const result: string[] = [];
+      const traverse = (pageList: PageWithChildren[]) => {
+        pageList.forEach((page) => {
+          result.push(page.id);
+          if (page.children) {
+            traverse(page.children);
+          }
+        });
+      };
+      traverse(pages);
+      return result;
+    };
+
+    return flattenPages(hierarchicalPages);
+  }, [hierarchicalPages]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 

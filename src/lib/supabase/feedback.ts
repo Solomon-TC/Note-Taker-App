@@ -429,7 +429,7 @@ export async function submitFeedback(
         user_id: input.user_id,
         content: trimmedContent,
         vote_count: 0, // Start with 0 votes
-      })
+      } satisfies Database["public"]["Tables"]["feedback"]["Insert"])
       .select()
       .single();
 

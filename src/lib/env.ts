@@ -53,10 +53,11 @@ export function validateEnvironment(): EnvConfig {
     const error = `Missing required environment variables: ${missing.join(', ')}`;
     console.error('🚨 Environment validation failed:', error);
     
-    if (process.env.NODE_ENV === 'production') {
+    // Only throw in production runtime, not during build
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'preview') {
       throw new Error(error);
     } else {
-      console.warn('⚠️ Development mode: continuing with missing variables');
+      console.warn('⚠️ Development/Build mode: continuing with missing variables');
     }
   }
 
@@ -74,8 +75,12 @@ export function getEnvVar(name: keyof EnvConfig, fallback?: string): string {
   return value;
 }
 
-// Only validate environment on module load in production and not during build
-if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview') {
+// Only validate environment on module load in production runtime (not during build)
+if (typeof window === 'undefined' && 
+    process.env.NODE_ENV === 'production' && 
+    process.env.VERCEL_ENV && 
+    process.env.VERCEL_ENV !== 'preview' &&
+    !process.env.VERCEL_BUILDER) {
   try {
     validateEnvironment();
     console.log('✅ Environment validation passed');

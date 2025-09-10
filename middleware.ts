@@ -31,14 +31,19 @@ const authRequiredRoutes = [
 ];
 
 export async function middleware(req: NextRequest) {
-  // Skip middleware during build time
-  if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
+  // Skip middleware during build time or when environment is not ready
+  if (process.env.NODE_ENV === 'production' && 
+      (!process.env.VERCEL_URL || process.env.VERCEL_BUILDER)) {
     return NextResponse.next();
   }
 
   // Validate environment variables first
   if (!validateEnvironmentVariables()) {
     console.error('🚨 Middleware: Environment validation failed');
+    // In build mode, allow request to proceed
+    if (process.env.VERCEL_BUILDER) {
+      return NextResponse.next();
+    }
     return new NextResponse('Configuration Error', { status: 500 });
   }
 

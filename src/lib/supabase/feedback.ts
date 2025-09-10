@@ -6,6 +6,7 @@ import { Database } from "@/types/supabase";
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
+  REALTIME_SUBSCRIBE_STATES,
 } from "@supabase/supabase-js";
 
 type Feedback = Database["public"]["Tables"]["feedback"]["Row"];
@@ -1057,7 +1058,7 @@ export function useFeedbackRealtime(
               }
             },
           )
-          .subscribe((status) => {
+          .subscribe((status: REALTIME_SUBSCRIBE_STATES) => {
             if (enableLogging) {
               console.log("📡 Feedback subscription status:", {
                 status,
@@ -1225,7 +1226,7 @@ export function useFeedbackVotesRealtime(
               }
             },
           )
-          .subscribe((status) => {
+          .subscribe((status: string) => {
             if (enableLogging) {
               console.log("📡 Feedback votes subscription status:", {
                 status,

@@ -582,6 +582,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               onClick={() => editor?.chain().focus().undo().run()}
               disabled={!editor?.can().chain().focus().undo().run()}
               className="h-8 w-8 p-0"
+              aria-label="Undo"
             >
               <Undo className="h-4 w-4" />
             </Button>
@@ -599,6 +600,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               onClick={() => editor?.chain().focus().redo().run()}
               disabled={!editor?.can().chain().focus().redo().run()}
               className="h-8 w-8 p-0"
+              aria-label="Redo"
             >
               <Redo className="h-4 w-4" />
             </Button>
@@ -618,6 +620,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleBold().run()}
               className="h-8 w-8 p-0"
+              aria-label="Bold"
             >
               <Bold className="h-4 w-4" />
             </Button>
@@ -634,6 +637,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleItalic().run()}
               className="h-8 w-8 p-0"
+              aria-label="Italic"
             >
               <Italic className="h-4 w-4" />
             </Button>
@@ -650,6 +654,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleUnderline().run()}
               className="h-8 w-8 p-0"
+              aria-label="Underline"
             >
               <Underline className="h-4 w-4" />
             </Button>
@@ -666,6 +671,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleStrike().run()}
               className="h-8 w-8 p-0"
+              aria-label="Strikethrough"
             >
               <Strikethrough className="h-4 w-4" />
             </Button>
@@ -685,6 +691,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().setParagraph().run()}
               className="h-8 w-8 p-0"
+              aria-label="Paragraph"
             >
               <Type className="h-4 w-4" />
             </Button>
@@ -705,6 +712,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 editor?.chain().focus().toggleHeading({ level: 1 }).run()
               }
               className="h-8 w-8 p-0"
+              aria-label="Heading 1"
             >
               <Heading1 className="h-4 w-4" />
             </Button>
@@ -725,6 +733,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 editor?.chain().focus().toggleHeading({ level: 2 }).run()
               }
               className="h-8 w-8 p-0"
+              aria-label="Heading 2"
             >
               <Heading2 className="h-4 w-4" />
             </Button>
@@ -745,6 +754,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 editor?.chain().focus().toggleHeading({ level: 3 }).run()
               }
               className="h-8 w-8 p-0"
+              aria-label="Heading 3"
             >
               <Heading3 className="h-4 w-4" />
             </Button>
@@ -764,6 +774,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleBulletList().run()}
               className="h-8 w-8 p-0"
+              aria-label="Bullet List"
             >
               <List className="h-4 w-4" />
             </Button>
@@ -780,6 +791,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleOrderedList().run()}
               className="h-8 w-8 p-0"
+              aria-label="Numbered List"
             >
               <ListOrdered className="h-4 w-4" />
             </Button>
@@ -796,6 +808,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleTaskList().run()}
               className="h-8 w-8 p-0"
+              aria-label="Task List"
             >
               <CheckSquare className="h-4 w-4" />
             </Button>
@@ -815,6 +828,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleBlockquote().run()}
               className="h-8 w-8 p-0"
+              aria-label="Quote"
             >
               <Quote className="h-4 w-4" />
             </Button>
@@ -831,6 +845,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().toggleCode().run()}
               className="h-8 w-8 p-0"
+              aria-label="Inline Code"
             >
               <Code className="h-4 w-4" />
             </Button>
@@ -852,6 +867,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={() => editor?.chain().focus().setTextAlign("left").run()}
               className="h-8 w-8 p-0"
+              aria-label="Align Left"
             >
               <AlignLeft className="h-4 w-4" />
             </Button>
@@ -872,6 +888,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 editor?.chain().focus().setTextAlign("center").run()
               }
               className="h-8 w-8 p-0"
+              aria-label="Align Center"
             >
               <AlignCenter className="h-4 w-4" />
             </Button>
@@ -892,6 +909,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 editor?.chain().focus().setTextAlign("right").run()
               }
               className="h-8 w-8 p-0"
+              aria-label="Align Right"
             >
               <AlignRight className="h-4 w-4" />
             </Button>
@@ -911,6 +929,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={addLink}
               className="h-8 w-8 p-0"
+              aria-label="Add Link"
             >
               <Link className="h-4 w-4" />
             </Button>
@@ -928,6 +947,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               onClick={() => editor?.chain().focus().unsetLink().run()}
               disabled={!editor?.isActive("link")}
               className="h-8 w-8 p-0"
+              aria-label="Remove Link"
             >
               <Unlink className="h-4 w-4" />
             </Button>
@@ -947,6 +967,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={onInsertImage}
               className="h-8 w-8 p-0"
+              aria-label="Insert Image"
             >
               <Image className="h-4 w-4" />
             </Button>
@@ -963,6 +984,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
               size="sm"
               onClick={onInsertDrawing}
               className="h-8 w-8 p-0"
+              aria-label="Insert Drawing"
             >
               <PenTool className="h-4 w-4" />
             </Button>
@@ -981,6 +1003,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 size="sm"
                 onClick={insertTable}
                 className="h-8 w-8 p-0"
+                aria-label="Insert Table"
               >
                 <Table className="h-4 w-4" />
               </Button>
@@ -999,6 +1022,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   onClick={addTableRow}
                   disabled={!canAddRow}
                   className="h-8 w-8 p-0"
+                  aria-label="Add Row"
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -1016,6 +1040,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   onClick={addTableColumn}
                   disabled={!canAddColumn}
                   className="h-8 w-8 p-0"
+                  aria-label="Add Column"
                 >
                   <MoreHorizontal className="h-3 w-3" />
                 </Button>
@@ -1033,6 +1058,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   onClick={deleteTableRow}
                   disabled={!canDeleteRow}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  aria-label="Delete Row"
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -1050,6 +1076,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   onClick={deleteTable}
                   disabled={!canDeleteTable}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  aria-label="Delete Table"
                 >
                   <Table className="h-3 w-3" />
                 </Button>
@@ -1133,7 +1160,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   // Toggle the color picker
                   setIsColorPickerOpen(!isColorPickerOpen);
                 }}
-                title="Text Color (Shift+Click for black)"
+                aria-label="Text Color"
               >
                 <Palette className="h-4 w-4" />
                 <div
@@ -1219,7 +1246,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   // Toggle the highlight picker
                   setIsHighlightPickerOpen(!isHighlightPickerOpen);
                 }}
-                title="Highlight (Shift+Click for yellow)"
+                aria-label="Highlight"
               >
                 <Highlighter className="h-4 w-4" />
                 {editor?.isActive("highlight") && (
@@ -1301,6 +1328,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                 }
               }}
               className="h-8 w-8 p-0"
+              aria-label="Clear Formatting"
             >
               <RemoveFormatting className="h-4 w-4" />
             </Button>

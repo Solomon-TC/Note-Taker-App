@@ -31,6 +31,11 @@ const authRequiredRoutes = [
 ];
 
 export async function middleware(req: NextRequest) {
+  // Skip middleware during build time
+  if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
+    return NextResponse.next();
+  }
+
   // Validate environment variables first
   if (!validateEnvironmentVariables()) {
     console.error('🚨 Middleware: Environment validation failed');

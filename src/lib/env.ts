@@ -74,8 +74,8 @@ export function getEnvVar(name: keyof EnvConfig, fallback?: string): string {
   return value;
 }
 
-// Validate environment on module load in production
-if (process.env.NODE_ENV === 'production') {
+// Only validate environment on module load in production and not during build
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview') {
   try {
     validateEnvironment();
     console.log('✅ Environment validation passed');

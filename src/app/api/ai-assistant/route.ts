@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OpenAI_API,
-});
+// Initialize OpenAI client only when needed
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    if (!process.env.OpenAI_API) {
+      throw new Error("OpenAI API key not configured");
+    }
+    openaiClient = new OpenAI({
+      apiKey: process.env.OpenAI_API,
+    });
+  }
+  return openaiClient;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const openai = getOpenAIClient();
     let systemPrompt = "";
     let userPrompt = "";
     let messages: any[] = [];

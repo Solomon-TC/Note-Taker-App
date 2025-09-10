@@ -214,7 +214,7 @@ export default function DashboardPage() {
         .limit(1);
 
       const hasNotebooks = notebooks && notebooks.length > 0;
-      console.log("🏠 Dashboard: Onboarding check result:", {
+      console.log("🏠 Dashboard: Onboarding check results:", {
         hasNotebooks,
         isPro,
       });
@@ -913,11 +913,12 @@ export default function DashboardPage() {
 
       try {
         // Fetch notebooks
-        const { data: notebooksData, error: notebooksError } = await supabaseTyped
-          .from("notebooks")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("sort_order", { ascending: true });
+        const { data: notebooksData, error: notebooksError } =
+          await supabaseTyped
+            .from("notebooks")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("sort_order", { ascending: true });
 
         if (notebooksError) {
           console.error("Error fetching notebooks:", notebooksError);

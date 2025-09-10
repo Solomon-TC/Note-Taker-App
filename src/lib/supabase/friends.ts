@@ -1014,7 +1014,7 @@ export async function getFriendSharedPages(
           name: string; 
           notebooks?: { name: string } 
         };
-        users?: { full_name: string | null }
+        users?: { full_name: string | null; email: string }
       }) => ({
         id: p.id,
         title: p.title,

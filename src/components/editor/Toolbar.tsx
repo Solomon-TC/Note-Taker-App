@@ -572,772 +572,604 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
   return (
     <div className="border border-b-0 rounded-t-lg bg-background p-2 flex flex-wrap gap-1 sticky top-0 z-10">
-      <TooltipProvider>
-        {/* Undo/Redo */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => editor?.chain().focus().undo().run()}
-              disabled={!editor?.can().chain().focus().undo().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Undo"
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Undo (Ctrl+Z)</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Undo/Redo */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => editor?.chain().focus().undo().run()}
+        disabled={!editor?.can().chain().focus().undo().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Undo"
+        title="Undo (Ctrl+Z)"
+      >
+        <Undo className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => editor?.chain().focus().redo().run()}
-              disabled={!editor?.can().chain().focus().redo().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Redo"
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Redo (Ctrl+Y)</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => editor?.chain().focus().redo().run()}
+        disabled={!editor?.can().chain().focus().redo().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Redo"
+        title="Redo (Ctrl+Y)"
+      >
+        <Redo className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Text Formatting */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("bold") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleBold().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Bold"
-            >
-              <Bold className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Bold (Ctrl+B)</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Text Formatting */}
+      <Button
+        variant={editor?.isActive("bold") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleBold().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Bold"
+        title="Bold (Ctrl+B)"
+      >
+        <Bold className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("italic") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Italic"
-            >
-              <Italic className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Italic (Ctrl+I)</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("italic") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleItalic().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Italic"
+        title="Italic (Ctrl+I)"
+      >
+        <Italic className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("underline") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleUnderline().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Underline"
-            >
-              <Underline className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Underline (Ctrl+U)</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("underline") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleUnderline().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Underline"
+        title="Underline (Ctrl+U)"
+      >
+        <Underline className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("strike") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleStrike().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Strikethrough"
-            >
-              <Strikethrough className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Strikethrough</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("strike") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleStrike().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Strikethrough"
+        title="Strikethrough"
+      >
+        <Strikethrough className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Headings */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("paragraph") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().setParagraph().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Paragraph"
-            >
-              <Type className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Paragraph</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Headings */}
+      <Button
+        variant={editor?.isActive("paragraph") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().setParagraph().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Paragraph"
+        title="Paragraph"
+      >
+        <Type className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive("heading", { level: 1 }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 1 }).run()
-              }
-              className="h-8 w-8 p-0"
-              aria-label="Heading 1"
-            >
-              <Heading1 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Heading 1</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={
+          editor?.isActive("heading", { level: 1 }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() =>
+          editor?.chain().focus().toggleHeading({ level: 1 }).run()
+        }
+        className="h-8 w-8 p-0"
+        aria-label="Heading 1"
+        title="Heading 1"
+      >
+        <Heading1 className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive("heading", { level: 2 }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 2 }).run()
-              }
-              className="h-8 w-8 p-0"
-              aria-label="Heading 2"
-            >
-              <Heading2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Heading 2</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={
+          editor?.isActive("heading", { level: 2 }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() =>
+          editor?.chain().focus().toggleHeading({ level: 2 }).run()
+        }
+        className="h-8 w-8 p-0"
+        aria-label="Heading 2"
+        title="Heading 2"
+      >
+        <Heading2 className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive("heading", { level: 3 }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 3 }).run()
-              }
-              className="h-8 w-8 p-0"
-              aria-label="Heading 3"
-            >
-              <Heading3 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Heading 3</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={
+          editor?.isActive("heading", { level: 3 }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() =>
+          editor?.chain().focus().toggleHeading({ level: 3 }).run()
+        }
+        className="h-8 w-8 p-0"
+        aria-label="Heading 3"
+        title="Heading 3"
+      >
+        <Heading3 className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Lists */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("bulletList") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Bullet List"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Bullet List</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Lists */}
+      <Button
+        variant={editor?.isActive("bulletList") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleBulletList().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Bullet List"
+        title="Bullet List"
+      >
+        <List className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("orderedList") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Numbered List"
-            >
-              <ListOrdered className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Numbered List</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("orderedList") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Numbered List"
+        title="Numbered List"
+      >
+        <ListOrdered className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("taskList") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleTaskList().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Task List"
-            >
-              <CheckSquare className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Task List</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("taskList") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleTaskList().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Task List"
+        title="Task List"
+      >
+        <CheckSquare className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Quote and Code */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("blockquote") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Quote"
-            >
-              <Quote className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Quote</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Quote and Code */}
+      <Button
+        variant={editor?.isActive("blockquote") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Quote"
+        title="Quote"
+      >
+        <Quote className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("code") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => editor?.chain().focus().toggleCode().run()}
-              className="h-8 w-8 p-0"
-              aria-label="Inline Code"
-            >
-              <Code className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Inline Code</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={editor?.isActive("code") ? "default" : "ghost"}
+        size="sm"
+        onClick={() => editor?.chain().focus().toggleCode().run()}
+        className="h-8 w-8 p-0"
+        aria-label="Inline Code"
+        title="Inline Code"
+      >
+        <Code className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Alignment */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive({ textAlign: "left" }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() => editor?.chain().focus().setTextAlign("left").run()}
-              className="h-8 w-8 p-0"
-              aria-label="Align Left"
-            >
-              <AlignLeft className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Align Left</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Alignment */}
+      <Button
+        variant={
+          editor?.isActive({ textAlign: "left" }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() => editor?.chain().focus().setTextAlign("left").run()}
+        className="h-8 w-8 p-0"
+        aria-label="Align Left"
+        title="Align Left"
+      >
+        <AlignLeft className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive({ textAlign: "center" }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() =>
-                editor?.chain().focus().setTextAlign("center").run()
-              }
-              className="h-8 w-8 p-0"
-              aria-label="Align Center"
-            >
-              <AlignCenter className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Align Center</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={
+          editor?.isActive({ textAlign: "center" }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() =>
+          editor?.chain().focus().setTextAlign("center").run()
+        }
+        className="h-8 w-8 p-0"
+        aria-label="Align Center"
+        title="Align Center"
+      >
+        <AlignCenter className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={
-                editor?.isActive({ textAlign: "right" }) ? "default" : "ghost"
-              }
-              size="sm"
-              onClick={() =>
-                editor?.chain().focus().setTextAlign("right").run()
-              }
-              className="h-8 w-8 p-0"
-              aria-label="Align Right"
-            >
-              <AlignRight className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Align Right</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant={
+          editor?.isActive({ textAlign: "right" }) ? "default" : "ghost"
+        }
+        size="sm"
+        onClick={() =>
+          editor?.chain().focus().setTextAlign("right").run()
+        }
+        className="h-8 w-8 p-0"
+        aria-label="Align Right"
+        title="Align Right"
+      >
+        <AlignRight className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Links */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={editor?.isActive("link") ? "default" : "ghost"}
-              size="sm"
-              onClick={addLink}
-              className="h-8 w-8 p-0"
-              aria-label="Add Link"
-            >
-              <Link className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Add Link</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Links */}
+      <Button
+        variant={editor?.isActive("link") ? "default" : "ghost"}
+        size="sm"
+        onClick={addLink}
+        className="h-8 w-8 p-0"
+        aria-label="Add Link"
+        title="Add Link"
+      >
+        <Link className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => editor?.chain().focus().unsetLink().run()}
-              disabled={!editor?.isActive("link")}
-              className="h-8 w-8 p-0"
-              aria-label="Remove Link"
-            >
-              <Unlink className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Remove Link</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => editor?.chain().focus().unsetLink().run()}
+        disabled={!editor?.isActive("link")}
+        className="h-8 w-8 p-0"
+        aria-label="Remove Link"
+        title="Remove Link"
+      >
+        <Unlink className="h-4 w-4" />
+      </Button>
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+      <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Media */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onInsertImage}
-              className="h-8 w-8 p-0"
-              aria-label="Insert Image"
-            >
-              <Image className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Insert Image</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Media */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onInsertImage}
+        className="h-8 w-8 p-0"
+        aria-label="Insert Image"
+        title="Insert Image"
+      >
+        <Image className="h-4 w-4" />
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onInsertDrawing}
-              className="h-8 w-8 p-0"
-              aria-label="Insert Drawing"
-            >
-              <PenTool className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Insert Drawing</p>
-          </TooltipContent>
-        </Tooltip>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onInsertDrawing}
+        className="h-8 w-8 p-0"
+        aria-label="Insert Drawing"
+        title="Insert Drawing"
+      >
+        <PenTool className="h-4 w-4" />
+      </Button>
 
-        {/* Table Controls */}
-        {!isInTable ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={insertTable}
-                className="h-8 w-8 p-0"
-                aria-label="Insert Table"
-              >
-                <Table className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Insert Table</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={addTableRow}
-                  disabled={!canAddRow}
-                  className="h-8 w-8 p-0"
-                  aria-label="Add Row"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Add Row</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={addTableColumn}
-                  disabled={!canAddColumn}
-                  className="h-8 w-8 p-0"
-                  aria-label="Add Column"
-                >
-                  <MoreHorizontal className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Add Column</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={deleteTableRow}
-                  disabled={!canDeleteRow}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  aria-label="Delete Row"
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Delete Row</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={deleteTable}
-                  disabled={!canDeleteTable}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  aria-label="Delete Table"
-                >
-                  <Table className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Delete Table</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* Font and Color Options */}
+      {/* Table Controls */}
+      {!isInTable ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertTable}
+          className="h-8 w-8 p-0"
+          aria-label="Insert Table"
+          title="Insert Table"
+        >
+          <Table className="h-4 w-4" />
+        </Button>
+      ) : (
         <div className="flex items-center gap-1">
-          {/* Font Family */}
-          <Select
-            value={editor?.getAttributes("textStyle").fontFamily || "default"}
-            onValueChange={setFontFamily}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={addTableRow}
+            disabled={!canAddRow}
+            className="h-8 w-8 p-0"
+            aria-label="Add Row"
+            title="Add Row"
           >
-            <SelectTrigger className="w-32 h-8 text-xs">
-              <SelectValue placeholder="Font" />
-            </SelectTrigger>
-            <SelectContent>
-              {fontFamilies.map((font) => (
-                <SelectItem key={font.value} value={font.value}>
-                  <span
-                    style={{
-                      fontFamily:
-                        font.value !== "default" ? font.value : undefined,
-                    }}
-                  >
-                    {font.label}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Plus className="h-3 w-3" />
+          </Button>
 
-          {/* Font Size */}
-          <Select
-            value={editor?.getAttributes("textStyle").fontSize || "default"}
-            onValueChange={setFontSize}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={addTableColumn}
+            disabled={!canAddColumn}
+            className="h-8 w-8 p-0"
+            aria-label="Add Column"
+            title="Add Column"
           >
-            <SelectTrigger className="w-20 h-8 text-xs">
-              <SelectValue placeholder="Size" />
-            </SelectTrigger>
-            <SelectContent>
-              {fontSizes.map((size) => (
-                <SelectItem key={size.value} value={size.value}>
-                  <span
-                    style={{
-                      fontSize:
-                        size.value !== "default" ? size.value : undefined,
-                    }}
-                  >
-                    {size.label}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <MoreHorizontal className="h-3 w-3" />
+          </Button>
 
-          {/* Text Color */}
-          <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 relative"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={deleteTableRow}
+            disabled={!canDeleteRow}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label="Delete Row"
+            title="Delete Row"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
 
-                  // If shift key is held, apply default black color directly
-                  if (e.shiftKey) {
-                    applyTextColor("#000000");
-                    return;
-                  }
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={deleteTable}
+            disabled={!canDeleteTable}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label="Delete Table"
+            title="Delete Table"
+          >
+            <Table className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
 
-                  // Toggle the color picker
-                  setIsColorPickerOpen(!isColorPickerOpen);
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Font and Color Options */}
+      <div className="flex items-center gap-1">
+        {/* Font Family */}
+        <Select
+          value={editor?.getAttributes("textStyle").fontFamily || "default"}
+          onValueChange={setFontFamily}
+        >
+          <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectValue placeholder="Font" />
+          </SelectTrigger>
+          <SelectContent>
+            {fontFamilies.map((font) => (
+              <SelectItem key={font.value} value={font.value}>
+                <span
+                  style={{
+                    fontFamily:
+                      font.value !== "default" ? font.value : undefined,
+                  }}
+                >
+                  {font.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Font Size */}
+        <Select
+          value={editor?.getAttributes("textStyle").fontSize || "default"}
+          onValueChange={setFontSize}
+        >
+          <SelectTrigger className="w-20 h-8 text-xs">
+            <SelectValue placeholder="Size" />
+          </SelectTrigger>
+          <SelectContent>
+            {fontSizes.map((size) => (
+              <SelectItem key={size.value} value={size.value}>
+                <span
+                  style={{
+                    fontSize:
+                      size.value !== "default" ? size.value : undefined,
+                  }}
+                >
+                  {size.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Text Color */}
+        <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 relative"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // If shift key is held, apply default black color directly
+                if (e.shiftKey) {
+                  applyTextColor("#000000");
+                  return;
+                }
+
+                // Toggle the color picker
+                setIsColorPickerOpen(!isColorPickerOpen);
+              }}
+              aria-label="Text Color"
+              title="Text Color"
+            >
+              <Palette className="h-4 w-4" />
+              <div
+                className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
+                style={{
+                  backgroundColor:
+                    editor?.getAttributes("textStyle").color || "#000000",
                 }}
-                aria-label="Text Color"
+              />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3">
+            <div className="space-y-3">
+              {/* Native Color Picker */}
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="text-color-picker"
+                  className="text-sm font-medium"
+                >
+                  Choose Color:
+                </label>
+                <input
+                  id="text-color-picker"
+                  type="color"
+                  value={
+                    editor?.getAttributes("textStyle").color || "#000000"
+                  }
+                  onChange={(e) => applyTextColor(e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer"
+                />
+              </div>
+
+              {/* Preset Colors */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Quick Colors:
+                </p>
+                <div className="grid grid-cols-6 gap-1">
+                  {colors.map((color) => (
+                    <button
+                      key={color}
+                      className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      onClick={() => applyTextColor(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={clearTextColor}
               >
-                <Palette className="h-4 w-4" />
+                Remove Color
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Highlight Color */}
+        <Popover
+          open={isHighlightPickerOpen}
+          onOpenChange={setIsHighlightPickerOpen}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant={editor?.isActive("highlight") ? "default" : "ghost"}
+              size="sm"
+              className="h-8 w-8 p-0 relative"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // If shift key is held, apply default yellow highlight directly
+                if (e.shiftKey) {
+                  applyHighlight("#FEF3C7");
+                  return;
+                }
+
+                // Toggle the highlight picker
+                setIsHighlightPickerOpen(!isHighlightPickerOpen);
+              }}
+              aria-label="Highlight"
+              title="Highlight"
+            >
+              <Highlighter className="h-4 w-4" />
+              {editor?.isActive("highlight") && (
                 <div
                   className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
                   style={{
                     backgroundColor:
-                      editor?.getAttributes("textStyle").color || "#000000",
+                      editor?.getAttributes("highlight").color || "#FEF3C7",
                   }}
                 />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3">
-              <div className="space-y-3">
-                {/* Native Color Picker */}
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="text-color-picker"
-                    className="text-sm font-medium"
-                  >
-                    Choose Color:
-                  </label>
-                  <input
-                    id="text-color-picker"
-                    type="color"
-                    value={
-                      editor?.getAttributes("textStyle").color || "#000000"
-                    }
-                    onChange={(e) => applyTextColor(e.target.value)}
-                    className="w-8 h-8 rounded border border-border cursor-pointer"
-                  />
-                </div>
-
-                {/* Preset Colors */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Quick Colors:
-                  </p>
-                  <div className="grid grid-cols-6 gap-1">
-                    {colors.map((color) => (
-                      <button
-                        key={color}
-                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => applyTextColor(color)}
-                        title={color}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={clearTextColor}
-                >
-                  Remove Color
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Highlight Color */}
-          <Popover
-            open={isHighlightPickerOpen}
-            onOpenChange={setIsHighlightPickerOpen}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant={editor?.isActive("highlight") ? "default" : "ghost"}
-                size="sm"
-                className="h-8 w-8 p-0 relative"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  // If shift key is held, apply default yellow highlight directly
-                  if (e.shiftKey) {
-                    applyHighlight("#FEF3C7");
-                    return;
-                  }
-
-                  // Toggle the highlight picker
-                  setIsHighlightPickerOpen(!isHighlightPickerOpen);
-                }}
-                aria-label="Highlight"
-              >
-                <Highlighter className="h-4 w-4" />
-                {editor?.isActive("highlight") && (
-                  <div
-                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 rounded-sm"
-                    style={{
-                      backgroundColor:
-                        editor?.getAttributes("highlight").color || "#FEF3C7",
-                    }}
-                  />
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3">
-              <div className="space-y-3">
-                {/* Native Color Picker */}
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="highlight-color-picker"
-                    className="text-sm font-medium"
-                  >
-                    Choose Color:
-                  </label>
-                  <input
-                    id="highlight-color-picker"
-                    type="color"
-                    value={
-                      editor?.getAttributes("highlight").color || "#FEF3C7"
-                    }
-                    onChange={(e) => applyHighlight(e.target.value)}
-                    className="w-8 h-8 rounded border border-border cursor-pointer"
-                  />
-                </div>
-
-                {/* Preset Highlight Colors */}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Quick Highlights:
-                  </p>
-                  <div className="grid grid-cols-6 gap-1">
-                    {highlightColors.map((color) => (
-                      <button
-                        key={color}
-                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => applyHighlight(color)}
-                        title={color}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                  onClick={clearHighlight}
-                >
-                  Remove Highlight
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* Clear Formatting */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                try {
-                  editor?.chain().focus().clearNodes().unsetAllMarks().run();
-                } catch (error) {
-                  if (process.env.NODE_ENV === "development") {
-                    console.error("Error clearing formatting:", error);
-                  }
-                }
-              }}
-              className="h-8 w-8 p-0"
-              aria-label="Clear Formatting"
-            >
-              <RemoveFormatting className="h-4 w-4" />
+              )}
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Clear Formatting</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3">
+            <div className="space-y-3">
+              {/* Native Color Picker */}
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="highlight-color-picker"
+                  className="text-sm font-medium"
+                >
+                  Choose Color:
+                </label>
+                <input
+                  id="highlight-color-picker"
+                  type="color"
+                  value={
+                    editor?.getAttributes("highlight").color || "#FEF3C7"
+                  }
+                  onChange={(e) => applyHighlight(e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer"
+                />
+              </div>
+
+              {/* Preset Highlight Colors */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Quick Highlights:
+                </p>
+                <div className="grid grid-cols-6 gap-1">
+                  {highlightColors.map((color) => (
+                    <button
+                      key={color}
+                      className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      onClick={() => applyHighlight(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={clearHighlight}
+              >
+                Remove Highlight
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Clear Formatting */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          try {
+            editor?.chain().focus().clearNodes().unsetAllMarks().run();
+          } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error clearing formatting:", error);
+            }
+          }
+        }}
+        className="h-8 w-8 p-0"
+        aria-label="Clear Formatting"
+        title="Clear Formatting"
+      >
+        <RemoveFormatting className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

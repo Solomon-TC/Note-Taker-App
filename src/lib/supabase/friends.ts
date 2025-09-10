@@ -77,7 +77,7 @@ export async function sendFriendRequest(
     console.log("🔍 Debug - Users in database:", {
       totalUsers: allUsers?.length || 0,
       users:
-        allUsers?.map((u) => ({
+        allUsers?.map((u: { id: string; email: string; full_name: string | null }) => ({
           id: u.id,
           email: u.email,
           name: u.full_name,

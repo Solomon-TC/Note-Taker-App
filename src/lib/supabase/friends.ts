@@ -900,7 +900,7 @@ export async function getFriendSharedPages(
     } else {
       console.log("📖 Friend's pages found for testing:", {
         total: allFriendPages?.length || 0,
-        pages: allFriendPages?.map((p) => ({
+        pages: allFriendPages?.map((p: { id: string; title: string; visibility: string }) => ({
           id: p.id,
           title: p.title,
           visibility: p.visibility,

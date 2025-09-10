@@ -429,7 +429,7 @@ export async function submitFeedback(
         user_id: input.user_id,
         content: trimmedContent,
         vote_count: 0, // Start with 0 votes
-      })
+      } as Database["public"]["Tables"]["feedback"]["Insert"])
       .select()
       .single();
 
@@ -1487,3 +1487,4 @@ export function useFeedbackVotesRealtime(
  * // For now, check the browser console for connection logs when enableLogging is true
  * ```
  */
+```

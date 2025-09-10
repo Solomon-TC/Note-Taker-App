@@ -421,17 +421,14 @@ export async function submitFeedback(
       timestamp: new Date().toISOString(),
     });
 
-    // Create properly typed insert object
-    const insertData: Database["public"]["Tables"]["feedback"]["Insert"] = {
-      user_id: input.user_id,
-      content: trimmedContent,
-      vote_count: 0, // Start with 0 votes
-    };
-
-    // Insert new feedback with proper typing
+    // Insert new feedback - now properly typed
     const { data, error } = await supabase
       .from("feedback")
-      .insert(insertData)
+      .insert({
+        user_id: input.user_id,
+        content: trimmedContent,
+        vote_count: 0, // Start with 0 votes
+      })
       .select()
       .single();
 

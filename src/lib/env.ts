@@ -88,3 +88,6 @@ if (typeof window === 'undefined' &&
     console.error('🚨 Environment validation failed:', error);
   }
 }
+
+// Export the validated environment configuration
+export const env = validateEnvironment();

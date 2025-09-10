@@ -1119,9 +1119,9 @@ export async function debugSharedPagesAccess(
     debug.step1_users = {
       success: !usersError,
       error: usersError?.message,
-      users: users?.map((u) => ({ id: u.id, email: u.email })),
-      currentUserExists: users?.some((u) => u.id === currentUserId),
-      friendExists: users?.some((u) => u.id === friendId),
+      users: users?.map((u: { id: string; email: string }) => ({ id: u.id, email: u.email })),
+      currentUserExists: users?.some((u: { id: string; email: string }) => u.id === currentUserId),
+      friendExists: users?.some((u: { id: string; email: string }) => u.id === friendId),
     };
 
     // Step 2: Check friendship

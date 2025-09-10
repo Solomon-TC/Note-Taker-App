@@ -425,11 +425,11 @@ export async function submitFeedback(
     // RLS policies will automatically ensure user can only insert with their own user_id
     const { data, error } = await supabase
       .from("feedback")
-      .insert({
+      .insert([{
         user_id: input.user_id,
         content: trimmedContent,
         vote_count: 0, // Start with 0 votes
-      } satisfies Database["public"]["Tables"]["feedback"]["Insert"])
+      }])
       .select()
       .single();
 

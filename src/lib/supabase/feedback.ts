@@ -1487,4 +1487,3 @@ export function useFeedbackVotesRealtime(
  * // For now, check the browser console for connection logs when enableLogging is true
  * ```
  */
-```

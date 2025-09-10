@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
@@ -27,20 +28,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   
+  // Use refs to prevent infinite re-renders
+  const mountedRef = useRef(true);
+  const initializingRef = useRef(false);
+  
   // Memoize supabase client to prevent recreation
   const supabase = useMemo(() => createClient(), []);
-  
-  // Use direct type casting to bypass Supabase type inference issues
-  const supabaseTyped = supabase as any;
 
   // Memoize checkProStatus to prevent recreation
   const checkProStatus = useCallback(async (userId: string) => {
+    if (!mountedRef.current) return;
+    
     try {
-      const { data: userData, error: userError } = await supabaseTyped
+      const { data: userData, error: userError } = await supabase
         .from("users")
         .select("is_pro")
         .eq("id", userId)
         .single();
+
+      if (!mountedRef.current) return;
 
       if (userError) {
         console.error("Error fetching user pro status:", userError);
@@ -49,29 +55,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsPro(userData?.is_pro || false);
       }
     } catch (err) {
+      if (!mountedRef.current) return;
       console.error("Error checking pro status:", err);
       setIsPro(false);
     }
-  }, [supabaseTyped]);
+  }, [supabase]);
+
+  // Handle auth state changes
+  const handleAuthStateChange = useCallback(async (event: AuthChangeEvent, session: Session | null) => {
+    if (!mountedRef.current) return;
+
+    try {
+      setUser(session?.user ?? null);
+      setError(null);
+      
+      // Check pro status if user exists
+      if (session?.user) {
+        await checkProStatus(session.user.id);
+      } else {
+        setIsPro(false);
+      }
+    } catch (err) {
+      if (!mountedRef.current) return;
+      console.error("Auth state change error:", err);
+      setError(err instanceof Error ? err.message : "Authentication failed");
+      setIsPro(false);
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [checkProStatus]);
 
   useEffect(() => {
-    let mounted = true;
+    // Prevent multiple initializations
+    if (initializingRef.current) return;
+    initializingRef.current = true;
 
-    // Get initial session
+    let authSubscription: { unsubscribe: () => void } | null = null;
+
+    // Get initial session with error handling
     const getInitialSession = async () => {
       try {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabaseTyped.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (!mounted) return;
+        if (!mountedRef.current) return;
 
         if (sessionError) {
-          console.error("Auth session error:", sessionError);
-          setError(sessionError.message);
-          setUser(null);
-          setIsPro(false);
+          // Handle session time skew errors gracefully
+          if (sessionError.message.includes('issued in the future')) {
+            console.warn('Session time skew detected, clearing session');
+            await supabase.auth.signOut();
+            setUser(null);
+            setIsPro(false);
+            setError(null);
+          } else {
+            console.error("Auth session error:", sessionError);
+            setError(sessionError.message);
+            setUser(null);
+            setIsPro(false);
+          }
         } else {
           setUser(session?.user ?? null);
           setError(null);
@@ -84,64 +127,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (err) {
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         console.error("Auth initialization error:", err);
         setError(err instanceof Error ? err.message : "Authentication failed");
         setUser(null);
         setIsPro(false);
       } finally {
-        if (mounted) {
+        if (mountedRef.current) {
           setLoading(false);
         }
       }
     };
 
-    getInitialSession();
+    // Set up auth state listener
+    const setupAuthListener = () => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+      authSubscription = subscription;
+    };
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabaseTyped.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      if (!mounted) return;
-
-      try {
-        setUser(session?.user ?? null);
-        setError(null);
-        
-        // Check pro status if user exists
-        if (session?.user) {
-          await checkProStatus(session.user.id);
-        } else {
-          setIsPro(false);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        console.error("Auth state change error:", err);
-        setError(err instanceof Error ? err.message : "Authentication failed");
-        setIsPro(false);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+    // Initialize auth
+    getInitialSession().then(() => {
+      if (mountedRef.current) {
+        setupAuthListener();
       }
     });
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      mountedRef.current = false;
+      initializingRef.current = false;
+      authSubscription?.unsubscribe();
     };
-  }, [supabaseTyped, checkProStatus]);
+  }, []); // Empty dependency array to prevent re-initialization
 
   const signOut = useCallback(async () => {
     try {
-      await supabaseTyped.auth.signOut();
+      await supabase.auth.signOut();
       setError(null);
       setIsPro(false);
     } catch (err) {
       console.error("Sign out error:", err);
       setError(err instanceof Error ? err.message : "Sign out failed");
     }
-  }, [supabaseTyped]);
+  }, [supabase]);
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({

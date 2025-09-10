@@ -40,13 +40,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const errorId = this.state.errorId || 'unknown';
     
-    console.error('🚨 Error Boundary caught an error:', {
+    // Enhanced error logging for production debugging
+    const errorDetails = {
       errorId,
-      error: error.message,
+      message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
       retryCount: this.retryCount,
-    });
+      timestamp: new Date().toISOString(),
+      url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+      userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'unknown',
+    };
+    
+    console.error('🚨 Error Boundary caught an error:', errorDetails);
     
     this.setState({
       error,
@@ -56,18 +62,29 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);
 
-    // Log to external service in production
+    // Enhanced production error logging
     if (process.env.NODE_ENV === 'production') {
-      // You can integrate with error tracking services here
-      console.error('Production error:', {
-        errorId,
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
+      // Check for specific error patterns
+      const isAuthError = error.message.includes('auth') || error.message.includes('session');
+      const isNetworkError = error.message.includes('fetch') || error.message.includes('network');
+      const isRenderError = error.message.includes('render') || error.message.includes('310');
+      
+      console.error('Production error categorized:', {
+        ...errorDetails,
+        category: isAuthError ? 'auth' : isNetworkError ? 'network' : isRenderError ? 'render' : 'unknown',
+        severity: this.retryCount > 1 ? 'high' : 'medium',
       });
+
+      // Handle specific error types
+      if (isAuthError) {
+        // Clear potentially corrupted auth state
+        try {
+          localStorage.removeItem('supabase.auth.token');
+          sessionStorage.clear();
+        } catch (e) {
+          console.error('Failed to clear auth storage:', e);
+        }
+      }
     }
   }
 
@@ -78,6 +95,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       this.setState({ hasError: false, error: undefined, errorInfo: undefined });
     } else {
       console.error('🚨 Max retries reached, forcing page reload');
+      // Clear storage before reload to prevent persistent errors
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        console.error('Failed to clear storage before reload:', e);
+      }
       window.location.reload();
     }
   };
@@ -123,32 +147,61 @@ function DefaultErrorFallback({
   retryCount: number;
   maxRetries: number;
 }) {
+  // Enhanced error pattern detection
   const isInfiniteLoop = error.message.includes('418') || 
                         error.message.includes('Maximum update depth exceeded') ||
-                        error.message.includes('Too many re-renders');
+                        error.message.includes('Too many re-renders') ||
+                        error.message.includes('310');
+  
+  const isAuthError = error.message.includes('auth') || 
+                     error.message.includes('session') ||
+                     error.message.includes('issued in the future');
+  
+  const isNetworkError = error.message.includes('fetch') || 
+                        error.message.includes('network') ||
+                        error.message.includes('Failed to fetch');
+
+  const getErrorTitle = () => {
+    if (isInfiniteLoop) return 'Rendering Loop Detected';
+    if (isAuthError) return 'Authentication Error';
+    if (isNetworkError) return 'Network Connection Error';
+    return 'Something went wrong';
+  };
+
+  const getErrorDescription = () => {
+    if (isInfiniteLoop) {
+      return 'The application encountered an infinite rendering loop. This has been automatically stopped to prevent browser crashes.';
+    }
+    if (isAuthError) {
+      return 'There was an issue with authentication. Please try signing in again.';
+    }
+    if (isNetworkError) {
+      return 'Unable to connect to the server. Please check your internet connection and try again.';
+    }
+    return process.env.NODE_ENV === 'development' 
+      ? error.message 
+      : 'An unexpected error occurred. Please try again.';
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-4">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>
-            {isInfiniteLoop ? 'Rendering Loop Detected' : 'Something went wrong'}
-          </AlertTitle>
+          <AlertTitle>{getErrorTitle()}</AlertTitle>
           <AlertDescription className="mt-2">
-            {isInfiniteLoop ? (
-              'The application encountered an infinite rendering loop. This has been automatically stopped to prevent browser crashes.'
-            ) : process.env.NODE_ENV === 'development' ? (
-              error.message 
-            ) : (
-              'An unexpected error occurred. Please try again.'
-            )}
+            {getErrorDescription()}
           </AlertDescription>
         </Alert>
         
         <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
           Error ID: {errorId}
           {retryCount > 0 && ` • Retry ${retryCount}/${maxRetries}`}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-1 font-mono text-xs">
+              {error.name}: {error.message}
+            </div>
+          )}
         </div>
         
         <div className="flex gap-2">
@@ -159,7 +212,16 @@ function DefaultErrorFallback({
             </Button>
           ) : (
             <Button 
-              onClick={() => window.location.reload()} 
+              onClick={() => {
+                // Clear storage before reload
+                try {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                } catch (e) {
+                  console.error('Failed to clear storage:', e);
+                }
+                window.location.reload();
+              }} 
               variant="outline" 
               className="flex-1"
             >
@@ -168,7 +230,16 @@ function DefaultErrorFallback({
             </Button>
           )}
           <Button 
-            onClick={() => window.location.href = '/'} 
+            onClick={() => {
+              // Clear storage before navigation
+              try {
+                localStorage.clear();
+                sessionStorage.clear();
+              } catch (e) {
+                console.error('Failed to clear storage:', e);
+              }
+              window.location.href = '/';
+            }} 
             variant="default" 
             className="flex-1"
           >
@@ -180,7 +251,7 @@ function DefaultErrorFallback({
         {process.env.NODE_ENV === 'development' && (
           <details className="mt-4 p-4 bg-muted rounded-lg">
             <summary className="cursor-pointer font-medium">Error Details</summary>
-            <pre className="mt-2 text-sm overflow-auto max-h-40">
+            <pre className="mt-2 text-sm overflow-auto max-h-40 whitespace-pre-wrap">
               {error.stack}
             </pre>
           </details>
@@ -209,7 +280,11 @@ export function AsyncErrorBoundary({ children }: { children: React.ReactNode }) 
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('🚨 Async Error Boundary:', { error, errorInfo });
+        console.error('🚨 Async Error Boundary:', { 
+          error: error.message, 
+          stack: error.stack,
+          componentStack: errorInfo.componentStack 
+        });
       }}
     >
       <React.Suspense 
@@ -223,4 +298,31 @@ export function AsyncErrorBoundary({ children }: { children: React.ReactNode }) 
       </React.Suspense>
     </ErrorBoundary>
   );
+}
+
+// Global error handler for unhandled promise rejections
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('🚨 Unhandled Promise Rejection:', {
+      reason: event.reason,
+      promise: event.promise,
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+    });
+    
+    // Prevent the default browser behavior
+    event.preventDefault();
+  });
+
+  window.addEventListener('error', (event) => {
+    console.error('🚨 Global Error Handler:', {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error,
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+    });
+  });
 }

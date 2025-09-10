@@ -1,15 +1,35 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Use singleton pattern to prevent multiple instances
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required",
-  );
+export function getSupabaseClient() {
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Missing environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required",
+    );
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  });
+
+  return supabaseInstance;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Export the singleton instance
+export const supabase = getSupabaseClient();
 
 // For backwards compatibility
 export { createClient };

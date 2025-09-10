@@ -231,7 +231,7 @@ export async function getFeedbackLeaderboard(
           // Fetch user data separately for each feedback item
           const transformedFeedback: FeedbackWithDetails[] = [];
 
-          for (const item of fallbackData) {
+          for (const item of fallbackData as Feedback[]) {
             let author = undefined;
 
             if (item.user_id) {

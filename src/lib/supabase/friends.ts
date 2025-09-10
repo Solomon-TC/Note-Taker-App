@@ -1164,9 +1164,9 @@ export async function debugSharedPagesAccess(
       totalPages: allPages?.length || 0,
       pagesByVisibility: {
         private:
-          allPages?.filter((p) => p.visibility === "private").length || 0,
+          allPages?.filter((p: { visibility: string }) => p.visibility === "private").length || 0,
         friends:
-          allPages?.filter((p) => p.visibility === "friends").length || 0,
+          allPages?.filter((p: { visibility: string }) => p.visibility === "friends").length || 0,
       },
       friendsPages: allPages
         ?.filter((p) => p.visibility === "friends")

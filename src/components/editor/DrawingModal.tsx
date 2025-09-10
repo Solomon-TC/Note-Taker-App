@@ -117,14 +117,22 @@ export default function DrawingModal({
       return;
     }
 
+    if (!canvasRef.current) {
+      alert("Drawing canvas is not ready. Please try again.");
+      return;
+    }
+
     try {
       setIsUploading(true);
+      console.log("DrawingModal: Starting drawing upload process");
 
       // Export canvas as PNG data URL
       const dataUrl = await canvasRef.current?.exportImage("png");
       if (!dataUrl) {
         throw new Error("Failed to export drawing from canvas.");
       }
+
+      console.log("DrawingModal: Canvas exported successfully");
 
       // Create a temporary canvas to crop the image
       const tempCanvas = document.createElement("canvas");
@@ -142,13 +150,24 @@ export default function DrawingModal({
         img.src = dataUrl;
       });
 
+      console.log("DrawingModal: Image loaded for cropping");
+
       // Crop the canvas to fit the content
       const croppedCanvas = cropCanvasToContent(tempCanvas);
       const croppedDataUrl = croppedCanvas.toDataURL("image/png");
 
+      console.log("DrawingModal: Image cropped successfully");
+
       // Convert cropped data URL to blob
       const blob = storageService.dataURLToBlob(croppedDataUrl);
       const filename = `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}.png`;
+
+      console.log("DrawingModal: Starting upload to storage", {
+        blobSize: blob.size,
+        filename,
+        userId: user.id,
+        noteId,
+      });
 
       // Upload using the centralized storage service
       const uploadResult = await storageService.uploadBlob(
@@ -167,7 +186,10 @@ export default function DrawingModal({
       });
 
       // Insert the drawing into the editor with both URL and objectKey
+      console.log("DrawingModal: Calling onInserted callback");
       onInserted(uploadResult.url, uploadResult.objectKey);
+      
+      console.log("DrawingModal: Closing modal");
       onClose();
     } catch (error) {
       console.error("Failed to insert drawing:", error);

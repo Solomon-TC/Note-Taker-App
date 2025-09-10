@@ -684,9 +684,27 @@ const TiptapEditor = ({
 
   const handleImageUpload = useCallback(
     async (file: File) => {
-      if (!editor || !user) return;
+      if (!editor || !user) {
+        console.error("Cannot upload image: missing editor or user");
+        alert("Cannot upload image: Please ensure you're logged in and the editor is ready.");
+        return;
+      }
 
       try {
+        console.log("Starting image upload:", {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          userId: user.id,
+          noteId,
+        });
+
+        // Show loading state
+        const loadingToast = document.createElement("div");
+        loadingToast.textContent = "Uploading image...";
+        loadingToast.className = "fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50";
+        document.body.appendChild(loadingToast);
+
         const uploadResult = await storageService.uploadFile(
           file,
           user.id,
@@ -694,72 +712,187 @@ const TiptapEditor = ({
           "images",
         );
 
-        // Only pass valid Tiptap Image properties (src, alt, title)
-        // Store objectKey in the custom attributes via the CustomImage extension
-        editor
+        console.log("Image upload successful:", uploadResult);
+
+        // Remove loading toast
+        document.body.removeChild(loadingToast);
+
+        // Insert image into editor with proper attributes
+        const insertResult = editor
           .chain()
           .focus()
           .setImage({
             src: uploadResult.url,
             alt: file.name,
-            // Custom attributes are handled by the CustomImage extension
+            title: file.name,
             objectKey: uploadResult.objectKey,
-          } as any) // Type assertion for custom attributes
+          } as any)
           .run();
+
+        console.log("Image insertion result:", insertResult);
+
+        if (insertResult) {
+          console.log("Image successfully inserted into editor");
+          // Show success message
+          const successToast = document.createElement("div");
+          successToast.textContent = "Image uploaded successfully!";
+          successToast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50";
+          document.body.appendChild(successToast);
+          setTimeout(() => {
+            if (document.body.contains(successToast)) {
+              document.body.removeChild(successToast);
+            }
+          }, 3000);
+        } else {
+          throw new Error("Failed to insert image into editor");
+        }
       } catch (error) {
         console.error("Failed to upload image:", error);
-        alert(
-          `Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
+        
+        // Remove any existing loading toast
+        const existingToast = document.querySelector(".fixed.top-4.right-4");
+        if (existingToast) {
+          document.body.removeChild(existingToast);
+        }
+
+        // Show error message
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        alert(`Failed to upload image: ${errorMessage}`);
       }
     },
     [editor, user, noteId],
   );
 
   const handleInsertImage = useCallback(() => {
+    console.log("Insert image button clicked");
+    
+    if (!editor || !user) {
+      console.error("Cannot insert image: missing editor or user");
+      alert("Cannot insert image: Please ensure you're logged in and the editor is ready.");
+      return;
+    }
+
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
+    input.multiple = false;
+    
     input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      
+      console.log("File selected:", {
+        hasFile: !!file,
+        fileName: file?.name,
+        fileSize: file?.size,
+        fileType: file?.type,
+      });
+      
       if (file) {
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          alert("Please select a valid image file.");
+          return;
+        }
+        
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          alert("Image file is too large. Please select a file smaller than 10MB.");
+          return;
+        }
+        
         handleImageUpload(file);
+      } else {
+        console.log("No file selected");
       }
     };
+    
+    input.onerror = (error) => {
+      console.error("File input error:", error);
+      alert("Error accessing file. Please try again.");
+    };
+    
+    // Trigger file selection
     input.click();
-  }, [handleImageUpload]);
+  }, [handleImageUpload, editor, user]);
 
   const handleInsertDrawing = useCallback(() => {
+    console.log("Insert drawing button clicked");
+    
+    if (!editor || !user) {
+      console.error("Cannot insert drawing: missing editor or user");
+      alert("Cannot insert drawing: Please ensure you're logged in and the editor is ready.");
+      return;
+    }
+
+    console.log("Opening drawing modal:", {
+      editorReady: !!editor,
+      userReady: !!user,
+      noteId,
+    });
+
     setEditingDrawingId(null);
     setEditingDrawingPos(null);
     setIsDrawingModalOpen(true);
-  }, []);
+  }, [editor, user, noteId]);
 
   const handleDrawingInserted = useCallback(
     (imageUrl: string, objectKey?: string) => {
-      if (!editor) return;
+      if (!editor) {
+        console.error("Cannot insert drawing: editor not available");
+        alert("Cannot insert drawing: Editor not ready. Please try again.");
+        return;
+      }
 
       console.log("TiptapEditor: Inserting drawing:", {
         imageUrl,
         objectKey,
         noteId,
+        editorReady: !!editor,
+        editorFocused: editor.isFocused,
       });
 
-      // Insert the drawing image at the current cursor position
-      // Store both the URL and objectKey for proper persistence
-      editor
-        .chain()
-        .focus()
-        .setImage({
-          src: imageUrl,
-          alt: "Drawing",
-          title: "Drawing",
-          objectKey: objectKey, // Store the storage path for later retrieval
-          drawingId: `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}`,
-        } as any) // Type assertion for custom attributes
-        .run();
+      try {
+        // Ensure editor is focused before inserting
+        if (!editor.isFocused) {
+          editor.commands.focus();
+        }
 
-      console.log("TiptapEditor: Drawing inserted successfully");
+        // Insert the drawing image at the current cursor position
+        const insertResult = editor
+          .chain()
+          .focus()
+          .setImage({
+            src: imageUrl,
+            alt: "Drawing",
+            title: "Drawing",
+            objectKey: objectKey,
+            drawingId: `drawing-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          } as any)
+          .run();
+
+        console.log("Drawing insertion result:", insertResult);
+
+        if (insertResult) {
+          console.log("TiptapEditor: Drawing inserted successfully");
+          
+          // Show success message
+          const successToast = document.createElement("div");
+          successToast.textContent = "Drawing inserted successfully!";
+          successToast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50";
+          document.body.appendChild(successToast);
+          setTimeout(() => {
+            if (document.body.contains(successToast)) {
+              document.body.removeChild(successToast);
+            }
+          }, 3000);
+        } else {
+          throw new Error("Failed to insert drawing into editor");
+        }
+      } catch (error) {
+        console.error("Error inserting drawing:", error);
+        alert(`Failed to insert drawing: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
     },
     [editor, noteId],
   );

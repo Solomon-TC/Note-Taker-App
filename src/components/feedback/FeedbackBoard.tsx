@@ -47,7 +47,7 @@ export default function FeedbackBoard({ className }: FeedbackBoardProps) {
   // Load initial feedback data
   useEffect(() => {
     const loadInitialFeedback = async () => {
-      if (!user) {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
@@ -71,7 +71,7 @@ export default function FeedbackBoard({ className }: FeedbackBoardProps) {
     };
 
     loadInitialFeedback();
-  }, [user]);
+  }, [user?.id]);
 
   // Clear error after showing it
   useEffect(() => {

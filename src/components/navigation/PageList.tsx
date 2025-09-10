@@ -296,36 +296,38 @@ const PageList = ({
     }),
   );
 
-  // Build hierarchical structure
-  const buildPageHierarchy = (pages: Page[]): PageWithChildren[] => {
-    const pageMap = new Map<string, PageWithChildren>();
-    const rootPages: PageWithChildren[] = [];
+  // Build hierarchical structure - memoized to prevent recalculation
+  const hierarchicalPages = useMemo(() => {
+    const buildPageHierarchy = (pages: Page[]): PageWithChildren[] => {
+      const pageMap = new Map<string, PageWithChildren>();
+      const rootPages: PageWithChildren[] = [];
 
-    // First pass: create all pages
-    pages.forEach((page) => {
-      pageMap.set(page.id, { ...page, children: [], level: 0 });
-    });
+      // First pass: create all pages
+      pages.forEach((page) => {
+        pageMap.set(page.id, { ...page, children: [], level: 0 });
+      });
 
-    // Second pass: build hierarchy
-    pages.forEach((page) => {
-      const pageWithChildren = pageMap.get(page.id)!;
-      if (page.parent_page_id) {
-        const parent = pageMap.get(page.parent_page_id);
-        if (parent) {
-          pageWithChildren.level = (parent.level || 0) + 1;
-          parent.children!.push(pageWithChildren);
+      // Second pass: build hierarchy
+      pages.forEach((page) => {
+        const pageWithChildren = pageMap.get(page.id)!;
+        if (page.parent_page_id) {
+          const parent = pageMap.get(page.parent_page_id);
+          if (parent) {
+            pageWithChildren.level = (parent.level || 0) + 1;
+            parent.children!.push(pageWithChildren);
+          } else {
+            rootPages.push(pageWithChildren);
+          }
         } else {
           rootPages.push(pageWithChildren);
         }
-      } else {
-        rootPages.push(pageWithChildren);
-      }
-    });
+      });
 
-    return rootPages;
-  };
+      return rootPages;
+    };
 
-  const hierarchicalPages = buildPageHierarchy(pages);
+    return buildPageHierarchy(pages);
+  }, [pages]); // Only recalculate when pages array changes
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -364,20 +366,6 @@ const PageList = ({
     }
   };
 
-  const flattenPages = (pages: PageWithChildren[]): string[] => {
-    const result: string[] = [];
-    const traverse = (pageList: PageWithChildren[]) => {
-      pageList.forEach((page) => {
-        result.push(page.id);
-        if (page.children) {
-          traverse(page.children);
-        }
-      });
-    };
-    traverse(pages);
-    return result;
-  };
-
   return (
     <div className={`w-80 bg-background border-r flex flex-col ${className}`}>
       <div className="p-4 border-b">
@@ -398,7 +386,7 @@ const PageList = ({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={flattenPages(hierarchicalPages)}
+                items={flattenedPageIds}
                 strategy={verticalListSortingStrategy}
               >
                 {hierarchicalPages.map((page) => (

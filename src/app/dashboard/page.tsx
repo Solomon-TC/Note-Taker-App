@@ -160,7 +160,7 @@ export default function DashboardPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [user?.id, supabase]);
+  }, [user?.id, supabaseTyped]); // Fixed: Only depend on user.id and supabase client
 
   // Load user data when user is available and not loading - with proper dependencies
   useEffect(() => {
@@ -231,7 +231,7 @@ export default function DashboardPage() {
       console.error("🏠 Dashboard: Error checking onboarding status:", error);
       // On error, assume user doesn't need onboarding and stay on dashboard
     }
-  }, [user?.id, loading, isPro, router, supabase]);
+  }, [user?.id, loading, isPro, router, supabaseTyped]); // Fixed: Only depend on primitive values
 
   // Use effect for auth routing with proper dependencies
   useEffect(() => {
@@ -778,7 +778,7 @@ export default function DashboardPage() {
       setSelectedSectionId(null);
       setSelectedPageId(null);
     }
-  }, [selectedNotebookId, sections, selectedSectionId]);
+  }, [selectedNotebookId, sections.length]); // Fixed: Only depend on notebook ID and sections length
 
   // Auto-select first page when section changes
   useEffect(() => {
@@ -801,7 +801,7 @@ export default function DashboardPage() {
     } else {
       setSelectedPageId(null);
     }
-  }, [selectedSectionId, pages, selectedPageId]);
+  }, [selectedSectionId, pages.length]); // Fixed: Only depend on section ID and pages length
 
   // Enhanced notebook selection handler
   const handleSelectNotebook = useCallback((notebookId: string) => {
@@ -906,60 +906,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-
-      try {
-        // Fetch notebooks
-        const { data: notebooksData, error: notebooksError } =
-          await supabaseTyped
-            .from("notebooks")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("sort_order", { ascending: true });
-
-        if (notebooksError) {
-          console.error("Error fetching notebooks:", notebooksError);
-        } else {
-          setNotebooks(notebooksData || []);
-        }
-
-        // Fetch sections
-        const { data: sectionsData, error: sectionsError } = await supabaseTyped
-          .from("sections")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("sort_order", { ascending: true });
-
-        if (sectionsError) {
-          console.error("Error fetching sections:", sectionsError);
-        } else {
-          setSections(sectionsData || []);
-        }
-
-        // Fetch pages
-        const { data: pagesData, error: pagesError } = await supabaseTyped
-          .from("pages")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("sort_order", { ascending: true });
-
-        if (pagesError) {
-          console.error("Error fetching pages:", pagesError);
-        } else {
-          setPages(pagesData || []);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user, supabaseTyped]);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-background via-background to-muted/20">

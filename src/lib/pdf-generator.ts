@@ -112,7 +112,7 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
     pdf.text(titleLines, margin, currentY);
     currentY += titleLines.length * 10 + 20;
 
-    // Process Tiptap content nodes for better formatting
+    // Enhanced content processing with better text extraction
     if (content.content && content.content.length > 0) {
       for (const node of content.content) {
         checkNewPage();
@@ -124,8 +124,10 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
             pdf.setFontSize(headingSize);
             pdf.setFont('helvetica', 'bold');
             
-            if (node.content && node.content[0]?.text) {
-              const headingLines = pdf.splitTextToSize(node.content[0].text, maxWidth);
+            // Extract text from heading content
+            const headingText = extractTextFromNode(node);
+            if (headingText) {
+              const headingLines = pdf.splitTextToSize(headingText, maxWidth);
               pdf.text(headingLines, margin, currentY);
               currentY += headingLines.length * (headingSize * 0.6) + 10;
             }
@@ -135,8 +137,10 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'normal');
             
-            if (node.content && node.content[0]?.text) {
-              const paragraphLines = pdf.splitTextToSize(node.content[0].text, maxWidth);
+            // Extract text from paragraph content
+            const paragraphText = extractTextFromNode(node);
+            if (paragraphText) {
+              const paragraphLines = pdf.splitTextToSize(paragraphText, maxWidth);
               pdf.text(paragraphLines, margin, currentY);
               currentY += paragraphLines.length * 6 + 8;
             } else {
@@ -157,7 +161,7 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
                   checkNewPage();
                   
                   const bullet = node.type === 'bulletList' ? '• ' : `${i + 1}. `;
-                  const itemText = listItem.content[0]?.content?.[0]?.text || '';
+                  const itemText = extractTextFromNode(listItem);
                   
                   if (itemText) {
                     const itemLines = pdf.splitTextToSize(`${bullet}${itemText}`, maxWidth - 10);
@@ -174,17 +178,27 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'italic');
             
-            if (node.content && node.content[0]?.content?.[0]?.text) {
-              const quoteText = `"${node.content[0].content[0].text}"`;
-              const quoteLines = pdf.splitTextToSize(quoteText, maxWidth - 20);
+            const quoteText = extractTextFromNode(node);
+            if (quoteText) {
+              const formattedQuote = `"${quoteText}"`;
+              const quoteLines = pdf.splitTextToSize(formattedQuote, maxWidth - 20);
               pdf.text(quoteLines, margin + 20, currentY);
               currentY += quoteLines.length * 6 + 12;
             }
             break;
+
+          case 'image':
+            // Add placeholder for images since we can't easily embed them
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'italic');
+            const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
+            pdf.text(imageText, margin, currentY);
+            currentY += 15;
+            break;
             
           default:
             // For other node types, extract text content
-            const nodeText = extractPlainText({ type: 'doc', content: [node] });
+            const nodeText = extractTextFromNode(node);
             if (nodeText.trim()) {
               pdf.setFontSize(12);
               pdf.setFont('helvetica', 'normal');
@@ -217,3 +231,24 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
     };
   }
 };
+
+// Helper function to extract text from any node type
+function extractTextFromNode(node: any): string {
+  if (!node) return '';
+  
+  let text = '';
+  
+  // If node has direct text content
+  if (node.text) {
+    text += node.text;
+  }
+  
+  // If node has content array, recursively extract text
+  if (node.content && Array.isArray(node.content)) {
+    for (const childNode of node.content) {
+      text += extractTextFromNode(childNode);
+    }
+  }
+  
+  return text;
+}

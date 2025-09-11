@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         if (!acc[item.noteTitle]) acc[item.noteTitle] = [];
         acc[item.noteTitle].push(item);
         return acc;
-      }, {} as Record<string, any[]>);
+      }, {} as Record<string, typeof mediaItems>);
 
       description += `\nVisual content by note:\n`;
       Object.entries(mediaByNote).forEach(([noteTitle, items]) => {

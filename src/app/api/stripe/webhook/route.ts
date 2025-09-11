@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
             currentPeriodEnd,
           });
 
-          let updateResult = null;
+          let updateResult: any = null;
 
           if (userId) {
             console.log(`🎯 Updating user by ID: ${userId}`);

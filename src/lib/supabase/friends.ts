@@ -1,7 +1,8 @@
 "use client";
 
-import { createClient } from "@/lib/supabase-client";
-import { Database } from "@/types/supabase";
+import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { Database } from '@/types/supabase';
 
 type FriendRequest = Database["public"]["Tables"]["friend_requests"]["Row"];
 type User = Database["public"]["Tables"]["users"]["Row"];
@@ -182,7 +183,10 @@ export async function sendFriendRequest(senderId: string, receiverEmail: string)
 export async function getPendingFriendRequests(
   userId: string,
 ): Promise<FriendRequestWithUser[]> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     const { data, error } = await supabase
@@ -222,7 +226,10 @@ export async function getPendingFriendRequests(
 export async function getSentFriendRequests(
   userId: string,
 ): Promise<FriendRequestWithUser[]> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     const { data, error } = await supabase
@@ -263,7 +270,10 @@ export async function acceptFriendRequest(
   requestId: string,
   userId: string,
 ): Promise<AcceptFriendRequestResult> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     // Validate input
@@ -462,7 +472,10 @@ export async function declineFriendRequest(
   requestId: string,
   userId: string,
 ): Promise<DeclineFriendRequestResult> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     // Validate input
@@ -518,7 +531,10 @@ export async function declineFriendRequest(
  * Get user's friends list
  */
 export async function getFriends(userId: string): Promise<Friend[]> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     const { data, error } = await supabase.rpc("get_user_friends", {
@@ -587,7 +603,10 @@ export async function getFriendSharedPages(
   currentUserId: string,
   friendId: string,
 ): Promise<GetSharedPagesResult> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     // Validate input
@@ -929,7 +948,10 @@ export async function debugSharedPagesAccess(
   debug: any;
   error?: string;
 }> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     console.log("🔍 DEBUG: Starting comprehensive shared pages debug", {
@@ -1082,7 +1104,10 @@ export async function unfriendUser(
   userId: string,
   friendId: string,
 ): Promise<UnfriendResult> {
-  const supabase = createClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   try {
     // Validate input

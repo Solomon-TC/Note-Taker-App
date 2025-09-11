@@ -295,7 +295,7 @@ export class StorageService {
               .getPublicUrl(fullPath);
 
             if (urlData?.publicUrl) {
-              (mediaFiles as any).push({
+              mediaFiles.push({
                 path: fullPath,
                 url: urlData.publicUrl,
                 type: 'image' as const,
@@ -317,7 +317,7 @@ export class StorageService {
               .getPublicUrl(fullPath);
 
             if (urlData?.publicUrl) {
-              (mediaFiles as any).push({
+              mediaFiles.push({
                 path: fullPath,
                 url: urlData.publicUrl,
                 type: 'drawing' as const,

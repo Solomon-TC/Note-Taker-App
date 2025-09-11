@@ -54,19 +54,33 @@ import UserMenu from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   sendFriendRequest,
-  getPendingFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,
-  getFriends,
-  unfriendUser,
-  getFriendSharedPages,
-  debugSharedPagesAccess,
-  type FriendRequestWithUser,
-  type Friend,
-  type SharedPage,
+  getFriendRequests,
+  getUserFriends,
+  removeFriend,
+  getSharedPages,
+  sharePageWithFriend,
+  unsharePageWithFriend,
 } from "@/lib/supabase/friends";
 
-// Remove the local Friend type since we're importing it from the library
+interface FriendRequestWithUser {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: string;
+  created_at: string;
+  sender?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  };
+  receiver?: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  };
+}
 
 export default function FriendsPage() {
   const router = useRouter();

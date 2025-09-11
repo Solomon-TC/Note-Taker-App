@@ -15,8 +15,7 @@ export const generateNotePDF = ({ title, content, filename }: PDFGenerationOptio
     // Set up document properties
     pdf.setProperties({
       title: title,
-      creator: 'Scribly',
-      producer: 'Scribly Note-Taking App'
+      creator: 'Scribly'
     });
 
     // Page dimensions and margins

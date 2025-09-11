@@ -277,8 +277,7 @@ export class StorageService {
     images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
     totalSize: number;
   }> {
-    type MediaFile = { path: string; url: string; type: 'image' | 'drawing'; noteId?: string };
-    const mediaFiles: MediaFile[] = [];
+    const mediaFiles: Array<{ path: string; url: string; type: 'image' | 'drawing'; noteId?: string }> = [];
     let totalSize = 0;
 
     try {
@@ -326,12 +325,14 @@ export class StorageService {
           const pathParts = file.name.split('/');
           const noteId = pathParts.length > 1 ? pathParts[0] : undefined;
           
-          mediaFiles.push({
+          const mediaFile: { path: string; url: string; type: 'image' | 'drawing'; noteId?: string } = {
             path: fullPath,
             url: signedUrl,
-            type: file.name.includes('/drawings/') ? 'drawing' as const : 'image' as const,
+            type: file.name.includes('/drawings/') ? 'drawing' : 'image',
             noteId
-          });
+          };
+          
+          mediaFiles.push(mediaFile);
 
           // Add to total size
           totalSize += file.metadata?.size || 1024;

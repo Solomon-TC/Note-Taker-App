@@ -112,7 +112,9 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     if (!editor) return;
 
     try {
-      // Insert a Google Docs-like table with better default settings
+      console.log("Inserting table...");
+      
+      // Create a more flexible table with better default settings
       const tableConfig = {
         rows: 3,
         cols: 3,
@@ -120,77 +122,94 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         cellContent: "",
       };
 
+      // First, try to insert the table directly
       if (editor.can().insertTable(tableConfig)) {
-        editor?.chain().focus().insertTable(tableConfig).run();
+        const result = editor.chain().focus().insertTable(tableConfig).run();
+        console.log("Table insertion result:", result);
+        
+        if (result) {
+          console.log("Table inserted successfully");
+          return;
+        }
+      }
+
+      // If that fails, try inserting at a new paragraph
+      console.log("Trying alternative table insertion method...");
+      const result = editor
+        .chain()
+        .focus()
+        .insertContent("\n")
+        .insertTable(tableConfig)
+        .run();
+        
+      console.log("Alternative table insertion result:", result);
+      
+      if (result) {
+        console.log("Table inserted successfully with alternative method");
       } else {
-        // Try to insert at a new paragraph
-        editor
-          ?.chain()
-          .focus()
-          .insertContent("\n")
-          .insertTable(tableConfig)
-          .run();
+        throw new Error("Both table insertion methods failed");
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error inserting table:", error);
-      }
-      // Fallback: try inserting at the end
-      try {
-        editor
-          ?.chain()
-          .focus()
-          .command(({ tr, state, dispatch }) => {
-            const { doc } = state;
-            const pos = doc.content.size;
-            const newTr = tr.insert(pos, state.schema.nodes.paragraph.create());
-            if (dispatch) dispatch(newTr);
-            return true;
-          })
-          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-          .run();
-      } catch (fallbackError) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Fallback table insertion failed:", fallbackError);
-        }
-        alert(
-          "Could not insert table. Please try placing your cursor in a different location.",
-        );
-      }
+      console.error("Error inserting table:", error);
+      alert(
+        "Could not insert table. Please try placing your cursor in a different location or on a new line.",
+      );
     }
   }, [editor]);
 
   const addTableRow = useCallback(() => {
     if (!editor) return;
-    editor?.chain().focus().addRowAfter().run();
+    console.log("Adding table row...");
+    const result = editor.chain().focus().addRowAfter().run();
+    console.log("Add row result:", result);
   }, [editor]);
 
   const addTableColumn = useCallback(() => {
     if (!editor) return;
-    editor?.chain().focus().addColumnAfter().run();
+    console.log("Adding table column...");
+    const result = editor.chain().focus().addColumnAfter().run();
+    console.log("Add column result:", result);
   }, [editor]);
 
   const deleteTableRow = useCallback(() => {
     if (!editor) return;
-    editor?.chain().focus().deleteRow().run();
+    console.log("Deleting table row...");
+    const result = editor.chain().focus().deleteRow().run();
+    console.log("Delete row result:", result);
   }, [editor]);
 
   const deleteTableColumn = useCallback(() => {
     if (!editor) return;
-    editor?.chain().focus().deleteColumn().run();
+    console.log("Deleting table column...");
+    const result = editor.chain().focus().deleteColumn().run();
+    console.log("Delete column result:", result);
   }, [editor]);
 
   const deleteTable = useCallback(() => {
     if (!editor) return;
-    editor?.chain().focus().deleteTable().run();
+    console.log("Deleting table...");
+    const result = editor.chain().focus().deleteTable().run();
+    console.log("Delete table result:", result);
   }, [editor]);
 
+  // Enhanced table state detection with debugging
   const isInTable = editor?.isActive("table") ?? false;
   const canAddRow = editor?.can().addRowAfter() ?? false;
   const canAddColumn = editor?.can().addColumnAfter() ?? false;
   const canDeleteRow = editor?.can().deleteRow() ?? false;
   const canDeleteColumn = editor?.can().deleteColumn() ?? false;
   const canDeleteTable = editor?.can().deleteTable() ?? false;
+
+  // Debug table state
+  console.log("Table state:", {
+    isInTable,
+    canAddRow,
+    canAddColumn,
+    canDeleteRow,
+    canDeleteColumn,
+    canDeleteTable,
+    currentSelection: editor?.state.selection,
+  });
 
   const setFontFamily = useCallback(
     (fontFamily: string) => {
@@ -481,29 +500,6 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     setIsHighlightPickerOpen(false);
   }, [editor]);
 
-  const setFontSize = useCallback(
-    (fontSize: string) => {
-      if (!editor) return;
-
-      try {
-        if (fontSize === "default") {
-          // Remove fontSize using unsetFontSize command
-          editor.chain().focus().unsetFontSize().run();
-        } else {
-          // Set fontSize using setFontSize command
-          editor.chain().focus().setFontSize(fontSize).run();
-        }
-
-        console.log("Font size applied:", { fontSize });
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error setting font size:", error);
-        }
-      }
-    },
-    [editor],
-  );
-
   const colors = [
     "#000000", // Black
     "#374151", // Gray 700
@@ -550,20 +546,6 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     { label: "Georgia", value: "Georgia, serif" },
     { label: "Courier New", value: "Courier New, monospace" },
     { label: "Monaco", value: "Monaco, monospace" },
-  ];
-
-  const fontSizes = [
-    { label: "Default", value: "default" },
-    { label: "12px", value: "12px" },
-    { label: "14px", value: "14px" },
-    { label: "16px", value: "16px" },
-    { label: "18px", value: "18px" },
-    { label: "20px", value: "20px" },
-    { label: "24px", value: "24px" },
-    { label: "28px", value: "28px" },
-    { label: "32px", value: "32px" },
-    { label: "36px", value: "36px" },
-    { label: "48px", value: "48px" },
   ];
 
   if (!editor) {
@@ -869,7 +851,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           onClick={insertTable}
           className="h-8 w-8 p-0"
           aria-label="Insert Table"
-          title="Insert Table"
+          title="Insert Table (3x3)"
         >
           <Table className="h-4 w-4" />
         </Button>
@@ -882,7 +864,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             disabled={!canAddRow}
             className="h-8 w-8 p-0"
             aria-label="Add Row"
-            title="Add Row"
+            title="Add Row Below"
           >
             <Plus className="h-3 w-3" />
           </Button>
@@ -894,7 +876,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             disabled={!canAddColumn}
             className="h-8 w-8 p-0"
             aria-label="Add Column"
-            title="Add Column"
+            title="Add Column Right"
           >
             <MoreHorizontal className="h-3 w-3" />
           </Button>
@@ -906,9 +888,21 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             disabled={!canDeleteRow}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
             aria-label="Delete Row"
-            title="Delete Row"
+            title="Delete Current Row"
           >
             <Minus className="h-3 w-3" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={deleteTableColumn}
+            disabled={!canDeleteColumn}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            aria-label="Delete Column"
+            title="Delete Current Column"
+          >
+            <MoreHorizontal className="h-3 w-3 rotate-90" />
           </Button>
 
           <Button
@@ -918,7 +912,7 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
             disabled={!canDeleteTable}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
             aria-label="Delete Table"
-            title="Delete Table"
+            title="Delete Entire Table"
           >
             <Table className="h-3 w-3" />
           </Button>
@@ -947,30 +941,6 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   }}
                 >
                   {font.label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Font Size */}
-        <Select
-          value={editor?.getAttributes("textStyle").fontSize || "default"}
-          onValueChange={setFontSize}
-        >
-          <SelectTrigger className="w-20 h-8 text-xs">
-            <SelectValue placeholder="Size" />
-          </SelectTrigger>
-          <SelectContent>
-            {fontSizes.map((size) => (
-              <SelectItem key={size.value} value={size.value}>
-                <span
-                  style={{
-                    fontSize:
-                      size.value !== "default" ? size.value : undefined,
-                  }}
-                >
-                  {size.label}
                 </span>
               </SelectItem>
             ))}

@@ -434,23 +434,24 @@ const TiptapEditor = ({
       Table.configure({
         resizable: true,
         allowTableNodeSelection: true,
+        lastColumnResizable: false,
         HTMLAttributes: {
-          class: "tiptap-table",
+          class: "tiptap-table border-collapse border border-gray-300 w-full my-4",
         },
       }),
       TableRow.configure({
         HTMLAttributes: {
-          class: "tiptap-table-row",
+          class: "tiptap-table-row border border-gray-300",
         },
       }),
       TableHeader.configure({
         HTMLAttributes: {
-          class: "tiptap-table-header",
+          class: "tiptap-table-header border border-gray-300 bg-gray-50 font-semibold p-2 text-left",
         },
       }),
       TableCell.configure({
         HTMLAttributes: {
-          class: "tiptap-table-cell",
+          class: "tiptap-table-cell border border-gray-300 p-2 min-w-[100px]",
         },
       }),
       Dropcursor,

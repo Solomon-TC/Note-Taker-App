@@ -248,6 +248,141 @@ export class StorageService {
     }
     return new Blob([u8arr], { type: mime });
   }
+
+  /**
+   * Generate temporary signed URLs for AI processing
+   * These URLs have longer expiration times for AI analysis
+   */
+  async generateAIAccessUrl(path: string): Promise<string> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.bucketName)
+        .createSignedUrl(path, 7200); // 2 hours for AI processing
+
+      if (error) {
+        throw new Error(`Failed to generate AI access URL: ${error.message}`);
+      }
+
+      return data.signedUrl;
+    } catch (error) {
+      console.error("Error generating AI access URL:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract all image and drawing URLs from Tiptap content for AI processing
+   */
+  async extractMediaForAI(content: any, userId: string): Promise<{
+    images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
+    hasMedia: boolean;
+  }> {
+    const mediaItems: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }> = [];
+
+    if (!content || typeof content !== 'object') {
+      return { images: [], hasMedia: false };
+    }
+
+    const extractFromNode = async (node: any) => {
+      // Handle image nodes
+      if (node.type === 'image' && node.attrs?.objectKey) {
+        try {
+          // Generate fresh signed URL for AI access
+          const aiAccessUrl = await this.generateAIAccessUrl(node.attrs.objectKey);
+          
+          // Determine if it's a drawing or regular image based on path
+          const isDrawing = node.attrs.objectKey.includes('/drawings/');
+          
+          mediaItems.push({
+            url: aiAccessUrl,
+            objectKey: node.attrs.objectKey,
+            type: isDrawing ? 'drawing' : 'image'
+          });
+        } catch (error) {
+          console.warn(`Failed to generate AI access URL for ${node.attrs.objectKey}:`, error);
+        }
+      }
+
+      // Recursively process child nodes
+      if (node.content && Array.isArray(node.content)) {
+        for (const childNode of node.content) {
+          await extractFromNode(childNode);
+        }
+      }
+    };
+
+    if (content.content && Array.isArray(content.content)) {
+      for (const node of content.content) {
+        await extractFromNode(node);
+      }
+    }
+
+    return {
+      images: mediaItems,
+      hasMedia: mediaItems.length > 0
+    };
+  }
+
+  /**
+   * Check if user has access to specific media files
+   */
+  async verifyUserAccess(objectKey: string, userId: string): Promise<boolean> {
+    // Check if the object key starts with the user's ID
+    return objectKey.startsWith(`${userId}/`);
+  }
+
+  /**
+   * Get all media files for a user's notes (for AI context building)
+   */
+  async getUserMediaFiles(userId: string): Promise<Array<{
+    path: string;
+    url: string;
+    type: 'image' | 'drawing';
+    noteId?: string;
+  }>> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.bucketName)
+        .list(`${userId}/`, {
+          limit: 1000,
+          offset: 0,
+        });
+
+      if (error) {
+        console.error("Error listing user media files:", error);
+        return [];
+      }
+
+      const mediaFiles = [];
+      
+      for (const file of data || []) {
+        if (file.name && (file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.webp'))) {
+          try {
+            const fullPath = `${userId}/${file.name}`;
+            const signedUrl = await this.generateAIAccessUrl(fullPath);
+            
+            // Extract note ID from path if possible
+            const pathParts = file.name.split('/');
+            const noteId = pathParts.length > 1 ? pathParts[0] : undefined;
+            
+            mediaFiles.push({
+              path: fullPath,
+              url: signedUrl,
+              type: file.name.includes('/drawings/') ? 'drawing' as const : 'image' as const,
+              noteId
+            });
+          } catch (error) {
+            console.warn(`Failed to generate signed URL for ${file.name}:`, error);
+          }
+        }
+      }
+
+      return mediaFiles;
+    } catch (error) {
+      console.error("Error getting user media files:", error);
+      return [];
+    }
+  }
 }
 
 // Export singleton instance

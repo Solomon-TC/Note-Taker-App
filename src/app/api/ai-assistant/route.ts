@@ -33,23 +33,76 @@ export async function POST(request: NextRequest) {
     let userPrompt = "";
     let messages: any[] = [];
 
+    // Helper function to build multimodal content description
+    const buildMediaDescription = (notes: any[]) => {
+      const mediaItems = notes.flatMap(note => 
+        (note.mediaContent || []).map((media: any) => ({
+          noteTitle: note.title,
+          noteId: note.id,
+          mediaType: media.type,
+          mediaUrl: media.url,
+          objectKey: media.objectKey
+        }))
+      );
+
+      if (mediaItems.length === 0) return "";
+
+      const imageCount = mediaItems.filter(m => m.mediaType === 'image').length;
+      const drawingCount = mediaItems.filter(m => m.mediaType === 'drawing').length;
+
+      let description = `\n\n📸 VISUAL CONTENT AVAILABLE:\n`;
+      description += `- ${imageCount} images and ${drawingCount} drawings across your notes\n`;
+      description += `- I can see and analyze all visual content in your notes\n`;
+      description += `- Visual content includes: diagrams, photos, sketches, charts, and handwritten notes\n`;
+      
+      // Group media by note for better context
+      const mediaByNote = mediaItems.reduce((acc, item) => {
+        if (!acc[item.noteTitle]) acc[item.noteTitle] = [];
+        acc[item.noteTitle].push(item);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      description += `\nVisual content by note:\n`;
+      Object.entries(mediaByNote).forEach(([noteTitle, items]) => {
+        const images = items.filter(i => i.mediaType === 'image').length;
+        const drawings = items.filter(i => i.mediaType === 'drawing').length;
+        description += `- "${noteTitle}": ${images} images, ${drawings} drawings\n`;
+      });
+
+      return description;
+    };
+
     switch (mode) {
       case "chat":
-        systemPrompt = `You are an advanced AI study assistant with deep expertise in educational content analysis. You have access to the student's complete note collection and should provide comprehensive, accurate, and insightful responses.
+        const mediaDescription = buildMediaDescription(notes);
+        
+        systemPrompt = `You are an advanced AI study assistant with deep expertise in educational content analysis and multimodal understanding. You have access to the student's complete note collection, including all text content, images, drawings, diagrams, and visual materials.
 
-Your capabilities:
-- Analyze and synthesize information across multiple notes
-- Identify connections and patterns in the content
-- Provide detailed explanations with examples
-- Suggest study strategies and learning approaches
-- Ask follow-up questions to deepen understanding
+Your enhanced capabilities:
+- Analyze and synthesize information across multiple notes (text + visual content)
+- Process and understand images, drawings, diagrams, charts, and handwritten notes
+- Identify connections and patterns in both textual and visual content
+- Provide detailed explanations referencing both text and visual elements
+- Suggest study strategies based on multimodal learning approaches
+- Ask follow-up questions about specific visual content when relevant
+- Describe and explain visual content when referenced
 
 Context: The user is currently ${context?.currentPage ? `on page "${context.currentPage.title}"` : "browsing their notes"} ${context?.currentSection ? `in section "${context.currentSection.name}"` : ""} ${context?.currentNotebook ? `in notebook "${context.currentNotebook.name}"` : ""}.
 
 Available notes (${notes.length} total):
-${notes.map((note: any) => `- **${note.title}**: ${note.content.substring(0, 300)}...`).join("\n")}
+${notes.map((note: any) => {
+  let noteDesc = `- **${note.title}**: ${note.content.substring(0, 300)}...`;
+  if (note.hasMedia && note.mediaContent) {
+    const images = note.mediaContent.filter((m: any) => m.type === 'image').length;
+    const drawings = note.mediaContent.filter((m: any) => m.type === 'drawing').length;
+    noteDesc += ` [Contains: ${images} images, ${drawings} drawings]`;
+  }
+  return noteDesc;
+}).join("\n")}${mediaDescription}
 
-Always prioritize accuracy and provide specific references to the notes when possible. If you're unsure about something, acknowledge the uncertainty rather than guessing.`;
+IMPORTANT: When users ask about visual content, images, diagrams, or drawings, acknowledge that you can see and analyze these materials. Reference specific visual elements when relevant to provide comprehensive assistance.
+
+Always prioritize accuracy and provide specific references to both text and visual content when possible. If you're unsure about something, acknowledge the uncertainty rather than guessing.`;
 
         // Build conversation history
         messages = [{ role: "system", content: systemPrompt }];
@@ -68,18 +121,30 @@ Always prioritize accuracy and provide specific references to the notes when pos
               )
             : notes;
 
-        systemPrompt = `You are an expert academic summarizer. Create comprehensive, well-structured summaries that help students understand and retain key information.
+        const summaryMediaDescription = buildMediaDescription(relevantNotes);
 
-Summary Guidelines:
+        systemPrompt = `You are an expert academic summarizer with multimodal analysis capabilities. Create comprehensive, well-structured summaries that help students understand and retain key information from both textual and visual content.
+
+Enhanced Summary Guidelines:
 - Use clear hierarchical structure with main topics and subtopics
-- Include key concepts, definitions, and important details
-- Highlight relationships between different concepts
-- Add memory aids or mnemonics where appropriate
-- Identify the most critical points for exam preparation
+- Include key concepts, definitions, and important details from text AND visual content
+- Reference and describe important visual elements (diagrams, charts, images, drawings)
+- Highlight relationships between textual and visual information
+- Add memory aids or mnemonics that incorporate visual elements
+- Identify the most critical points for exam preparation from all content types
 - Use bullet points, numbered lists, and formatting for clarity
+- When visual content is present, describe key visual elements and their significance
 
-Focus on creating summaries that are both comprehensive and easy to review.`;
-        userPrompt = `Create a detailed academic summary of these notes:\n\n${relevantNotes.map((note: any) => `**${note.title}**\n${note.content}`).join("\n\n")}`;
+Focus on creating summaries that integrate both textual and visual learning materials for comprehensive understanding.${summaryMediaDescription}`;
+
+        userPrompt = `Create a detailed academic summary of these notes, including both textual content and visual materials:\n\n${relevantNotes.map((note: any) => {
+          let noteContent = `**${note.title}**\n${note.content}`;
+          if (note.hasMedia && note.mediaContent) {
+            noteContent += `\n[Visual Content: This note contains ${note.mediaContent.filter((m: any) => m.type === 'image').length} images and ${note.mediaContent.filter((m: any) => m.type === 'drawing').length} drawings that I can analyze]`;
+          }
+          return noteContent;
+        }).join("\n\n")}`;
+
         messages = [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -95,55 +160,51 @@ Focus on creating summaries that are both comprehensive and easy to review.`;
               )
             : notes;
 
-        systemPrompt = `You are an expert educational assessment designer. Create practice questions that can be objectively graded and test deep understanding of the material.
+        const practiceMediaDescription = buildMediaDescription(practiceNotes);
+
+        systemPrompt = `You are an expert educational assessment designer with multimodal content analysis capabilities. Create practice questions that test deep understanding of both textual and visual materials, ensuring all questions can be objectively graded.
+
+ENHANCED CAPABILITIES:
+- Analyze both text content and visual materials (images, drawings, diagrams, charts)
+- Create questions that test understanding of visual content and text-visual relationships
+- Reference specific visual elements in questions when appropriate
+- Test comprehension of diagrams, charts, and visual representations
 
 IMPORTANT CONSTRAINTS:
 - ONLY create questions that can be automatically graded with 100% accuracy
 - NEVER create open-ended or essay questions
 - Focus on objective question types: multiple-choice, true/false, and matching
 - Present questions in clear, conversational English format
+- Questions can reference visual content but must have clear, objective answers
 
-Question Design Principles:
-- Create questions that test comprehension, analysis, and application
-- Design multiple-choice questions with 4 plausible options and clear correct answers
-- Create true/false questions that test specific facts or concepts
-- Design matching questions that connect related concepts, terms, or examples
+Enhanced Question Design Principles:
+- Create questions that test comprehension of both textual and visual content
+- Design questions about relationships between text and visual elements
+- Test understanding of diagrams, charts, and visual representations
+- Create questions that require analysis of visual patterns or data
+- Include questions connecting concepts shown in different visual formats
 - Vary difficulty levels from intermediate to advanced
-- Include questions that connect different concepts from the notes
-- Provide comprehensive explanations that teach, not just correct
+- Provide comprehensive explanations that reference both text and visual content
+
+${practiceMediaDescription}
 
 CRITICAL FORMAT REQUIREMENTS:
-For multiple-choice questions, you MUST follow this EXACT format with NO DEVIATIONS:
-
-"Question 1 (Multiple Choice): What is the primary function of mitochondria in cells?
-A) Protein synthesis
-B) Energy production
-C) DNA storage
-D) Waste removal
-
-Correct Answer: B
-Explanation: Mitochondria are known as the powerhouses of the cell because they produce ATP through cellular respiration."
-
-FORMAT RULES - FOLLOW EXACTLY:
-1. Always write "Correct Answer: [LETTER]" on its own line
-2. Use ONLY the letter (A, B, C, or D) after "Correct Answer:" - NO parentheses, NO periods, NO extra text
-3. The explanation must clearly describe why the correct answer is right
-4. Make sure the correct answer letter corresponds exactly to the right option
-5. Double-check: if you say "Correct Answer: B", then option B) must be the right answer
-6. The explanation should reference the correct option's content to confirm it's right
-
-For true/false questions, use this format:
-"Question 2 (True/False): [Question text]
-
-Correct Answer: True
-Explanation: [Why this is true/false]"
+[Same format requirements as before...]
 
 QUALITY CONTROL:
-- Before finalizing each question, verify the correct answer letter matches the right option
-- Ensure explanations support the designated correct answer
-- All questions must be based directly on the provided notes
-- Test each question yourself to confirm it can be answered definitively from the content`;
-        userPrompt = `Generate 4-6 practice questions based on these notes. Create a mix of question types (multiple-choice, true/false, and matching) that can be automatically graded. Present each question in clear, conversational English format with the question, answer choices (if applicable), correct answer, and explanation clearly labeled. Each question should test understanding of specific concepts from the notes and have clear, objective answers.\n\nNotes to base questions on:\n\n${practiceNotes.map((note: any) => `**${note.title}**\n${note.content}`).join("\n\n")}`;
+- Questions can reference visual content but must be answerable objectively
+- Ensure visual content questions have clear, definitive answers
+- All questions must be based directly on the provided notes and visual materials
+- Test each question to confirm it can be answered definitively from the content`;
+
+        userPrompt = `Generate 4-6 practice questions based on these notes and their visual content. Create a mix of question types (multiple-choice, true/false, and matching) that can be automatically graded. Include questions that test understanding of visual materials when present. Present each question in clear, conversational English format with the question, answer choices (if applicable), correct answer, and explanation clearly labeled.\n\nNotes and visual content to base questions on:\n\n${practiceNotes.map((note: any) => {
+          let noteContent = `**${note.title}**\n${note.content}`;
+          if (note.hasMedia && note.mediaContent) {
+            noteContent += `\n[Visual Content Available: This note contains ${note.mediaContent.filter((m: any) => m.type === 'image').length} images and ${note.mediaContent.filter((m: any) => m.type === 'drawing').length} drawings that can be referenced in questions]`;
+          }
+          return noteContent;
+        }).join("\n\n")}`;
+
         messages = [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Database } from "@/types/supabase";
 import { extractPlainText, safeJsonParse } from "@/lib/editor/json";
+import { storageService } from "@/lib/storage";
 
 // Matching Question Component
 interface MatchingQuestionProps {
@@ -548,27 +549,42 @@ const AIChatSidebar = ({
       if (error) {
         console.error("Error loading notes:", error);
       } else {
-        const formattedNotes = (pagesData || []).map((page: any) => {
+        const formattedNotes = await Promise.all((pagesData || []).map(async (page: any) => {
           let content = "";
+          let mediaContent: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }> = [];
+          
           try {
             if (page.content) {
               content = page.content;
             } else if (page.content_json) {
               const parsedJson = safeJsonParse(page.content_json);
               content = extractPlainText(parsedJson);
+              
+              // Extract media content for AI processing
+              try {
+                const mediaData = await storageService.extractMediaForAI(parsedJson, user.id);
+                mediaContent = mediaData.images;
+              } catch (mediaError) {
+                console.warn("Error extracting media for AI:", mediaError);
+              }
             }
           } catch (e) {
             console.warn("Error extracting content from page:", page.id, e);
             content = page.content || "";
           }
+          
           return {
             id: page.id,
             title: page.title || "Untitled",
             content: content || "",
             sectionId: page.section_id,
+            mediaContent, // Include media for AI processing
+            hasMedia: mediaContent.length > 0,
           };
-        });
+        }));
+        
         setAllNotes(formattedNotes);
+        console.log(`Loaded ${formattedNotes.length} notes with media content for AI processing`);
       }
     } catch (error) {
       console.error("Error loading notes:", error);

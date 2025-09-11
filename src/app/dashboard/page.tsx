@@ -36,6 +36,7 @@ import {
   extractPlainText,
   type TiptapDocument,
 } from "@/lib/editor/json";
+import { storageService } from "@/lib/storage";
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 
 import { Tables, TablesInsert, TablesUpdate } from "@/types/supabase";

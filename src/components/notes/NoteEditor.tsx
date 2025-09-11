@@ -490,7 +490,15 @@ const NoteEditor = ({
         pageId,
         title,
         contentNodes: content.content?.length || 0,
+        contentStructure: content,
       });
+
+      // Validate content structure before PDF generation
+      if (!content || !content.content || content.content.length === 0) {
+        console.warn("No content to generate PDF");
+        alert("Cannot generate PDF: The note appears to be empty.");
+        return;
+      }
 
       // Show loading state briefly
       const loadingToast = document.createElement("div");
@@ -714,7 +722,7 @@ const NoteEditor = ({
 
       {/* Editor Area */}
       <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-4xl mx-auto">
+        <div className={`${isFullscreen ? 'w-full' : 'max-w-4xl'} mx-auto`}>
           <TiptapEditor
             key={`tiptap-editor-${pageId}`} // CRITICAL: Force remount for each page
             content={content}

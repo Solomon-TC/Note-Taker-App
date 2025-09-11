@@ -71,7 +71,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Check pro status if user exists
       if (session?.user) {
-        await checkProStatus(session.user.id);
+        // Check pro status - ensure user exists in users table
+        let finalUserData = null;
+        
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("is_pro, stripe_customer_id, plan, current_period_end")
+          .eq("id", session.user.id)
+          .single();
+
+        // If user doesn't exist in users table, create them
+        if (userError && userError.code === "PGRST116") {
+          console.log(
+            "🔐 AuthProvider: Creating user record in users table on auth change",
+          );
+          const { data: newUser, error: createError } = await supabase
+            .from("users")
+            .insert({
+              id: session.user.id,
+              email: session.user.email || "",
+              full_name: session.user.user_metadata?.full_name || null,
+              avatar_url:
+                session.user.user_metadata?.avatar_url || null,
+              is_pro: false,
+              plan: null,
+              current_period_end: null,
+              stripe_customer_id: null,
+            })
+            .select(
+              "is_pro, stripe_customer_id, plan, current_period_end",
+            )
+            .single();
+
+          if (!createError && newUser) {
+            finalUserData = newUser;
+          }
+        } else if (!userError && userData) {
+          finalUserData = userData;
+        }
+
+        // Set pro status based on final user data
+        setIsPro(finalUserData?.is_pro || false);
       } else {
         setIsPro(false);
       }
@@ -85,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     }
-  }, [checkProStatus]);
+  }, [supabase]);
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -121,7 +161,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Check pro status if user exists
           if (session?.user) {
-            await checkProStatus(session.user.id);
+            // Check pro status - ensure user exists in users table
+            let finalUserData = null;
+            
+            const { data: userData, error: userError } = await supabase
+              .from("users")
+              .select("is_pro, stripe_customer_id, plan, current_period_end")
+              .eq("id", session.user.id)
+              .single();
+
+            // If user doesn't exist in users table, create them
+            if (userError && userError.code === "PGRST116") {
+              console.log(
+                "🔐 AuthProvider: Creating user record in users table",
+              );
+              const { data: newUser, error: createError } = await supabase
+                .from("users")
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email || "",
+                  full_name: session.user.user_metadata?.full_name || null,
+                  avatar_url: session.user.user_metadata?.avatar_url || null,
+                  is_pro: false,
+                  plan: null,
+                  current_period_end: null,
+                  stripe_customer_id: null,
+                })
+                .select("is_pro, stripe_customer_id, plan, current_period_end")
+                .single();
+
+              if (!createError && newUser) {
+                finalUserData = newUser;
+              }
+            } else if (!userError && userData) {
+              finalUserData = userData;
+            }
+
+            // Set pro status based on final user data
+            setIsPro(finalUserData?.is_pro || false);
           } else {
             setIsPro(false);
           }

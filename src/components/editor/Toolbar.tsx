@@ -216,19 +216,28 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
       if (!editor) return;
 
       try {
-        if (fontSize === "default") {
-          // Remove fontSize using unsetFontSize command
-          (editor as any).chain().focus().unsetFontSize().run();
-        } else {
-          // Set fontSize using setFontSize command
-          (editor as any).chain().focus().setFontSize(fontSize).run();
+        console.log("Setting font size:", fontSize);
+        
+        // Check if we have a selection
+        const { from, to } = editor.state.selection;
+        if (from === to) {
+          console.log("No text selected, cannot apply font size");
+          alert("Please select some text first to change font size");
+          return;
         }
 
-        console.log("Font size applied:", { fontSize });
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error setting font size:", error);
+        if (fontSize === "default") {
+          // Remove fontSize using unsetFontSize command
+          const result = (editor as any).chain().focus().unsetFontSize().run();
+          console.log("Unset font size result:", result);
+        } else {
+          // Set fontSize using setFontSize command
+          const result = (editor as any).chain().focus().setFontSize(fontSize).run();
+          console.log("Set font size result:", result, { fontSize });
         }
+      } catch (error) {
+        console.error("Error setting font size:", error);
+        alert("Failed to change font size. Please try selecting the text again.");
       }
     },
     [editor],

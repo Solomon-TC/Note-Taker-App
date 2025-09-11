@@ -332,7 +332,7 @@ const FontSize = TextStyle.extend({
         default: null,
         parseHTML: (element: HTMLElement) => {
           const fontSize = element.style.fontSize;
-          return fontSize ? fontSize.replace(/['\"]+/g, '') : null;
+          return fontSize ? fontSize.replace(/['"]+/g, '') : null;
         },
         renderHTML: (attributes: { fontSize?: string | null }) => {
           if (!attributes.fontSize) {
@@ -352,7 +352,7 @@ const FontSize = TextStyle.extend({
         return chain().setMark('textStyle', { fontSize }).run();
       },
       unsetFontSize: () => ({ chain }: { chain: any }) => {
-        return chain().setMark('textStyle', { fontSize: null }).updateAttributes('textStyle', { fontSize: null }).run();
+        return chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run();
       },
     };
   },

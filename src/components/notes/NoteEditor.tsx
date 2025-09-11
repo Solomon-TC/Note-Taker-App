@@ -12,6 +12,9 @@ import {
   Save,
   Eye,
   Users,
+  Download,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import TiptapEditor from "@/components/editor/TiptapEditor";
 import { storageService } from "@/lib/storage";
@@ -25,6 +28,7 @@ import {
   type TiptapDocument,
 } from "@/lib/editor/json";
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
+import { generateAdvancedNotePDF } from "@/lib/pdf-generator";
 
 interface NoteEditorProps {
   pageId?: string;
@@ -80,6 +84,7 @@ const NoteEditor = ({
   >("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,6 +93,7 @@ const NoteEditor = ({
     title: initialTitle,
     content: safeJsonParse(initialContent),
   });
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
   // Debounced autosave function with comprehensive error handling and isolation
   const debouncedAutoSave = useRef(
@@ -478,8 +484,124 @@ const NoteEditor = ({
     }
   };
 
+  const handleDownloadPDF = useCallback(() => {
+    try {
+      console.log("Generating PDF for note:", {
+        pageId,
+        title,
+        contentNodes: content.content?.length || 0,
+      });
+
+      // Show loading state briefly
+      const loadingToast = document.createElement("div");
+      loadingToast.textContent = "Generating PDF...";
+      loadingToast.className = "fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50";
+      document.body.appendChild(loadingToast);
+
+      // Generate PDF with a slight delay to show loading state
+      setTimeout(() => {
+        const result = generateAdvancedNotePDF({
+          title: title || "Untitled Note",
+          content: content,
+          filename: `${(title || "untitled_note").replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`
+        });
+
+        // Remove loading toast
+        if (document.body.contains(loadingToast)) {
+          document.body.removeChild(loadingToast);
+        }
+
+        if (result.success) {
+          console.log("PDF generated successfully:", result.filename);
+          
+          // Show success message
+          const successToast = document.createElement("div");
+          successToast.textContent = `PDF downloaded: ${result.filename}`;
+          successToast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50";
+          document.body.appendChild(successToast);
+          setTimeout(() => {
+            if (document.body.contains(successToast)) {
+              document.body.removeChild(successToast);
+            }
+          }, 3000);
+        } else {
+          console.error("PDF generation failed:", result.error);
+          alert(`Failed to generate PDF: ${result.error}`);
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error in PDF download handler:", error);
+      alert(`Error generating PDF: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }, [title, content, pageId]);
+
+  // Fullscreen functionality
+  const handleToggleFullscreen = useCallback(async () => {
+    if (!fullscreenContainerRef.current) {
+      console.error("Fullscreen container ref not available");
+      return;
+    }
+
+    try {
+      if (!document.fullscreenElement) {
+        // Enter fullscreen
+        console.log("Entering fullscreen mode");
+        await fullscreenContainerRef.current.requestFullscreen();
+      } else {
+        // Exit fullscreen
+        console.log("Exiting fullscreen mode");
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error("Error toggling fullscreen:", error);
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert(`Fullscreen not supported or failed: ${errorMessage}`);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      console.log("Fullscreen state changed:", isCurrentlyFullscreen);
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    const handleFullscreenError = (event: Event) => {
+      console.error("Fullscreen error:", event);
+      setIsFullscreen(false);
+    };
+
+    // Add event listeners for fullscreen changes
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("fullscreenerror", handleFullscreenError);
+
+    // Cleanup event listeners
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("fullscreenerror", handleFullscreenError);
+    };
+  }, []);
+
+  // Check if Fullscreen API is supported
+  const isFullscreenSupported = useCallback(() => {
+    return !!(
+      document.fullscreenEnabled ||
+      (document as any).webkitFullscreenEnabled ||
+      (document as any).mozFullScreenEnabled ||
+      (document as any).msFullscreenEnabled
+    );
+  }, []);
+
   return (
-    <div className={`w-full h-full flex flex-col bg-background ${className}`}>
+    <div 
+      ref={fullscreenContainerRef}
+      className={`w-full h-full flex flex-col bg-background ${className} ${
+        isFullscreen ? 'fixed inset-0 z-50' : ''
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
         <div className="flex-1">
@@ -549,6 +671,30 @@ const NoteEditor = ({
             <span className="text-xs text-muted-foreground">
               Auto-saving enabled
             </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadPDF}
+            className="sleek-button p-2"
+            title="Download as PDF"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          {isFullscreenSupported() && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleFullscreen}
+              className="sleek-button p-2"
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize className="h-4 w-4" />
+              ) : (
+                <Maximize className="h-4 w-4" />
+              )}
+            </Button>
           )}
           <Button
             variant="ghost"

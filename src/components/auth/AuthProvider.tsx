@@ -72,8 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check pro status if user exists
       if (session?.user) {
         // Check pro status - ensure user exists in users table
-        let finalUserData: { is_pro: boolean; stripe_customer_id: string | null; plan: string | null; current_period_end: string | null } | null = null;
-        
         const { data: userData, error: userError } = await supabase
           .from("users")
           .select("is_pro, stripe_customer_id, plan, current_period_end")
@@ -104,14 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single();
 
           if (!createError && newUser) {
-            finalUserData = newUser;
+            setIsPro(newUser.is_pro || false);
+          } else {
+            setIsPro(false);
           }
         } else if (!userError && userData) {
-          finalUserData = userData;
+          setIsPro(userData.is_pro || false);
+        } else {
+          setIsPro(false);
         }
-
-        // Set pro status based on final user data
-        setIsPro(finalUserData?.is_pro || false);
       } else {
         setIsPro(false);
       }
@@ -162,8 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Check pro status if user exists
           if (session?.user) {
             // Check pro status - ensure user exists in users table
-            let finalUserData: { is_pro: boolean; stripe_customer_id: string | null; plan: string | null; current_period_end: string | null } | null = null;
-            
             const { data: userData, error: userError } = await supabase
               .from("users")
               .select("is_pro, stripe_customer_id, plan, current_period_end")
@@ -191,14 +188,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
 
               if (!createError && newUser) {
-                finalUserData = newUser;
+                setIsPro(newUser.is_pro || false);
+              } else {
+                setIsPro(false);
               }
             } else if (!userError && userData) {
-              finalUserData = userData;
+              setIsPro(userData.is_pro || false);
+            } else {
+              setIsPro(false);
             }
-
-            // Set pro status based on final user data
-            setIsPro(finalUserData?.is_pro || false);
           } else {
             setIsPro(false);
           }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -14,8 +14,6 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-
-    const stripe = getStripe();
 
     const { plan } = await request.json();
 

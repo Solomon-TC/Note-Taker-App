@@ -60,7 +60,13 @@ export async function POST(request: NextRequest) {
         if (!acc[item.noteTitle]) acc[item.noteTitle] = [];
         acc[item.noteTitle].push(item);
         return acc;
-      }, {} as Record<string, typeof mediaItems>);
+      }, {} as Record<string, Array<{
+        noteTitle: string;
+        noteId: string;
+        mediaType: 'image' | 'drawing';
+        mediaUrl: string;
+        objectKey: string;
+      }>>);
 
       description += `\nVisual content by note:\n`;
       Object.entries(mediaByNote).forEach(([noteTitle, items]) => {

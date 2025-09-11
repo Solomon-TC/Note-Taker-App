@@ -330,8 +330,8 @@ const FontSize = TextStyle.extend({
     return {
       fontSize: {
         default: null,
-        parseHTML: element => element.style.fontSize.replace(/['"]+/g, ''),
-        renderHTML: attributes => {
+        parseHTML: (element: HTMLElement) => element.style.fontSize.replace(/['"]+/g, ''),
+        renderHTML: (attributes: { fontSize?: string }) => {
           if (!attributes.fontSize) {
             return {};
           }
@@ -345,10 +345,10 @@ const FontSize = TextStyle.extend({
 
   addCommands() {
     return {
-      setFontSize: (fontSize: string) => ({ chain }) => {
+      setFontSize: (fontSize: string) => ({ chain }: { chain: any }) => {
         return chain().setMark('textStyle', { fontSize }).run();
       },
-      unsetFontSize: () => ({ chain }) => {
+      unsetFontSize: () => ({ chain }: { chain: any }) => {
         return chain().setMark('textStyle', { fontSize: null }).updateAttributes('textStyle', { fontSize: null }).run();
       },
     };

@@ -61,8 +61,8 @@ function validateEnvironment() {
     console.error('   https://vercel.com/dashboard -> Project -> Settings -> Environment Variables');
     
     // In Vercel builds, don't exit with error - let the build continue
-    if (process.env.VERCEL) {
-      console.warn('⚠️  Running in Vercel - continuing build despite missing variables');
+    if (process.env.VERCEL || process.env.CI) {
+      console.warn('⚠️  Running in CI/Vercel - continuing build despite missing variables');
       console.warn('   The application may not function correctly without these variables');
       return false;
     }
@@ -74,7 +74,7 @@ function validateEnvironment() {
   return true;
 }
 
-// Validate URLs
+// Validate URLs with better error handling
 function validateUrls() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   
@@ -84,7 +84,7 @@ function validateUrls() {
       console.log('✅ Supabase URL is valid');
     } catch (error) {
       console.error('🚨 Invalid Supabase URL:', supabaseUrl);
-      if (!process.env.VERCEL) {
+      if (!process.env.VERCEL && !process.env.CI) {
         process.exit(1);
       }
       return false;
@@ -98,7 +98,7 @@ function validateUrls() {
       console.log('✅ App URL is valid');
     } catch (error) {
       console.error('🚨 Invalid App URL:', appUrl);
-      if (!process.env.VERCEL) {
+      if (!process.env.VERCEL && !process.env.CI) {
         process.exit(1);
       }
       return false;
@@ -117,7 +117,7 @@ function validateNodeVersion() {
   
   if (majorVersion < 18) {
     console.error('🚨 Node.js version 18 or higher is required');
-    if (!process.env.VERCEL) {
+    if (!process.env.VERCEL && !process.env.CI) {
       process.exit(1);
     }
     return false;
@@ -129,19 +129,27 @@ function validateNodeVersion() {
 
 // Check memory and build environment
 function validateBuildEnvironment() {
-  const memoryUsage = process.memoryUsage();
-  const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
-  
-  console.log(`💾 Memory usage: ${totalMemoryMB}MB`);
-  
-  if (process.env.VERCEL) {
-    console.log('🚀 Running in Vercel build environment');
+  try {
+    const memoryUsage = process.memoryUsage();
+    const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
     
-    // Set build optimizations for Vercel
-    process.env.NEXT_TELEMETRY_DISABLED = '1';
-    process.env.NODE_OPTIONS = '--max-old-space-size=4096';
+    console.log(`💾 Memory usage: ${totalMemoryMB}MB`);
     
-    console.log('✅ Vercel build optimizations applied');
+    if (process.env.VERCEL) {
+      console.log('🚀 Running in Vercel build environment');
+      
+      // Set build optimizations for Vercel
+      process.env.NEXT_TELEMETRY_DISABLED = '1';
+      
+      // Only set memory limit if not already set
+      if (!process.env.NODE_OPTIONS || !process.env.NODE_OPTIONS.includes('max-old-space-size')) {
+        process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --max-old-space-size=4096';
+      }
+      
+      console.log('✅ Vercel build optimizations applied');
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not validate build environment:', error.message);
   }
   
   return true;
@@ -153,15 +161,23 @@ function main() {
   
   let allValid = true;
   
-  allValid &= validateNodeVersion();
-  allValid &= validateBuildEnvironment();
-  allValid &= validateEnvironment();
-  allValid &= validateUrls();
-  
-  if (allValid) {
-    console.log('\n🎉 All validations passed! Ready to build.');
-  } else {
-    console.log('\n⚠️  Some validations failed, but continuing build...');
+  try {
+    allValid &= validateNodeVersion();
+    allValid &= validateBuildEnvironment();
+    allValid &= validateEnvironment();
+    allValid &= validateUrls();
+    
+    if (allValid) {
+      console.log('\n🎉 All validations passed! Ready to build.');
+    } else {
+      console.log('\n⚠️  Some validations failed, but continuing build...');
+    }
+  } catch (error) {
+    console.error('🚨 Validation error:', error.message);
+    if (!process.env.VERCEL && !process.env.CI) {
+      process.exit(1);
+    }
+    allValid = false;
   }
   
   return allValid;

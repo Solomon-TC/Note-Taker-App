@@ -322,7 +322,7 @@ const CustomImage = Image.extend({
   },
 });
 
-// Custom FontSize extension
+// Custom FontSize extension with proper TypeScript types
 const FontSize = TextStyle.extend({
   name: 'fontSize',
   
@@ -330,8 +330,11 @@ const FontSize = TextStyle.extend({
     return {
       fontSize: {
         default: null,
-        parseHTML: (element: HTMLElement) => element.style.fontSize.replace(/['"]+/g, ''),
-        renderHTML: (attributes: { fontSize?: string }) => {
+        parseHTML: (element: HTMLElement) => {
+          const fontSize = element.style.fontSize;
+          return fontSize ? fontSize.replace(/['\"]+/g, '') : null;
+        },
+        renderHTML: (attributes: { fontSize?: string | null }) => {
           if (!attributes.fontSize) {
             return {};
           }
@@ -425,10 +428,7 @@ const TiptapEditor = ({
       }),
       
       // Custom FontSize extension
-      FontSize.configure({
-        types: ["textStyle"],
-      }),
-      // FontSize extension removed - package not available
+      FontSize,
 
       // Other formatting extensions
       Underline,
@@ -582,10 +582,11 @@ const TiptapEditor = ({
   // Store auth and noteId in editor storage for custom extensions
   useEffect(() => {
     if (editor) {
-      // Use type assertion to allow custom properties on editor storage
-      (editor.storage as any).auth = { user };
-      (editor.storage as any).noteId = noteId;
-      (editor.storage as any).openDrawingModal = (
+      // Use proper type assertion for editor storage
+      const editorStorage = editor.storage as Record<string, any>;
+      editorStorage.auth = { user };
+      editorStorage.noteId = noteId;
+      editorStorage.openDrawingModal = (
         drawingId?: string,
         pos?: number,
       ) => {
@@ -605,6 +606,9 @@ const TiptapEditor = ({
         hasHighlight: !!editor.extensionManager.extensions.find(
           (ext) => ext.name === "highlight",
         ),
+        hasFontSize: !!editor.extensionManager.extensions.find(
+          (ext) => ext.name === "fontSize",
+        ),
         extensionNames: editor.extensionManager.extensions.map(
           (ext) => ext.name,
         ),
@@ -616,13 +620,14 @@ const TiptapEditor = ({
         },
       };
 
-      // Safely check command availability
+      // Safely check command availability with proper error handling
       try {
         extensionInfo.canSetColor = editor.can().setColor
           ? editor.can().setColor("#ff0000")
           : false;
       } catch (error) {
         console.warn("Cannot check setColor capability:", error);
+        extensionInfo.canSetColor = false;
       }
 
       try {
@@ -631,25 +636,33 @@ const TiptapEditor = ({
           : false;
       } catch (error) {
         console.warn("Cannot check setHighlight capability:", error);
+        extensionInfo.canSetHighlight = false;
       }
 
-      console.log("TiptapEditor: Extensions loaded:", extensionInfo);
+      if (process.env.NODE_ENV === "development") {
+        console.log("TiptapEditor: Extensions loaded:", extensionInfo);
 
-      // Validate critical extensions
-      if (!extensionInfo.hasTextStyle) {
-        console.error(
-          "CRITICAL: TextStyle extension not found! Color functionality will not work.",
-        );
-      }
-      if (!extensionInfo.hasColor) {
-        console.error(
-          "CRITICAL: Color extension not found! Text color functionality will not work.",
-        );
-      }
-      if (!extensionInfo.hasHighlight) {
-        console.error(
-          "CRITICAL: Highlight extension not found! Highlight functionality will not work.",
-        );
+        // Validate critical extensions
+        if (!extensionInfo.hasTextStyle) {
+          console.error(
+            "CRITICAL: TextStyle extension not found! Color functionality will not work.",
+          );
+        }
+        if (!extensionInfo.hasColor) {
+          console.error(
+            "CRITICAL: Color extension not found! Text color functionality will not work.",
+          );
+        }
+        if (!extensionInfo.hasHighlight) {
+          console.error(
+            "CRITICAL: Highlight extension not found! Highlight functionality will not work.",
+          );
+        }
+        if (!extensionInfo.hasFontSize) {
+          console.error(
+            "CRITICAL: FontSize extension not found! Font size functionality will not work.",
+          );
+        }
       }
     }
   }, [editor, user, noteId]);
@@ -658,22 +671,26 @@ const TiptapEditor = ({
   useEffect(() => {
     if (!editor || !noteId) return;
 
-    console.log("TiptapEditor: noteId/content changed, updating content:", {
-      noteId,
-      hasContent: !!content,
-      contentType: typeof content,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("TiptapEditor: noteId/content changed, updating content:", {
+        noteId,
+        hasContent: !!content,
+        contentType: typeof content,
+      });
+    }
 
     const newContent = safeJsonParse(content);
     const currentContent = editor.getJSON() as TiptapDocument;
 
-    console.log("TiptapEditor: Content comparison:", {
-      noteId,
-      newContentNodes: newContent.content?.length || 0,
-      currentContentNodes: currentContent.content?.length || 0,
-      areEqual: deepEqual(newContent, currentContent),
-      isSettingContent: isSettingContentRef.current,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("TiptapEditor: Content comparison:", {
+        noteId,
+        newContentNodes: newContent.content?.length || 0,
+        currentContentNodes: currentContent.content?.length || 0,
+        areEqual: deepEqual(newContent, currentContent),
+        isSettingContent: isSettingContentRef.current,
+      });
+    }
 
     // Always set content when noteId changes OR when content is different
     // This ensures each page gets its own isolated content
@@ -683,7 +700,9 @@ const TiptapEditor = ({
     ) {
       isSettingContentRef.current = true;
 
-      console.log("TiptapEditor: Setting content for noteId:", noteId);
+      if (process.env.NODE_ENV === "development") {
+        console.log("TiptapEditor: Setting content for noteId:", noteId);
+      }
 
       // Use a timeout to ensure the flag is reset even if setContent fails
       const resetTimeout = setTimeout(() => {
@@ -701,10 +720,12 @@ const TiptapEditor = ({
             editor.commands.setContent(newContent, { emitUpdate: false });
             lastContentRef.current = newContent;
 
-            console.log(
-              "TiptapEditor: Successfully set content for noteId:",
-              noteId,
-            );
+            if (process.env.NODE_ENV === "development") {
+              console.log(
+                "TiptapEditor: Successfully set content for noteId:",
+                noteId,
+              );
+            }
           } catch (error) {
             console.error(
               "TiptapEditor: Error setting content (delayed):",

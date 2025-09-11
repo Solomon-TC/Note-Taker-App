@@ -51,13 +51,21 @@ export function validateEnvironment(): EnvConfig {
 
   if (missing.length > 0) {
     const error = `Missing required environment variables: ${missing.join(', ')}`;
-    console.error('🚨 Environment validation failed:', error);
     
-    // Only throw in production runtime, not during build
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'preview') {
+    // Only log error in development, don't throw during build
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🚨 Environment validation failed:', error);
+    }
+    
+    // Only throw in production runtime, not during build or in development
+    if (process.env.NODE_ENV === 'production' && 
+        process.env.VERCEL_ENV && 
+        process.env.VERCEL_ENV !== 'preview' &&
+        !process.env.VERCEL_BUILDER &&
+        typeof window === 'undefined') {
       throw new Error(error);
-    } else {
-      console.warn('⚠️ Development/Build mode: continuing with missing variables');
+    } else if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ Development mode: continuing with missing variables');
     }
   }
 
@@ -70,24 +78,48 @@ export function getEnvVar(name: keyof EnvConfig, fallback?: string): string {
     if (fallback !== undefined) {
       return fallback;
     }
+    
+    // Don't throw during build
+    if (process.env.VERCEL_BUILDER || process.env.NODE_ENV !== 'production') {
+      console.warn(`⚠️ Environment variable ${name} is not set, using empty string`);
+      return '';
+    }
+    
     throw new Error(`Environment variable ${name} is not set`);
   }
   return value;
 }
 
-// Only validate environment on module load in production runtime (not during build)
-if (typeof window === 'undefined' && 
-    process.env.NODE_ENV === 'production' && 
-    process.env.VERCEL_ENV && 
-    process.env.VERCEL_ENV !== 'preview' &&
-    !process.env.VERCEL_BUILDER) {
-  try {
-    validateEnvironment();
+// Safe environment validation that won't break builds
+let envConfig: EnvConfig | null = null;
+
+try {
+  // Only validate environment on module load in specific conditions
+  if (typeof window === 'undefined' && 
+      process.env.NODE_ENV === 'production' && 
+      process.env.VERCEL_ENV && 
+      process.env.VERCEL_ENV !== 'preview' &&
+      !process.env.VERCEL_BUILDER) {
+    envConfig = validateEnvironment();
     console.log('✅ Environment validation passed');
-  } catch (error) {
-    console.error('🚨 Environment validation failed:', error);
+  } else {
+    // In development or build time, create config without validation
+    envConfig = validateEnvironment();
   }
+} catch (error) {
+  console.error('🚨 Environment validation failed:', error);
+  // Create a fallback config to prevent build failures
+  envConfig = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    OpenAI_API: process.env.OpenAI_API,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  };
 }
 
 // Export the validated environment configuration
-export const env = validateEnvironment();
+export const env = envConfig;

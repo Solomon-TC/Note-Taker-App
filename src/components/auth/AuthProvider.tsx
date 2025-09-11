@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check pro status if user exists
       if (session?.user) {
         // Check pro status - ensure user exists in users table
-        let finalUserData = null;
+        let finalUserData: { is_pro: boolean; stripe_customer_id: string | null; plan: string | null; current_period_end: string | null } | null = null;
         
         const { data: userData, error: userError } = await supabase
           .from("users")
@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Check pro status if user exists
           if (session?.user) {
             // Check pro status - ensure user exists in users table
-            let finalUserData = null;
+            let finalUserData: { is_pro: boolean; stripe_customer_id: string | null; plan: string | null; current_period_end: string | null } | null = null;
             
             const { data: userData, error: userError } = await supabase
               .from("users")

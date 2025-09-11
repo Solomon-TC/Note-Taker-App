@@ -861,17 +861,7 @@ export async function getFriendSharedPages(
 
     console.log("📖 RLS-filtered pages query result:", {
       found: sharedPagesData?.length || 0,
-      pages: sharedPagesData?.map((p: { 
-        id: string; 
-        title: string; 
-        visibility: string; 
-        user_id: string;
-        sections?: { 
-          name: string; 
-          notebooks?: { name: string } 
-        };
-        users?: { full_name: string | null; email: string }
-      }) => ({
+      pages: sharedPagesData?.map((p: any) => ({
         id: p.id,
         title: p.title,
         visibility: p.visibility,

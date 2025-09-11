@@ -277,8 +277,8 @@ export class StorageService {
     images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
     totalSize: number;
   }> {
-    const mediaFiles: Array<{ path: string; url: string; type: 'image' | 'drawing'; noteId?: string }> = [];
     let totalSize = 0;
+    const results: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }> = [];
 
     try {
       // Get all files from user's storage
@@ -320,19 +320,13 @@ export class StorageService {
           }
 
           const signedUrl = urlData.signedUrl;
+          const fileType: 'image' | 'drawing' = file.name.includes('/drawings/') ? 'drawing' : 'image';
           
-          // Extract note ID from path if possible
-          const pathParts = file.name.split('/');
-          const noteId = pathParts.length > 1 ? pathParts[0] : undefined;
-          
-          const mediaFile: { path: string; url: string; type: 'image' | 'drawing'; noteId?: string } = {
-            path: fullPath,
+          results.push({
             url: signedUrl,
-            type: file.name.includes('/drawings/') ? 'drawing' : 'image',
-            noteId
-          };
-          
-          mediaFiles.push(mediaFile);
+            objectKey: fullPath,
+            type: fileType
+          });
 
           // Add to total size
           totalSize += file.metadata?.size || 1024;
@@ -342,11 +336,7 @@ export class StorageService {
       }
 
       return {
-        images: mediaFiles.map(file => ({
-          url: file.url,
-          objectKey: file.path,
-          type: file.type
-        })),
+        images: results,
         totalSize
       };
     } catch (error) {

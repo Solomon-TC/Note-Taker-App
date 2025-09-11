@@ -277,7 +277,8 @@ export class StorageService {
     images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
     totalSize: number;
   }> {
-    const mediaFiles: Array<{ path: string; url: string; type: 'image' | 'drawing'; noteId?: string }> = [];
+    type MediaFile = { path: string; url: string; type: 'image' | 'drawing'; noteId?: string };
+    const mediaFiles: MediaFile[] = [];
     let totalSize = 0;
 
     try {

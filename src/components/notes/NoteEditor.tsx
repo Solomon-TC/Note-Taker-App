@@ -500,6 +500,22 @@ const NoteEditor = ({
         return;
       }
 
+      // Check if content has actual text content
+      const plainText = extractPlainText(content);
+      if (!plainText.trim()) {
+        console.warn("No text content found for PDF generation");
+        alert("Cannot generate PDF: The note contains no text content.");
+        return;
+      }
+
+      console.log("PDF content validation:", {
+        hasContent: !!content,
+        hasContentArray: !!content.content,
+        contentLength: content.content?.length || 0,
+        plainTextLength: plainText.length,
+        plainTextPreview: plainText.substring(0, 100),
+      });
+
       // Show loading state briefly
       const loadingToast = document.createElement("div");
       loadingToast.textContent = "Generating PDF...";
@@ -722,7 +738,7 @@ const NoteEditor = ({
 
       {/* Editor Area */}
       <div className="flex-1 p-6 overflow-auto">
-        <div className={`${isFullscreen ? 'w-full' : 'max-w-4xl'} mx-auto`}>
+        <div className={`${isFullscreen ? 'w-full h-full' : 'max-w-4xl'} mx-auto ${isFullscreen ? 'flex flex-col' : ''}`}>
           <TiptapEditor
             key={`tiptap-editor-${pageId}`} // CRITICAL: Force remount for each page
             content={content}
@@ -730,7 +746,7 @@ const NoteEditor = ({
             onTitleChange={handleEditorTitleChange}
             noteId={pageId}
             placeholder="Start typing..."
-            className="w-full"
+            className={`w-full ${isFullscreen ? 'flex-1' : ''}`}
           />
         </div>
       </div>

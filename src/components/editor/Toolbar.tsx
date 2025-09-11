@@ -226,14 +226,27 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           return;
         }
 
+        // Ensure editor is focused
+        if (!editor.isFocused) {
+          editor.commands.focus();
+        }
+
         if (fontSize === "default") {
           // Remove fontSize using unsetFontSize command
           const result = (editor as any).chain().focus().unsetFontSize().run();
           console.log("Unset font size result:", result);
         } else {
-          // Set fontSize using setFontSize command
-          const result = (editor as any).chain().focus().setFontSize(fontSize).run();
-          console.log("Set font size result:", result, { fontSize });
+          // Set fontSize using setFontSize command with proper format
+          const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
+          const result = (editor as any).chain().focus().setFontSize(formattedSize).run();
+          console.log("Set font size result:", result, { fontSize: formattedSize });
+          
+          // Alternative method if first fails
+          if (!result) {
+            console.log("Trying alternative font size method...");
+            const altResult = editor.chain().focus().setMark('textStyle', { fontSize: formattedSize }).run();
+            console.log("Alternative font size result:", altResult);
+          }
         }
       } catch (error) {
         console.error("Error setting font size:", error);

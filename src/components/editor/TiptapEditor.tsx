@@ -544,7 +544,7 @@ const TiptapEditor = ({
       attributes: {
         class: "focus:outline-none min-h-[400px] p-4 prose-lists",
         spellcheck: "false",
-        style: "font-size: 12pt;",
+        style: "font-size: 12pt; height: 100%;",
       },
       handleDrop: (view, event, slice, moved) => {
         if (
@@ -980,7 +980,7 @@ const TiptapEditor = ({
       />
 
       <div className="border-x border-b rounded-b-lg">
-        <EditorContent editor={editor} className="min-h-[400px]" />
+        <EditorContent editor={editor} className={`min-h-[400px] ${className.includes('flex-1') ? 'h-full' : ''}`} />
       </div>
 
       <StatusBar editor={editor} />

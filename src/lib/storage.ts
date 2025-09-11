@@ -375,7 +375,12 @@ export class StorageService {
         return [];
       }
 
-      const mediaFiles = [];
+      const mediaFiles: Array<{
+        path: string;
+        url: string;
+        type: 'image' | 'drawing';
+        noteId?: string;
+      }> = [];
       
       for (const file of data || []) {
         if (file.name && (file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.webp'))) {
@@ -387,10 +392,12 @@ export class StorageService {
             const pathParts = file.name.split('/');
             const noteId = pathParts.length > 1 ? pathParts[0] : undefined;
             
+            const fileType: 'image' | 'drawing' = file.name.includes('/drawings/') ? 'drawing' : 'image';
+            
             mediaFiles.push({
               path: fullPath,
               url: signedUrl,
-              type: file.name.includes('/drawings/') ? 'drawing' as const : 'image' as const,
+              type: fileType,
               noteId
             });
           } catch (error) {

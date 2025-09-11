@@ -70,8 +70,15 @@ export async function POST(request: NextRequest) {
 
       description += `\nVisual content by note:\n`;
       Object.entries(mediaByNote).forEach(([noteTitle, items]) => {
-        const images = items.filter(i => i.mediaType === 'image').length;
-        const drawings = items.filter(i => i.mediaType === 'drawing').length;
+        const typedItems = items as Array<{
+          noteTitle: string;
+          noteId: string;
+          mediaType: 'image' | 'drawing';
+          mediaUrl: string;
+          objectKey: string;
+        }>;
+        const images = typedItems.filter(i => i.mediaType === 'image').length;
+        const drawings = typedItems.filter(i => i.mediaType === 'drawing').length;
         description += `- "${noteTitle}": ${images} images, ${drawings} drawings\n`;
       });
 

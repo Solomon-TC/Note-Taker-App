@@ -1,28 +1,11 @@
 import Stripe from "stripe";
 
-// Initialize Stripe only when needed to avoid startup errors
-let stripeInstance: Stripe | null = null;
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn("⚠️ STRIPE_SECRET_KEY is not set in environment variables");
+}
 
-export const getStripe = (): Stripe => {
-  if (!stripeInstance) {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-    if (!stripeSecretKey) {
-      throw new Error(
-        "STRIPE_SECRET_KEY is not set in environment variables. Please check your environment configuration.",
-      );
-    }
-
-    stripeInstance = new Stripe(stripeSecretKey, {
-      apiVersion: "2025-02-24.acacia",
-      typescript: true,
-    });
-  }
-
-  return stripeInstance;
-};
-
-// For backward compatibility
-export const stripe = getStripe();
-
-export default getStripe;
+// Initialize Stripe with the secret key (or empty string if not available)
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2024-06-20",
+  typescript: true,
+});

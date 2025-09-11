@@ -277,69 +277,67 @@ export class StorageService {
     images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
     totalSize: number;
   }> {
-    const mediaFiles: any[] = [];
+    const mediaFiles: Array<{ path: string; url: string; type: 'image' | 'drawing'; noteId?: any }> = [];
     let totalSize = 0;
 
     try {
-      // Recursively extract media from content
-      const extractFromNode = (node: any, noteId?: any) => {
-        if (!node || typeof node !== 'object') return;
+      // Get all files from user's storage
+      const { data: files, error } = await this.supabase.storage
+        .from('notes')
+        .list(userId, {
+          limit: 1000,
+          sortBy: { column: 'name', order: 'asc' }
+        });
 
-        // Handle image nodes
-        if (node.type === 'image' && node.attrs?.objectKey) {
-          const fullPath = `${userId}/${node.attrs.objectKey}`;
-          
-          try {
-            const { data: urlData } = this.supabase.storage
-              .from('notes')
-              .getPublicUrl(fullPath);
+      if (error) {
+        console.warn('Error listing files for AI extraction:', error);
+        return { images: [], totalSize: 0 };
+      }
 
-            if (urlData?.publicUrl) {
-              mediaFiles.push({
-                path: fullPath,
-                url: urlData.publicUrl,
-                type: 'image' as const,
-                noteId
-              });
-            }
-          } catch (error) {
-            console.warn('Error getting public URL for image:', error);
+      if (!files || files.length === 0) {
+        return { images: [], totalSize: 0 };
+      }
+
+      // Process each file
+      for (const file of files) {
+        if (!file.name) continue;
+
+        // Check if it's an image file
+        const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+        if (!isImage) continue;
+
+        const fullPath = `${userId}/${file.name}`;
+        
+        try {
+          // Get signed URL for the file
+          const { data: urlData, error: urlError } = await this.supabase.storage
+            .from('notes')
+            .createSignedUrl(fullPath, 3600); // 1 hour expiry
+
+          if (urlError || !urlData?.signedUrl) {
+            console.warn(`Error getting signed URL for ${fullPath}:`, urlError);
+            continue;
           }
-        }
 
-        // Handle drawing nodes
-        if (node.type === 'image' && node.attrs?.drawingId) {
-          const fullPath = `${userId}/drawings/${node.attrs.drawingId}.png`;
+          const signedUrl = urlData.signedUrl;
           
-          try {
-            const { data: urlData } = this.supabase.storage
-              .from('drawings')
-              .getPublicUrl(fullPath);
+          // Extract note ID from path if possible
+          const pathParts = file.name.split('/');
+          const noteId = pathParts.length > 1 ? pathParts[0] : undefined;
+          
+          mediaFiles.push({
+            path: fullPath,
+            url: signedUrl,
+            type: file.name.includes('/drawings/') ? 'drawing' as const : 'image' as const,
+            noteId
+          });
 
-            if (urlData?.publicUrl) {
-              mediaFiles.push({
-                path: fullPath,
-                url: urlData.publicUrl,
-                type: 'drawing' as const,
-                noteId
-              });
-            }
-          } catch (error) {
-            console.warn('Error getting public URL for drawing:', error);
-          }
+          // Add to total size
+          totalSize += file.metadata?.size || 1024;
+        } catch (fileError) {
+          console.warn(`Error processing file ${file.name}:`, fileError);
         }
-
-        // Recursively process child nodes
-        if (node.content && Array.isArray(node.content)) {
-          node.content.forEach((child: any) => extractFromNode(child, noteId));
-        }
-      };
-
-      // Extract from content
-      extractFromNode(content);
-
-      // Calculate total size (approximate)
-      totalSize = mediaFiles.length * 1024; // Rough estimate
+      }
 
       return {
         images: mediaFiles.map(file => ({

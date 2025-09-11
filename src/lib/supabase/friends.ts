@@ -42,299 +42,136 @@ export interface UnfriendResult {
 /**
  * Send a friend request to a user by their email address
  */
-export async function sendFriendRequest(
-  senderId: string,
-  receiverEmail: string,
-): Promise<SendFriendRequestResult> {
-  const supabase = createClient();
-
+export async function sendFriendRequest(senderId: string, receiverEmail: string) {
   try {
-    // Validate input
-    if (!senderId || !receiverEmail) {
-      return {
-        success: false,
-        error: "Sender ID and receiver email are required",
-      };
-    }
-
-    // Normalize email - handle various formats
-    const normalizedEmail = receiverEmail.toLowerCase().trim();
-
-    console.log("🔍 Friend Request Debug:", {
-      senderId,
-      originalEmail: receiverEmail,
-      normalizedEmail,
-      timestamp: new Date().toISOString(),
-    });
-
-    // First, let's check what users exist in the database for debugging
-    console.log("🔍 Debugging: Checking all users in database...");
-    const { data: allUsers, error: debugError } = await supabase
-      .from("users")
-      .select("id, email, full_name")
-      .limit(10);
-
-    console.log("🔍 Debug - Users in database:", {
-      totalUsers: allUsers?.length || 0,
-      users:
-        allUsers?.map((u: { id: string; email: string; full_name: string | null }) => ({
-          id: u.id,
-          email: u.email,
-          name: u.full_name,
-        })) || [],
-      debugError: debugError?.message,
-    });
-
-    // Search for user in the custom users table by email (case-insensitive)
-    console.log("🔍 Searching for user by email:", {
-      originalEmail: receiverEmail,
-      normalizedEmail,
-    });
-
-    // Try multiple approaches to find the user
-    let receiverUser = null;
-    let lookupError = null;
-
-    // Method 1: Case-insensitive search with ilike
-    console.log("🔍 Method 1: Using ilike for case-insensitive search");
-    const { data: user1, error: error1 } = await supabase
-      .from("users")
-      .select("id, email, full_name")
-      .ilike("email", normalizedEmail)
-      .maybeSingle();
-
-    if (user1) {
-      receiverUser = user1;
-      console.log("🔍 ✅ Found user with ilike:", user1);
-    } else if (error1 && error1.code !== "PGRST116") {
-      console.log("🔍 Method 1 error:", error1);
-    }
-
-    // Method 2: Exact match search if Method 1 failed
-    if (!receiverUser) {
-      console.log("🔍 Method 2: Using exact match search");
-      const { data: user2, error: error2 } = await supabase
-        .from("users")
-        .select("id, email, full_name")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-
-      if (user2) {
-        receiverUser = user2;
-        console.log("🔍 ✅ Found user with exact match:", user2);
-      } else if (error2 && error2.code !== "PGRST116") {
-        console.log("🔍 Method 2 error:", error2);
-        lookupError = error2;
-      }
-    }
-
-    // Method 3: Search with original email format if still not found
-    if (!receiverUser && receiverEmail !== normalizedEmail) {
-      console.log("🔍 Method 3: Using original email format");
-      const { data: user3, error: error3 } = await supabase
-        .from("users")
-        .select("id, email, full_name")
-        .eq("email", receiverEmail)
-        .maybeSingle();
-
-      if (user3) {
-        receiverUser = user3;
-        console.log("🔍 ✅ Found user with original email:", user3);
-      } else if (error3 && error3.code !== "PGRST116") {
-        console.log("🔍 Method 3 error:", error3);
-        lookupError = error3;
-      }
-    }
-
-    // Method 4: Wildcard search as last resort
-    if (!receiverUser) {
-      console.log("🔍 Method 4: Using wildcard search");
-      const { data: users4, error: error4 } = await supabase
-        .from("users")
-        .select("id, email, full_name")
-        .ilike("email", `%${normalizedEmail}%`);
-
-      if (users4 && users4.length > 0) {
-        // Find exact match in results
-        const exactMatch = users4.find(
-          (u: { id: string; email: string; full_name: string | null }) =>
-            u.email.toLowerCase() === normalizedEmail ||
-            u.email === receiverEmail,
-        );
-        if (exactMatch) {
-          receiverUser = exactMatch;
-          console.log("🔍 ✅ Found user with wildcard search:", exactMatch);
-        } else {
-          console.log(
-            "🔍 Wildcard search found users but no exact match:",
-            users4,
-          );
-        }
-      } else if (error4) {
-        console.log("🔍 Method 4 error:", error4);
-        lookupError = error4;
-      }
-    }
-
-    console.log("🔍 Final user lookup result:", {
-      foundUser: !!receiverUser,
-      userId: receiverUser?.id,
-      userEmail: receiverUser?.email,
+    console.log('🔍 Looking up user by email:', receiverEmail);
+    
+    // First, look up the user by email in auth.users
+    const { data: receiverUser, error: lookupError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    const foundUser = receiverUser?.users?.find((user: any) => user.email === receiverEmail);
+    
+    console.log('📊 Friend request debug info:', {
+      senderUserId: senderId,
+      receiverEmail,
+      foundUser: foundUser ? {
+        id: foundUser.id,
+        email: foundUser.email,
+        fullName: foundUser.user_metadata?.full_name
+      } : null,
+      userId: foundUser?.id,
+      userEmail: foundUser?.email,
       finalError: lookupError?.message,
     });
 
-    // Handle database errors
-    if (lookupError && lookupError.code !== "PGRST116") {
-      // Other database errors (not "no rows found")
-      console.error("🔍 Database lookup error:", lookupError);
+    // Check if user lookup failed for reasons other than "not found"
+    if (lookupError && (lookupError as any).code !== "PGRST116") {
+      console.error('❌ Database error during user lookup:', lookupError);
       return {
         success: false,
-        error: `Database error: ${lookupError.message}. Please try again.`,
+        error: `Database error: ${(lookupError as any).message}. Please try again.`,
       };
     }
 
-    // User not found after all methods
-    if (!receiverUser) {
-      console.log("🔍 ❌ No user found after all search methods:", {
-        originalEmail: receiverEmail,
-        normalizedEmail,
-        totalUsersInDb: allUsers?.length || 0,
-        availableEmails: allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email).join(", ") || "none",
-      });
-
-      // Provide more helpful error message
-      const availableEmails =
-        allUsers?.map((u: { id: string; email: string; full_name: string | null }) => u.email).join(", ") || "none";
+    // If no user found, return appropriate error
+    if (!foundUser) {
+      console.log('❌ User not found with email:', receiverEmail);
       return {
         success: false,
-        error: `User not found with email "${receiverEmail}". Available emails in database: ${availableEmails}. Please ensure the user has created an account.`,
+        error: 'No user found with that email address. Please check the email and try again.',
       };
     }
 
-    console.log("🔍 Found receiver user:", {
-      id: receiverUser.id,
-      email: receiverUser.email,
-      fullName: receiverUser.full_name,
-    });
+    // Create receiver user object for further processing
+    const receiverUserData = {
+      id: foundUser.id,
+      email: foundUser.email,
+      fullName: foundUser.user_metadata?.full_name,
+    };
 
-    // Check if trying to send request to self
-    if (receiverUser.id === senderId) {
+    // Check if trying to send friend request to self
+    if (receiverUserData.id === senderId) {
       return {
         success: false,
         error: "You cannot send a friend request to yourself.",
       };
     }
 
-    // Check if a friend request already exists in either direction
-    const { data: existingRequests, error: requestError } = await supabase
-      .from("friend_requests")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${senderId},receiver_id.eq.${receiverUser.id}),and(sender_id.eq.${receiverUser.id},receiver_id.eq.${senderId})`,
-      );
+    console.log('✅ Found receiver user:', receiverUserData);
 
-    if (requestError) {
-      console.error("Error checking existing requests:", requestError);
+    // Check if they're already friends or have pending requests
+    const { data: existingRelation, error: relationError } = await supabaseAdmin
+      .from('friend_requests')
+      .select('*')
+      .or(
+        `and(sender_id.eq.${senderId},receiver_id.eq.${receiverUserData.id}),and(sender_id.eq.${receiverUserData.id},receiver_id.eq.${senderId})`,
+      )
+      .maybeSingle();
+
+    if (relationError) {
+      console.error('❌ Error checking existing relations:', relationError);
       return {
         success: false,
-        error: "Failed to check existing friend requests. Please try again.",
+        error: 'Failed to check existing friend requests. Please try again.',
       };
     }
 
-    if (existingRequests && existingRequests.length > 0) {
-      const existingRequest = existingRequests[0];
-
-      if (existingRequest.status === "accepted") {
+    if (existingRelation) {
+      if (existingRelation.status === 'accepted') {
         return {
           success: false,
-          error: "You are already friends with this user.",
+          error: 'You are already friends with this user.',
         };
-      } else if (existingRequest.status === "pending") {
-        if (existingRequest.sender_id === senderId) {
+      } else if (existingRelation.status === 'pending') {
+        if (existingRelation.sender_id === senderId) {
           return {
             success: false,
-            error: "You have already sent a friend request to this user.",
+            error: 'You have already sent a friend request to this user.',
           };
         } else {
           return {
             success: false,
-            error:
-              "This user has already sent you a friend request. Check your pending requests.",
-          };
-        }
-      } else if (existingRequest.status === "denied") {
-        // Allow sending a new request if the previous one was denied
-        // First, delete the old denied request
-        const { error: deleteError } = await supabase
-          .from("friend_requests")
-          .delete()
-          .eq("id", existingRequest.id);
-
-        if (deleteError) {
-          console.error("Error deleting old request:", deleteError);
-          return {
-            success: false,
-            error: "Failed to process request. Please try again.",
+            error: 'This user has already sent you a friend request. Check your pending requests.',
           };
         }
       }
     }
 
     // Create the friend request
-    const { data: newRequest, error: insertError } = await supabase
-      .from("friend_requests")
+    console.log('📤 Creating friend request...');
+    const { data: friendRequest, error: createError } = await supabaseAdmin
+      .from('friend_requests')
       .insert({
         sender_id: senderId,
-        receiver_id: receiverUser.id,
-        status: "pending",
+        receiver_id: receiverUserData.id,
+        status: 'pending',
       })
       .select()
       .single();
 
-    if (insertError) {
-      console.error("Error creating friend request:", insertError);
-
-      // Handle specific database constraint errors
-      if (insertError.code === "23505") {
-        return {
-          success: false,
-          error: "A friend request already exists between you and this user.",
-        };
-      }
-
-      if (insertError.code === "23514") {
-        return {
-          success: false,
-          error: "You cannot send a friend request to yourself.",
-        };
-      }
-
-      // Handle RLS policy violations
-      if (
-        insertError.code === "42501" ||
-        insertError.message?.includes("policy")
-      ) {
-        return {
-          success: false,
-          error: "You are not authorized to send this friend request.",
-        };
-      }
-
+    if (createError) {
+      console.error('❌ Error creating friend request:', createError);
       return {
         success: false,
-        error: "Failed to send friend request. Please try again.",
+        error: 'Failed to send friend request. Please try again.',
       };
     }
 
+    console.log('✅ Friend request created successfully:', friendRequest);
+
     return {
       success: true,
-      data: newRequest,
+      message: `Friend request sent to ${receiverEmail}!`,
+      data: {
+        friendRequest,
+        receiverUser: receiverUserData,
+      },
     };
   } catch (error) {
-    console.error("Unexpected error in sendFriendRequest:", error);
+    console.error('❌ Unexpected error in sendFriendRequest:', error);
     return {
       success: false,
-      error: "An unexpected error occurred. Please try again.",
+      error: 'An unexpected error occurred. Please try again.',
     };
   }
 }

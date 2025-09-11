@@ -1,231 +1,150 @@
-import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { Database } from "@/types/supabase";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-// Environment variable validation
-function validateEnvironmentVariables() {
-  const requiredVars = [
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY'
-  ];
-  
-  const missing = requiredVars.filter(varName => !process.env[varName]);
-  
-  if (missing.length > 0) {
-    console.error('🚨 Missing required environment variables:', missing);
-    return false;
-  }
-  
-  return true;
-}
-
-// Define route patterns
-const publicRoutes = ["/", "/auth"];
-const authRequiredRoutes = [
-  "/dashboard",
-  "/onboarding", 
-  "/paywall",
-  "/friends",
-  "/feedback",
-];
-
-export async function middleware(req: NextRequest) {
-  // Skip middleware during build time or when environment is not ready
-  if (process.env.NODE_ENV === 'production' && 
-      (!process.env.VERCEL_URL || process.env.VERCEL_BUILDER)) {
-    return NextResponse.next();
-  }
-
-  // Validate environment variables first
-  if (!validateEnvironmentVariables()) {
-    console.error('🚨 Middleware: Environment validation failed');
-    // In build mode, allow request to proceed
-    if (process.env.VERCEL_BUILDER) {
-      return NextResponse.next();
-    }
-    return new NextResponse('Configuration Error', { status: 500 });
-  }
-
-  let response = NextResponse.next({
-    request: {
-      headers: req.headers,
-    },
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
   });
 
-  try {
-    const supabase = createSupabaseServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            req.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-            response = NextResponse.next({
-              request: {
-                headers: req.headers,
-              },
-            });
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: any) {
-            req.cookies.set({
-              name,
-              value: "",
-              ...options,
-            });
-            response = NextResponse.next({
-              request: {
-                headers: req.headers,
-              },
-            });
-            response.cookies.set({
-              name,
-              value: "",
-              ...options,
-            });
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
         },
-      }
-    );
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
 
-    const { pathname, search } = req.nextUrl;
-    const fullPath = pathname + search;
+  // IMPORTANT: Avoid writing any logic between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
 
-    console.log(`🛡️ Middleware: Processing request for ${fullPath}`);
+  const {
+    data: { user },
+    error: sessionError,
+  } = await supabase.auth.getUser();
 
-    // Allow public routes
-    if (publicRoutes.includes(pathname)) {
-      console.log(`🛡️ Middleware: Public route ${pathname}, allowing access`);
-      return response;
-    }
+  // Define proper types for user data
+  interface UserData {
+    is_pro: boolean;
+  }
 
-    // Allow API routes and static files
-    if (
-      pathname.startsWith("/api/") ||
-      pathname.startsWith("/_next/") ||
-      pathname.startsWith("/favicon.ico") ||
-      pathname.includes(".")
-    ) {
-      return response;
-    }
+  let userData: UserData | null = null;
 
-    // CRITICAL FIX: Allow paywall with checkout success/cancelled query params
-    if (pathname === "/paywall" && (search.includes("checkout=success") || search.includes("checkout=cancelled"))) {
-      console.log(`🛡️ Middleware: Allowing paywall checkout flow: ${fullPath}`);
-      return response;
-    }
-
-    // Get the current session with reduced timeout to prevent infinite loops
-    let session = null;
-    let sessionError = null;
-
-    try {
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Session timeout')), 2000) // Reduced timeout
-      );
-
-      const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
-      session = result.data?.session;
-      sessionError = result.error;
-    } catch (error) {
-      console.error(`🛡️ Middleware: Session timeout for ${pathname}`);
-      // On timeout, allow request to proceed - page-level auth will handle it
-      return response;
-    }
-
-    console.log(`🛡️ Middleware: Session check for ${pathname}:`, {
-      hasSession: !!session,
-      userId: session?.user?.id,
+  // Debug session information
+  if (process.env.NODE_ENV === "development") {
+    console.log("🔍 Middleware Debug Info:", {
+      path: request.nextUrl.pathname,
+      hasUser: !!user,
+      userId: user?.id,
       error: sessionError?.message,
     });
+  }
 
-    // If no session and route requires auth, redirect to auth
-    if (
-      !session &&
-      authRequiredRoutes.some((route) => pathname.startsWith(route))
-    ) {
-      console.log(
-        `🛡️ Middleware: No session for protected route ${pathname}, redirecting to /auth`,
-      );
-      const redirectUrl = new URL("/auth", req.url);
-      return NextResponse.redirect(redirectUrl);
-    }
+  // Protected routes that require authentication
+  const protectedRoutes = [
+    "/dashboard",
+    "/notes",
+    "/profile", 
+    "/settings",
+    "/friends",
+    "/feedback",
+  ];
 
-    // If we have a session, check user status with reduced complexity
-    if (session?.user) {
-      console.log(`🛡️ Middleware: Checking user status for ${pathname}`);
+  // Routes that should redirect authenticated users
+  const authRoutes = ["/auth", "/login", "/signup"];
 
-      // Get user data with reduced timeout
-      let userData = null;
-      let userError = null;
+  // Check if current path is protected
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route),
+  );
 
-      try {
-        const userDataPromise = supabase
-          .from("users")
-          .select("is_pro")
-          .eq("id", session.user.id)
-          .single();
+  // Check if current path is an auth route
+  const isAuthRoute = authRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route),
+  );
 
-        const userTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('User data timeout')), 1500) // Reduced timeout
-        );
+  // If user is authenticated, fetch their profile data
+  if (user) {
+    try {
+      const { data: userProfileData, error: userError } = await supabase
+        .from("users")
+        .select("is_pro")
+        .eq("id", user.id)
+        .single();
 
-        const result = await Promise.race([userDataPromise, userTimeoutPromise]) as any;
-        userData = result.data;
-        userError = result.error;
-      } catch (error) {
-        console.error(`🛡️ Middleware: Timeout fetching user data for ${pathname}`);
-        // On timeout, allow request to proceed
-        return response;
-      }
-
-      if (userError && userError.code === "PGRST116") {
-        // User doesn't exist, just set as non-pro and continue
-        // Don't try to create user in middleware to avoid type issues
+      // Handle case where user doesn't exist in users table yet
+      if (userError && (userError as any).code === "PGRST116") {
+        // User not found in users table, set default values
         userData = { is_pro: false };
       } else if (userError) {
         userData = { is_pro: false };
+      } else {
+        userData = userProfileData as UserData;
       }
 
       const isPro = userData?.is_pro || false;
 
-      // Simplified routing logic to prevent infinite loops
-      if (!isPro && pathname === "/dashboard") {
-        console.log(`🛡️ Middleware: Non-pro user accessing dashboard, redirecting to /paywall`);
-        const redirectUrl = new URL("/paywall", req.url);
-        return NextResponse.redirect(redirectUrl);
+      if (process.env.NODE_ENV === "development") {
+        console.log("👤 User Profile Data:", {
+          userId: user.id,
+          isPro,
+          userData,
+        });
       }
 
-      if (isPro && pathname === "/paywall" && !search.includes("checkout=")) {
-        console.log(`🛡️ Middleware: Pro user accessing paywall, redirecting to /dashboard`);
-        const redirectUrl = new URL("/dashboard", req.url);
-        return NextResponse.redirect(redirectUrl);
+      // If user is on auth route and authenticated, redirect to dashboard
+      if (isAuthRoute) {
+        const dashboardUrl = new URL("/dashboard", request.url);
+        return NextResponse.redirect(dashboardUrl);
       }
+
+      // Check paywall restrictions for non-pro users
+      if (!isPro && request.nextUrl.pathname.startsWith("/dashboard")) {
+        // Allow basic dashboard access but could add paywall logic here
+        // For now, we'll allow access to dashboard for all users
+      }
+    } catch (error) {
+      console.error("❌ Error fetching user profile in middleware:", error);
+      // Continue with default userData
+      userData = { is_pro: false };
     }
-
-    console.log(`🛡️ Middleware: Allowing access to ${fullPath}`);
-    return response;
-  } catch (error) {
-    console.error(
-      `🛡️ Middleware: Error processing request for ${req.nextUrl.pathname}:`,
-      error,
-    );
-    // On error, allow the request to proceed to prevent infinite loops
-    return response;
   }
+
+  // If user is not authenticated and trying to access protected route
+  if (!user && isProtectedRoute) {
+    const authUrl = new URL("/auth", request.url);
+    return NextResponse.redirect(authUrl);
+  }
+
+  // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
+  // creating a new response object with NextResponse.next() make sure to:
+  // 1. Pass the request in it, like so:
+  //    const myNewResponse = NextResponse.next({ request })
+  // 2. Copy over the cookies, like so:
+  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
+  // 3. Change the myNewResponse object to fit your needs, but avoid changing
+  //    the cookies!
+  // 4. Finally:
+  //    return myNewResponse
+  // If this is not done, you may be causing the browser and server to go out
+  // of sync and terminate the user's session prematurely!
+
+  return supabaseResponse;
 }
 
 export const config = {
@@ -235,7 +154,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * Feel free to modify this pattern to include more paths.
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

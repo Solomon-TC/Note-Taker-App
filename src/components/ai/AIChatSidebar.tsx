@@ -497,7 +497,7 @@ const AIChatSidebar = ({
   const { user } = useAuth();
   const supabase = createClient();
   
-  // Use direct type casting to bypass Supabase type inference issues
+  // Use proper type assertion for Supabase client
   const supabaseTyped = supabase as any;
 
   const [activeTab, setActiveTab] = useState("chat");
@@ -660,14 +660,14 @@ const AIChatSidebar = ({
       if (Array.isArray(messagesData)) {
         return messagesData
           .filter(
-            (msg) =>
+            (msg: any) =>
               msg &&
               typeof msg === "object" &&
               typeof msg.id === "string" &&
               typeof msg.content === "string" &&
               (msg.sender === "user" || msg.sender === "ai"),
           )
-          .map((msg) => ({
+          .map((msg: any) => ({
             ...msg,
             timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
           }));
@@ -679,14 +679,14 @@ const AIChatSidebar = ({
         if (Array.isArray(parsed)) {
           return parsed
             .filter(
-              (msg) =>
+              (msg: any) =>
                 msg &&
                 typeof msg === "object" &&
                 typeof msg.id === "string" &&
                 typeof msg.content === "string" &&
                 (msg.sender === "user" || msg.sender === "ai"),
             )
-            .map((msg) => ({
+            .map((msg: any) => ({
               ...msg,
               timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
             }));
@@ -743,7 +743,7 @@ const AIChatSidebar = ({
 
   // Helper function to convert messages to JSON-compatible format
   const messagesToJson = (messages: Message[]) => {
-    return messages.map((msg) => ({
+    return messages.map((msg: Message) => ({
       id: msg.id,
       content: msg.content,
       sender: msg.sender,
@@ -853,7 +853,7 @@ const AIChatSidebar = ({
 
     try {
       // Prepare conversation history for context
-      const conversationHistory = updatedMessages.slice(-10).map((msg) => ({
+      const conversationHistory = updatedMessages.slice(-10).map((msg: Message) => ({
         role: msg.sender === "user" ? "user" : "assistant",
         content: msg.content,
       }));

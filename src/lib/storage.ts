@@ -275,52 +275,84 @@ export class StorageService {
    */
   async extractMediaForAI(content: any, userId: string): Promise<{
     images: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }>;
-    hasMedia: boolean;
+    totalSize: number;
   }> {
-    const mediaItems: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }> = [];
+    const mediaFiles: Array<{ path: string; url: string; type: 'image' | 'drawing'; noteId: any }> = [];
+    let totalSize = 0;
 
-    if (!content || typeof content !== 'object') {
-      return { images: [], hasMedia: false };
-    }
+    try {
+      // Recursively extract media from content
+      const extractFromNode = (node: any, noteId?: any) => {
+        if (!node || typeof node !== 'object') return;
 
-    const extractFromNode = async (node: any) => {
-      // Handle image nodes
-      if (node.type === 'image' && node.attrs?.objectKey) {
-        try {
-          // Generate fresh signed URL for AI access
-          const aiAccessUrl = await this.generateAIAccessUrl(node.attrs.objectKey);
+        // Handle image nodes
+        if (node.type === 'image' && node.attrs?.objectKey) {
+          const fullPath = `${userId}/${node.attrs.objectKey}`;
           
-          // Determine if it's a drawing or regular image based on path
-          const isDrawing = node.attrs.objectKey.includes('/drawings/');
+          try {
+            const { data: urlData } = this.supabase.storage
+              .from('notes')
+              .getPublicUrl(fullPath);
+
+            if (urlData?.publicUrl) {
+              (mediaFiles as any).push({
+                path: fullPath,
+                url: urlData.publicUrl,
+                type: 'image' as const,
+                noteId
+              });
+            }
+          } catch (error) {
+            console.warn('Error getting public URL for image:', error);
+          }
+        }
+
+        // Handle drawing nodes
+        if (node.type === 'image' && node.attrs?.drawingId) {
+          const fullPath = `${userId}/drawings/${node.attrs.drawingId}.png`;
           
-          mediaItems.push({
-            url: aiAccessUrl,
-            objectKey: node.attrs.objectKey,
-            type: isDrawing ? 'drawing' : 'image'
-          });
-        } catch (error) {
-          console.warn(`Failed to generate AI access URL for ${node.attrs.objectKey}:`, error);
-        }
-      }
+          try {
+            const { data: urlData } = this.supabase.storage
+              .from('drawings')
+              .getPublicUrl(fullPath);
 
-      // Recursively process child nodes
-      if (node.content && Array.isArray(node.content)) {
-        for (const childNode of node.content) {
-          await extractFromNode(childNode);
+            if (urlData?.publicUrl) {
+              (mediaFiles as any).push({
+                path: fullPath,
+                url: urlData.publicUrl,
+                type: 'drawing' as const,
+                noteId
+              });
+            }
+          } catch (error) {
+            console.warn('Error getting public URL for drawing:', error);
+          }
         }
-      }
-    };
 
-    if (content.content && Array.isArray(content.content)) {
-      for (const node of content.content) {
-        await extractFromNode(node);
-      }
+        // Recursively process child nodes
+        if (node.content && Array.isArray(node.content)) {
+          node.content.forEach((child: any) => extractFromNode(child, noteId));
+        }
+      };
+
+      // Extract from content
+      extractFromNode(content);
+
+      // Calculate total size (approximate)
+      totalSize = mediaFiles.length * 1024; // Rough estimate
+
+      return {
+        images: mediaFiles.map(file => ({
+          url: file.url,
+          objectKey: file.path,
+          type: file.type
+        })),
+        totalSize
+      };
+    } catch (error) {
+      console.error('Error extracting media for AI:', error);
+      return { images: [], totalSize: 0 };
     }
-
-    return {
-      images: mediaItems,
-      hasMedia: mediaItems.length > 0
-    };
   }
 
   /**

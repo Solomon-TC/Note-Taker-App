@@ -211,6 +211,29 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     currentSelection: editor?.state.selection,
   });
 
+  const setFontSize = useCallback(
+    (fontSize: string) => {
+      if (!editor) return;
+
+      try {
+        if (fontSize === "default") {
+          // Remove fontSize using unsetFontSize command
+          editor.chain().focus().unsetFontSize().run();
+        } else {
+          // Set fontSize using setFontSize command
+          editor.chain().focus().setFontSize(fontSize).run();
+        }
+
+        console.log("Font size applied:", { fontSize });
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error setting font size:", error);
+        }
+      }
+    },
+    [editor],
+  );
+
   const setFontFamily = useCallback(
     (fontFamily: string) => {
       if (!editor) return;
@@ -546,6 +569,22 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
     { label: "Georgia", value: "Georgia, serif" },
     { label: "Courier New", value: "Courier New, monospace" },
     { label: "Monaco", value: "Monaco, monospace" },
+  ];
+
+  const fontSizes = [
+    { label: "Default", value: "default" },
+    { label: "8pt", value: "8pt" },
+    { label: "10pt", value: "10pt" },
+    { label: "12pt", value: "12pt" },
+    { label: "14pt", value: "14pt" },
+    { label: "16pt", value: "16pt" },
+    { label: "18pt", value: "18pt" },
+    { label: "20pt", value: "20pt" },
+    { label: "24pt", value: "24pt" },
+    { label: "28pt", value: "28pt" },
+    { label: "32pt", value: "32pt" },
+    { label: "36pt", value: "36pt" },
+    { label: "48pt", value: "48pt" },
   ];
 
   if (!editor) {
@@ -941,6 +980,29 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
                   }}
                 >
                   {font.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Font Size */}
+        <Select
+          value={editor?.getAttributes("textStyle").fontSize || "12pt"}
+          onValueChange={setFontSize}
+        >
+          <SelectTrigger className="w-20 h-8 text-xs">
+            <SelectValue placeholder="Size" />
+          </SelectTrigger>
+          <SelectContent>
+            {fontSizes.map((size) => (
+              <SelectItem key={size.value} value={size.value}>
+                <span
+                  style={{
+                    fontSize: size.value !== "default" ? size.value : undefined,
+                  }}
+                >
+                  {size.label}
                 </span>
               </SelectItem>
             ))}

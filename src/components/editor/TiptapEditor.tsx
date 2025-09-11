@@ -24,7 +24,6 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import FontFamily from "@tiptap/extension-font-family";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
-// FontSize extension removed - package not available
 import { storageService } from "@/lib/storage";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -323,6 +322,39 @@ const CustomImage = Image.extend({
   },
 });
 
+// Custom FontSize extension
+const FontSize = TextStyle.extend({
+  name: 'fontSize',
+  
+  addAttributes() {
+    return {
+      fontSize: {
+        default: null,
+        parseHTML: element => element.style.fontSize.replace(/['"]+/g, ''),
+        renderHTML: attributes => {
+          if (!attributes.fontSize) {
+            return {};
+          }
+          return {
+            style: `font-size: ${attributes.fontSize}`,
+          };
+        },
+      },
+    };
+  },
+
+  addCommands() {
+    return {
+      setFontSize: (fontSize: string) => ({ chain }) => {
+        return chain().setMark('textStyle', { fontSize }).run();
+      },
+      unsetFontSize: () => ({ chain }) => {
+        return chain().setMark('textStyle', { fontSize: null }).updateAttributes('textStyle', { fontSize: null }).run();
+      },
+    };
+  },
+});
+
 interface TiptapEditorProps {
   content?: any;
   onChange?: (content: TiptapDocument) => void;
@@ -389,6 +421,11 @@ const TiptapEditor = ({
 
       // CRITICAL: Load font extensions with proper configuration
       FontFamily.configure({
+        types: ["textStyle"],
+      }),
+      
+      // Custom FontSize extension
+      FontSize.configure({
         types: ["textStyle"],
       }),
       // FontSize extension removed - package not available
@@ -507,6 +544,7 @@ const TiptapEditor = ({
       attributes: {
         class: "focus:outline-none min-h-[400px] p-4 prose-lists",
         spellcheck: "false",
+        style: "font-size: 12pt;",
       },
       handleDrop: (view, event, slice, moved) => {
         if (

@@ -356,11 +356,13 @@
   .ProseMirror {
     white-space: normal;
     outline: none;
+    font-size: 12pt; /* Default font size */
   }
 
   .ProseMirror p {
     margin: 0 0 0.5rem 0;
     white-space: pre-wrap; /* preserves user-intended line breaks */
+    font-size: inherit; /* Inherit from parent */
   }
 
   .ProseMirror ul,

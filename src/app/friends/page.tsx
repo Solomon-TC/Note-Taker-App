@@ -56,12 +56,14 @@ import {
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
-  getFriendRequests,
-  getUserFriends,
-  removeFriend,
-  getSharedPages,
-  sharePageWithFriend,
-  unsharePageWithFriend,
+  getPendingFriendRequests,
+  getSentFriendRequests,
+  getFriends,
+  unfriendUser,
+  getFriendSharedPages,
+  debugSharedPagesAccess,
+  Friend,
+  SharedPage,
 } from "@/lib/supabase/friends";
 
 interface FriendRequestWithUser {
@@ -69,7 +71,7 @@ interface FriendRequestWithUser {
   sender_id: string;
   receiver_id: string;
   status: string;
-  created_at: string;
+  created_at: string | null;
   sender?: {
     id: string;
     full_name: string | null;

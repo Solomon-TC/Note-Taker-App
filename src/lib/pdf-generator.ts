@@ -15,7 +15,7 @@ export const generateNotePDF = ({ title, content, filename }: PDFGenerationOptio
     // Set up document properties
     pdf.setProperties({
       title: title,
-      creator: 'Scribly'
+      creator: 'Scribly Note-Taking App'
     });
 
     // Page dimensions and margins
@@ -88,8 +88,7 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
     // Set up document properties
     pdf.setProperties({
       title: title,
-      creator: 'Scribly',
-      producer: 'Scribly Note-Taking App'
+      creator: 'Scribly Note-Taking App'
     });
 
     const pageWidth = pdf.internal.pageSize.getWidth();

@@ -876,6 +876,7 @@ const AIChatSidebar = ({
       title: sessionData.title || "Untitled Session",
       messages: sessionData.messages || [],
       metadata: sessionData.metadata || {},
+      context: sessionData.context || context || {},
       created_at: sessionData.created_at || new Date().toISOString(),
       updated_at: sessionData.updated_at || new Date().toISOString(),
     };

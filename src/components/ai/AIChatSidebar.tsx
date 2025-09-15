@@ -866,17 +866,16 @@ const AIChatSidebar = ({
   // Helper function to transform raw Supabase session data to AISession format
   const transformSessionData = (sessionData: any): AISession => {
     return {
-      id: currentSessionId,
+      id: currentSessionId || "",
       session_type:
         sessionData.session_type === "chat" ||
         sessionData.session_type === "summary" ||
         sessionData.session_type === "practice"
-          ? (sessionData.session_type as "chat" | "summary" | "practice")
-          : "chat", // Default fallback with proper typing
+          ? sessionData.session_type
+          : "chat",
       title: sessionData.title || "Untitled Session",
-      context: safeJsonParse(sessionData.context) || {},
-      messages: parseSessionMessages(sessionData.messages),
-      metadata: safeJsonParse(sessionData.metadata) || {},
+      messages: sessionData.messages || [],
+      metadata: sessionData.metadata || {},
       created_at: sessionData.created_at || new Date().toISOString(),
       updated_at: sessionData.updated_at || new Date().toISOString(),
     };

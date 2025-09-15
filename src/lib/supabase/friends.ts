@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin, isAdminClientAvailable, getAdminClient } from '@/lib/supabaseAdmin';
 import { Database } from '@/types/supabase';
 
 type FriendRequest = Database["public"]["Tables"]["friend_requests"]["Row"];
@@ -47,8 +47,19 @@ export async function sendFriendRequest(senderId: string, receiverEmail: string)
   try {
     console.log('🔍 Looking up user by email:', receiverEmail);
     
+    // Check if admin client is available
+    if (!isAdminClientAvailable()) {
+      console.error('❌ Admin client not available for friend request functionality');
+      return {
+        success: false,
+        error: 'Friend request functionality is currently unavailable. Please contact support.',
+      };
+    }
+
+    const adminClient = getAdminClient();
+    
     // First, look up the user by email in auth.users
-    const { data: receiverUser, error: lookupError } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: receiverUser, error: lookupError } = await adminClient.auth.admin.listUsers();
     
     const foundUser = receiverUser?.users?.find((user: any) => user.email === receiverEmail);
     
@@ -101,7 +112,7 @@ export async function sendFriendRequest(senderId: string, receiverEmail: string)
     console.log('✅ Found receiver user:', receiverUserData);
 
     // Check if they're already friends or have pending requests
-    const { data: existingRelation, error: relationError } = await supabaseAdmin
+    const { data: existingRelation, error: relationError } = await adminClient
       .from('friend_requests')
       .select('*')
       .or(
@@ -140,7 +151,7 @@ export async function sendFriendRequest(senderId: string, receiverEmail: string)
 
     // Create the friend request
     console.log('📤 Creating friend request...');
-    const { data: friendRequest, error: createError } = await supabaseAdmin
+    const { data: friendRequest, error: createError } = await adminClient
       .from('friend_requests')
       .insert({
         sender_id: senderId,
@@ -170,6 +181,15 @@ export async function sendFriendRequest(senderId: string, receiverEmail: string)
     };
   } catch (error) {
     console.error('❌ Unexpected error in sendFriendRequest:', error);
+    
+    // Check if this is the admin client error
+    if (error instanceof Error && error.message.includes('admin client is not available')) {
+      return {
+        success: false,
+        error: 'Friend request functionality is currently unavailable. Please ensure all required environment variables are configured.',
+      };
+    }
+    
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',

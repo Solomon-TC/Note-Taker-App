@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAdminClient } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
@@ -11,6 +11,18 @@ export async function POST(request: NextRequest) {
       console.error("STRIPE_SECRET_KEY is not configured");
       return NextResponse.json(
         { error: "Payment system is not configured" },
+        { status: 500 },
+      );
+    }
+
+    // Check if Supabase admin client is available
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getAdminClient();
+    } catch (error) {
+      console.error("Supabase admin client not available:", error);
+      return NextResponse.json(
+        { error: "Authentication system is not configured" },
         { status: 500 },
       );
     }

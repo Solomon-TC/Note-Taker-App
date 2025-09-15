@@ -210,9 +210,9 @@ interface AISession {
 const parseTextQuestions = (text: string): PracticeQuestion[] => {
   const questions: PracticeQuestion[] = [];
 
-  // Split by question numbers or patterns
+  // Split by question numbers or patterns - improved regex
   const questionBlocks = text
-    .split(/Question \d+/i)
+    .split(/(?:Question\s+\d+|^\d+\.|\n\d+\.)/i)
     .filter((block) => block.trim());
 
   questionBlocks.forEach((block, index) => {
@@ -240,15 +240,50 @@ const parseTextQuestions = (text: string): PracticeQuestion[] => {
       type = "matching";
     }
 
-    // Extract question text (first substantial line)
-    let questionText = lines[0];
-    if (questionText.includes(":")) {
-      questionText = questionText.split(":").slice(1).join(":").trim();
+    // Enhanced question text extraction
+    let questionText = "";
+    
+    // Look for the actual question text - try multiple approaches
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip lines that are clearly not questions
+      if (
+        line.match(/^[A-D][\)\.]/) || // Option lines
+        line.toLowerCase().includes("correct answer") ||
+        line.toLowerCase().includes("explanation") ||
+        line.toLowerCase().includes("multiple choice") ||
+        line.toLowerCase().includes("true/false") ||
+        line.length < 10 // Too short to be a question
+      ) {
+        continue;
+      }
+      
+      // This looks like a question
+      questionText = line;
+      
+      // Clean up the question text
+      questionText = questionText.replace(/^\d+\.?\s*/, ""); // Remove leading numbers
+      questionText = questionText.replace(/^Question\s+\d+:?\s*/i, ""); // Remove "Question X:"
+      questionText = questionText.replace(/\(.*?\)\s*:?\s*/, ""); // Remove type indicators like "(Multiple Choice)"
+      questionText = questionText.replace(/^[:\-\s]+/, ""); // Remove leading colons, dashes, spaces
+      questionText = questionText.trim();
+      
+      if (questionText.length > 10) { // Valid question found
+        break;
+      }
     }
 
-    // Remove type indicators from question text
-    questionText = questionText.replace(/\(.*?\)\s*:?\s*/g, "").trim();
-    console.log("Extracted question text:", questionText);
+    // Fallback: if no good question found, use the first substantial line
+    if (!questionText || questionText.length < 10) {
+      questionText = lines.find(line => 
+        line.length > 10 && 
+        !line.match(/^[A-D][\)\.]/) &&
+        !line.toLowerCase().includes("answer")
+      ) || "Question text not found";
+    }
+
+    console.log("Final extracted question text:", questionText);
 
     if (type === "multiple-choice") {
       // Extract options (lines starting with A), B), C), D) or similar)
@@ -260,7 +295,7 @@ const parseTextQuestions = (text: string): PracticeQuestion[] => {
 
       // First pass: collect all options in order
       lines.forEach((line, lineIndex) => {
-        const optionMatch = line.match(/^([A-D])[\)\.]\s*(.+)/);
+        const optionMatch = line.match(/^([A-D])[\)\.]?\s*(.+)/);
         if (optionMatch) {
           const optionLetter = optionMatch[1].toUpperCase();
           const optionText = optionMatch[2].trim();
@@ -379,7 +414,7 @@ const parseTextQuestions = (text: string): PracticeQuestion[] => {
         }
       }
 
-      if (options.length >= 2) {
+      if (options.length >= 2 && questionText && questionText.length > 10) {
         const question = {
           type: "multiple-choice" as const,
           question: questionText,
@@ -402,7 +437,9 @@ const parseTextQuestions = (text: string): PracticeQuestion[] => {
 
         questions.push(question);
       } else {
-        console.warn("Not enough options found for multiple choice question");
+        console.warn("Not enough options found or invalid question text for multiple choice question");
+        console.warn("Question text:", questionText);
+        console.warn("Options:", options);
       }
     } else if (type === "true-false") {
       let correctAnswer = true;
@@ -418,19 +455,28 @@ const parseTextQuestions = (text: string): PracticeQuestion[] => {
         correctAnswer = answerLine.toLowerCase().includes("true");
       }
 
-      questions.push({
-        type: "true-false",
-        question: questionText,
-        correctAnswer,
-        explanation: extractExplanation(block),
-      });
+      if (questionText && questionText.length > 10) {
+        questions.push({
+          type: "true-false",
+          question: questionText,
+          correctAnswer,
+          explanation: extractExplanation(block),
+        });
+      } else {
+        console.warn("Invalid question text for true/false question:", questionText);
+      }
     }
   });
 
   console.log(
     `\n=== FINAL RESULT: Parsed ${questions.length} questions total ===`,
   );
-  return questions;
+  
+  // Additional validation - ensure all questions have valid text
+  const validQuestions = questions.filter(q => q.question && q.question.length > 10);
+  console.log(`Valid questions after filtering: ${validQuestions.length}`);
+  
+  return validQuestions;
 };
 
 // Helper function to extract explanation from question block
@@ -820,7 +866,7 @@ const AIChatSidebar = ({
   // Helper function to transform raw Supabase session data to AISession format
   const transformSessionData = (sessionData: any): AISession => {
     return {
-      id: sessionData.id,
+      id: currentSessionId,
       session_type:
         sessionData.session_type === "chat" ||
         sessionData.session_type === "summary" ||
@@ -985,6 +1031,9 @@ const AIChatSidebar = ({
     setIsSummaryLoading(true);
 
     try {
+      const contextInfo = context?.currentPage?.title || "your current notes";
+      const query = `Please analyze ${contextInfo} and provide insights about the key concepts and topics covered.`;
+
       const response = await fetch("/api/ai-assistant", {
         method: "POST",
         headers: {
@@ -1081,8 +1130,12 @@ const AIChatSidebar = ({
           : data.response?.text ||
             "No questions could be generated from your notes.";
 
+      console.log("AI Response for practice questions:", responseText);
+
       // Parse the plain text response to extract questions
       const parsedQuestions = parseTextQuestions(responseText);
+
+      console.log("Parsed questions result:", parsedQuestions);
 
       if (parsedQuestions.length > 0) {
         setPracticeQuestions(parsedQuestions);
@@ -1092,24 +1145,29 @@ const AIChatSidebar = ({
         await saveCurrentSession("practice", practiceTitle, [], {
           questionsCount: parsedQuestions.length,
           context: context || {},
+          rawResponse: responseText, // Save raw response for debugging
         });
       } else {
-        // Fallback if parsing fails
+        console.warn("No questions parsed from AI response. Raw response:", responseText);
+        
+        // Enhanced fallback with better question text
         const fallbackQuestion: PracticeQuestion = {
           type: "true-false",
-          question:
-            "Based on your notes, would you say the main concepts are clearly explained?",
+          question: "Based on your notes, are the main concepts clearly explained and well-organized?",
           correctAnswer: true,
-          explanation:
-            "This is a fallback question. The AI response could not be parsed into structured questions.",
+          explanation: "This is a fallback question because the AI response could not be parsed into structured questions. The original response was: " + responseText.substring(0, 200) + "...",
         };
         setPracticeQuestions([fallbackQuestion]);
+        
+        // Show user feedback about parsing issue
+        const errorMessage = `Generated questions could not be parsed properly. Raw AI response: ${responseText.substring(0, 300)}...`;
+        console.error("Question parsing failed:", errorMessage);
       }
 
       // Save to database if we have a current note and valid questions
       if (currentNote?.id && parsedQuestions.length > 0) {
         for (const question of parsedQuestions) {
-          if (question && typeof question.question === "string") {
+          if (question && typeof question.question === "string" && question.question.length > 0) {
             const problemData = {
               user_id: user.id,
               note_id: currentNote.id,
@@ -1129,11 +1187,22 @@ const AIChatSidebar = ({
             if (error) {
               console.error("Error saving practice problem:", error);
             }
+          } else {
+            console.warn("Skipping invalid question:", question);
           }
         }
       }
     } catch (error) {
       console.error("Error creating practice problems:", error);
+      
+      // Show error to user with fallback question
+      const errorQuestion: PracticeQuestion = {
+        type: "true-false",
+        question: "There was an error generating practice questions. Would you like to try again?",
+        correctAnswer: true,
+        explanation: `Error details: ${error instanceof Error ? error.message : "Unknown error"}`,
+      };
+      setPracticeQuestions([errorQuestion]);
     } finally {
       setIsPracticeLoading(false);
     }
@@ -1727,9 +1796,30 @@ const AIChatSidebar = ({
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <p className="text-sm font-medium mb-4 leading-relaxed">
-                          {question.question}
-                        </p>
+                        {/* Debug info for question text */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                            <strong>Debug:</strong> Question text length: {question.question?.length || 0}
+                            <br />
+                            <strong>Question:</strong> "{question.question || 'NO QUESTION TEXT'}"
+                          </div>
+                        )}
+                        
+                        {question.question && question.question.length > 0 ? (
+                          <p className="text-sm font-medium mb-4 leading-relaxed">
+                            {question.question}
+                          </p>
+                        ) : (
+                          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm text-red-700 font-medium">
+                              ⚠️ Question text is missing or invalid
+                            </p>
+                            <p className="text-xs text-red-600 mt-1">
+                              This question could not be parsed properly from the AI response.
+                            </p>
+                          </div>
+                        )}
+                        
                         {question.type === "multiple-choice" &&
                         question.options ? (
                           <div className="space-y-2">
@@ -1747,7 +1837,7 @@ const AIChatSidebar = ({
                                       : "outline"
                                   }
                                   className="justify-start text-left h-auto p-3 w-full"
-                                  disabled={question.completed}
+                                  disabled={question.completed || !question.question}
                                   onClick={() =>
                                     handleAnswerQuestion(index, optionIndex)
                                   }
@@ -1772,7 +1862,7 @@ const AIChatSidebar = ({
                                   : "outline"
                               }
                               className="justify-center h-auto p-3 w-full"
-                              disabled={question.completed}
+                              disabled={question.completed || !question.question}
                               onClick={() => handleAnswerQuestion(index, true)}
                             >
                               <span className="text-sm font-medium">True</span>
@@ -1788,7 +1878,7 @@ const AIChatSidebar = ({
                                   : "outline"
                               }
                               className="justify-center h-auto p-3 w-full"
-                              disabled={question.completed}
+                              disabled={question.completed || !question.question}
                               onClick={() => handleAnswerQuestion(index, false)}
                             >
                               <span className="text-sm font-medium">False</span>
@@ -1811,7 +1901,7 @@ const AIChatSidebar = ({
                         ) : (
                           <div className="text-center py-4 text-muted-foreground">
                             <p className="text-sm">
-                              Question format not supported
+                              Question format not supported or question text is missing
                             </p>
                           </div>
                         )}

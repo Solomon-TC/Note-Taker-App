@@ -979,10 +979,10 @@ const TiptapEditor = ({
         onInsertDrawing={handleInsertDrawing}
       />
 
-      <div className={`border-x border-b rounded-b-lg ${className.includes('flex-1') ? 'flex flex-col flex-1' : ''}`}>
+      <div className={`border-x border-b rounded-b-lg ${className.includes('flex-1') ? 'flex flex-col' : ''}`}>
         <EditorContent 
           editor={editor} 
-          className={`min-h-[400px] ${className.includes('flex-1') ? 'flex-1 h-full' : ''}`} 
+          className={`min-h-[400px] ${className.includes('flex-1') ? 'flex-1 overflow-auto' : ''}`} 
         />
       </div>
 

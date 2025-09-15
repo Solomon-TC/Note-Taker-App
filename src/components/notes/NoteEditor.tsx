@@ -745,8 +745,8 @@ const NoteEditor = ({
       </div>
 
       {/* Editor Area */}
-      <div className="flex-1 overflow-hidden">
-        <div className={`h-full ${isFullscreen ? 'w-full' : 'max-w-4xl mx-auto'} ${isFullscreen ? 'flex flex-col' : 'p-6'}`}>
+      <div className="flex-1 overflow-auto">
+        <div className={`${isFullscreen ? 'w-full min-h-full' : 'max-w-4xl mx-auto p-6'} ${isFullscreen ? 'flex flex-col' : ''}`}>
           <TiptapEditor
             key={`tiptap-editor-${pageId}`} // CRITICAL: Force remount for each page
             content={content}

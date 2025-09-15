@@ -484,7 +484,7 @@ const NoteEditor = ({
     }
   };
 
-  const handleDownloadPDF = useCallback(() => {
+  const handleDownloadPDF = useCallback(async () => {
     try {
       console.log("Generating PDF for note:", {
         pageId,
@@ -518,13 +518,13 @@ const NoteEditor = ({
 
       // Show loading state briefly
       const loadingToast = document.createElement("div");
-      loadingToast.textContent = "Generating PDF...";
+      loadingToast.textContent = "Generating PDF with images...";
       loadingToast.className = "fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50";
       document.body.appendChild(loadingToast);
 
-      // Generate PDF with a slight delay to show loading state
-      setTimeout(() => {
-        const result = generateAdvancedNotePDF({
+      // Generate PDF with images (async)
+      try {
+        const result = await generateAdvancedNotePDF({
           title: title || "Untitled Note",
           content: content,
           filename: `${(title || "untitled_note").replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`
@@ -552,7 +552,15 @@ const NoteEditor = ({
           console.error("PDF generation failed:", result.error);
           alert(`Failed to generate PDF: ${result.error}`);
         }
-      }, 100);
+      } catch (pdfError) {
+        // Remove loading toast
+        if (document.body.contains(loadingToast)) {
+          document.body.removeChild(loadingToast);
+        }
+        
+        console.error("PDF generation error:", pdfError);
+        alert(`Error generating PDF: ${pdfError instanceof Error ? pdfError.message : "Unknown error"}`);
+      }
     } catch (error) {
       console.error("Error in PDF download handler:", error);
       alert(`Error generating PDF: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -737,8 +745,8 @@ const NoteEditor = ({
       </div>
 
       {/* Editor Area */}
-      <div className="flex-1 p-6 overflow-auto">
-        <div className={`${isFullscreen ? 'w-full h-full' : 'max-w-4xl'} mx-auto ${isFullscreen ? 'flex flex-col' : ''}`}>
+      <div className="flex-1 overflow-hidden">
+        <div className={`h-full ${isFullscreen ? 'w-full' : 'max-w-4xl mx-auto'} ${isFullscreen ? 'flex flex-col' : 'p-6'}`}>
           <TiptapEditor
             key={`tiptap-editor-${pageId}`} // CRITICAL: Force remount for each page
             content={content}
@@ -746,7 +754,7 @@ const NoteEditor = ({
             onTitleChange={handleEditorTitleChange}
             noteId={pageId}
             placeholder="Start typing..."
-            className={`w-full ${isFullscreen ? 'flex-1' : ''}`}
+            className={`w-full ${isFullscreen ? 'flex-1 p-6' : ''}`}
           />
         </div>
       </div>

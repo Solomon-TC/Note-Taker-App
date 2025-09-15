@@ -544,7 +544,7 @@ const TiptapEditor = ({
       attributes: {
         class: "focus:outline-none min-h-[400px] p-4 prose-lists",
         spellcheck: "false",
-        style: "font-size: 12pt; height: 100%;",
+        style: "font-size: 12pt;",
       },
       handleDrop: (view, event, slice, moved) => {
         if (
@@ -979,8 +979,11 @@ const TiptapEditor = ({
         onInsertDrawing={handleInsertDrawing}
       />
 
-      <div className="border-x border-b rounded-b-lg">
-        <EditorContent editor={editor} className={`min-h-[400px] ${className.includes('flex-1') ? 'h-full' : ''}`} />
+      <div className={`border-x border-b rounded-b-lg ${className.includes('flex-1') ? 'flex flex-col flex-1' : ''}`}>
+        <EditorContent 
+          editor={editor} 
+          className={`min-h-[400px] ${className.includes('flex-1') ? 'flex-1 h-full' : ''}`} 
+        />
       </div>
 
       <StatusBar editor={editor} />

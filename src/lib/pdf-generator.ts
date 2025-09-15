@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { extractPlainText, type TiptapDocument } from '@/lib/editor/json';
+import { storageService } from '@/lib/storage';
 
 interface PDFGenerationOptions {
   title: string;
@@ -80,8 +81,8 @@ export const generateNotePDF = ({ title, content, filename }: PDFGenerationOptio
   }
 };
 
-// Alternative function for more advanced formatting (future enhancement)
-export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerationOptions) => {
+// Enhanced function with image support
+export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFGenerationOptions) => {
   try {
     const pdf = new jsPDF();
     
@@ -105,6 +106,85 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
       }
     };
 
+    // Helper function to fetch and add image to PDF
+    const addImageToPDF = async (node: any) => {
+      try {
+        let imageData: string | null = null;
+        
+        // Try to get image data from different sources
+        if (node.attrs?.objectKey) {
+          // Try to fetch from storage using objectKey
+          try {
+            const response = await fetch(node.attrs.src);
+            if (response.ok) {
+              const blob = await response.blob();
+              imageData = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+              });
+            }
+          } catch (fetchError) {
+            console.warn('Failed to fetch image from storage:', fetchError);
+          }
+        } else if (node.attrs?.src) {
+          // Try to use the src directly if it's a data URL or accessible URL
+          if (node.attrs.src.startsWith('data:')) {
+            imageData = node.attrs.src;
+          } else {
+            try {
+              const response = await fetch(node.attrs.src);
+              if (response.ok) {
+                const blob = await response.blob();
+                imageData = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result as string);
+                  reader.readAsDataURL(blob);
+                });
+              }
+            } catch (fetchError) {
+              console.warn('Failed to fetch image from URL:', fetchError);
+            }
+          }
+        }
+
+        if (imageData) {
+          // Calculate image dimensions to fit within page
+          const maxImageWidth = maxWidth * 0.8; // Use 80% of available width
+          const maxImageHeight = 150; // Maximum height in points
+          
+          // Add some space before image
+          checkNewPage(maxImageHeight + 20);
+          currentY += 10;
+          
+          // Add image to PDF
+          try {
+            pdf.addImage(imageData, 'JPEG', margin, currentY, maxImageWidth, maxImageHeight);
+            currentY += maxImageHeight + 15;
+            
+            // Add caption if available
+            if (node.attrs?.alt && node.attrs.alt !== 'Drawing') {
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'italic');
+              const captionLines = pdf.splitTextToSize(`Caption: ${node.attrs.alt}`, maxWidth);
+              pdf.text(captionLines, margin, currentY);
+              currentY += captionLines.length * 4 + 10;
+            }
+            
+            return true;
+          } catch (imageError) {
+            console.error('Error adding image to PDF:', imageError);
+            return false;
+          }
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error processing image for PDF:', error);
+        return false;
+      }
+    };
+
     // Add title
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
@@ -112,7 +192,7 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
     pdf.text(titleLines, margin, currentY);
     currentY += titleLines.length * 10 + 20;
 
-    // Enhanced content processing with better text extraction
+    // Enhanced content processing with image support
     if (content.content && content.content.length > 0) {
       for (const node of content.content) {
         checkNewPage();
@@ -188,12 +268,17 @@ export const generateAdvancedNotePDF = ({ title, content, filename }: PDFGenerat
             break;
 
           case 'image':
-            // Add placeholder for images since we can't easily embed them
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'italic');
-            const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
-            pdf.text(imageText, margin, currentY);
-            currentY += 15;
+            // Try to add actual image
+            const imageAdded = await addImageToPDF(node);
+            
+            if (!imageAdded) {
+              // Fallback to text placeholder if image couldn't be added
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'italic');
+              const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
+              pdf.text(imageText, margin, currentY);
+              currentY += 15;
+            }
             break;
             
           default:

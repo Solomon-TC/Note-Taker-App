@@ -238,14 +238,47 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         } else {
           // Set fontSize using setFontSize command with proper format
           const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
-          const result = (editor as any).chain().focus().setFontSize(formattedSize).run();
-          console.log("Set font size result:", result, { fontSize: formattedSize });
           
-          // Alternative method if first fails
+          // Try multiple methods to ensure font size is applied
+          let result = false;
+          
+          // Method 1: Use the custom FontSize extension command
+          try {
+            result = (editor as any).chain().focus().setFontSize(formattedSize).run();
+            console.log("Primary setFontSize result:", result);
+          } catch (error) {
+            console.warn("Primary setFontSize failed:", error);
+          }
+          
+          // Method 2: Use textStyle mark directly if first method fails
           if (!result) {
-            console.log("Trying alternative font size method...");
-            const altResult = editor.chain().focus().setMark('textStyle', { fontSize: formattedSize }).run();
-            console.log("Alternative font size result:", altResult);
+            try {
+              result = editor.chain().focus().setMark('textStyle', { fontSize: formattedSize }).run();
+              console.log("Alternative textStyle result:", result);
+            } catch (error) {
+              console.warn("Alternative textStyle failed:", error);
+            }
+          }
+          
+          // Method 3: Force update using updateAttributes
+          if (!result) {
+            try {
+              const { state, dispatch } = editor.view;
+              const { from, to } = state.selection;
+              const tr = state.tr.addMark(from, to, state.schema.marks.textStyle.create({ fontSize: formattedSize }));
+              dispatch(tr);
+              result = true;
+              console.log("Force update result:", result);
+            } catch (error) {
+              console.warn("Force update failed:", error);
+            }
+          }
+          
+          if (result) {
+            console.log("Font size applied successfully:", formattedSize);
+          } else {
+            console.error("All font size methods failed");
+            alert("Failed to apply font size. The text selection may not support this formatting.");
           }
         }
       } catch (error) {

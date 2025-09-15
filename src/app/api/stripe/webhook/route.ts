@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAdminClient } from "@/lib/supabaseAdmin";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -59,6 +59,18 @@ export async function POST(request: NextRequest) {
     console.error("❌ Missing STRIPE_WEBHOOK_SECRET environment variable");
     return NextResponse.json(
       { error: "Webhook secret not configured" },
+      { status: 500 },
+    );
+  }
+
+  // Check if Supabase admin client is available
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getAdminClient();
+  } catch (error) {
+    console.error("❌ Supabase admin client not available:", error);
+    return NextResponse.json(
+      { error: "Database system is not configured" },
       { status: 500 },
     );
   }

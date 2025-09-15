@@ -519,6 +519,7 @@ const AIChatSidebar = ({
   >([]);
   const [allNotes, setAllNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [notesLoadError, setNotesLoadError] = useState<string | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
   const [aiSessions, setAISessions] = useState<AISession[]>([]);
@@ -535,59 +536,124 @@ const AIChatSidebar = ({
     scrollToBottom();
   }, [messages]);
 
-  // Load all user notes when assistant opens
-  const loadAllNotes = useCallback(async () => {
+  // Load all user notes when assistant opens - OPTIMIZED VERSION WITH TIMEOUT AND RETRY
+  const loadAllNotes = useCallback(async (retryCount = 0) => {
     if (!user || !isOpen) return;
 
+    const maxRetries = 2;
+    const timeoutId = setTimeout(() => {
+      console.warn("⏰ Note loading timeout - using fallback");
+      setIsLoading(false);
+      setNotesLoadError("Loading took too long. Please try again.");
+      setAllNotes([]);
+    }, 10000); // 10 second timeout
+
     try {
+      console.log(`🔄 Loading notes for AI assistant... (attempt ${retryCount + 1})`);
+      
+      // Set loading state immediately
+      setIsLoading(true);
+      setNotesLoadError(null);
+      
       const { data: pagesData, error } = await supabaseTyped
         .from("pages")
         .select("id, title, content, content_json, section_id")
         .eq("user_id", user.id)
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(50); // Limit to 50 most recent notes for performance
 
       if (error) {
         console.error("Error loading notes:", error);
-      } else {
-        const formattedNotes = await Promise.all((pagesData || []).map(async (page: any) => {
-          let content = "";
-          let mediaContent: Array<{ url: string; objectKey: string; type: 'image' | 'drawing' }> = [];
-          
-          try {
-            if (page.content) {
-              content = page.content;
-            } else if (page.content_json) {
-              const parsedJson = safeJsonParse(page.content_json);
-              content = extractPlainText(parsedJson);
-              
-              // Extract media content for AI processing
-              try {
-                const mediaData = await storageService.extractMediaForAI(parsedJson, user.id);
-                mediaContent = mediaData.images;
-              } catch (mediaError) {
-                console.warn("Error extracting media for AI:", mediaError);
-              }
-            }
-          } catch (e) {
-            console.warn("Error extracting content from page:", page.id, e);
-            content = page.content || "";
-          }
-          
-          return {
-            id: page.id,
-            title: page.title || "Untitled",
-            content: content || "",
-            sectionId: page.section_id,
-            mediaContent, // Include media for AI processing
-            hasMedia: mediaContent.length > 0,
-          };
-        }));
+        clearTimeout(timeoutId);
         
-        setAllNotes(formattedNotes);
-        console.log(`Loaded ${formattedNotes.length} notes with media content for AI processing`);
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Retrying note loading... (${retryCount + 1}/${maxRetries})`);
+          setTimeout(() => loadAllNotes(retryCount + 1), 1000);
+          return;
+        }
+        
+        setNotesLoadError("Failed to load notes. Please refresh and try again.");
+        setAllNotes([]);
+        setIsLoading(false);
+        return;
       }
+
+      console.log(`📄 Found ${pagesData?.length || 0} notes to process`);
+
+      // If no notes found, set empty array and finish
+      if (!pagesData || pagesData.length === 0) {
+        clearTimeout(timeoutId);
+        setAllNotes([]);
+        setIsLoading(false);
+        console.log("📝 No notes found for user");
+        return;
+      }
+
+      // Process notes in batches for better performance
+      const batchSize = 10;
+      const formattedNotes: any[] = [];
+      
+      for (let i = 0; i < pagesData.length; i += batchSize) {
+        const batch = pagesData.slice(i, i + batchSize);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(async (page: any) => {
+            let content = "";
+            
+            try {
+              if (page.content) {
+                content = page.content;
+              } else if (page.content_json) {
+                const parsedJson = safeJsonParse(page.content_json);
+                content = extractPlainText(parsedJson);
+              }
+            } catch (e) {
+              console.warn(`⚠️ Error extracting content from page ${page.id}:`, e);
+              content = page.content || "";
+            }
+            
+            return {
+              id: page.id,
+              title: page.title || "Untitled",
+              content: content || "",
+              sectionId: page.section_id,
+              // Skip media extraction for performance - can be done on-demand
+              mediaContent: [],
+              hasMedia: false,
+            };
+          })
+        );
+        
+        // Add successful results to formatted notes
+        batchResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            formattedNotes.push(result.value);
+          }
+        });
+        
+        // Update progress
+        console.log(`📊 Processed ${Math.min(i + batchSize, pagesData.length)} / ${pagesData.length} notes`);
+      }
+      
+      clearTimeout(timeoutId);
+      setAllNotes(formattedNotes);
+      setNotesLoadError(null);
+      console.log(`✅ Successfully loaded ${formattedNotes.length} notes for AI processing`);
+      
     } catch (error) {
-      console.error("Error loading notes:", error);
+      console.error("❌ Error loading notes:", error);
+      clearTimeout(timeoutId);
+      
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Retrying note loading due to error... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => loadAllNotes(retryCount + 1), 1000);
+        return;
+      }
+      
+      setNotesLoadError("Failed to load notes. Please refresh and try again.");
+      setAllNotes([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [user, supabaseTyped, isOpen]);
 
@@ -1271,11 +1337,19 @@ const AIChatSidebar = ({
           <div>
             <h3 className="font-semibold text-sm">Study Assistant</h3>
             <p className="text-xs text-muted-foreground">
-              AI-powered learning companion
+              {isLoading 
+                ? "Loading notes..." 
+                : allNotes && allNotes.length > 0 
+                ? `Ready with ${allNotes.length} notes`
+                : "AI-powered learning companion"
+              }
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          )}
           <Badge variant="secondary" className="gap-1 text-xs">
             <Brain size={12} />
             <span>Smart AI</span>
@@ -1376,7 +1450,23 @@ const AIChatSidebar = ({
 
             {/* Chat Input - Fixed at bottom */}
             <div className="flex-shrink-0 p-3 border-t bg-background/95 backdrop-blur-sm">
-              {allNotes && allNotes.length > 0 && (
+              {notesLoadError && (
+                <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-destructive">{notesLoadError}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => loadAllNotes()}
+                      className="h-6 px-2 text-xs"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {allNotes && allNotes.length > 0 && !notesLoadError && (
                 <div className="flex gap-1 mb-3 justify-center flex-wrap">
                   <Button
                     variant="outline"
@@ -1442,16 +1532,20 @@ const AIChatSidebar = ({
               <div className="flex gap-2">
                 <Input
                   placeholder={
-                    allNotes && allNotes.length > 0
-                      ? "Ask about your notes..."
-                      : "Loading notes..."
+                    isLoading
+                      ? "Loading notes..."
+                      : notesLoadError
+                      ? "Error loading notes"
+                      : allNotes && allNotes.length > 0
+                      ? `Ask about your ${allNotes.length} notes...`
+                      : "No notes found"
                   }
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) =>
                     e.key === "Enter" && !e.shiftKey && handleSendMessage()
                   }
-                  disabled={isLoading || !allNotes || allNotes.length === 0}
+                  disabled={isLoading || !!notesLoadError}
                   className="flex-1 h-9"
                 />
                 <Button
@@ -1459,6 +1553,7 @@ const AIChatSidebar = ({
                   onClick={handleSendMessage}
                   disabled={
                     isLoading ||
+                    !!notesLoadError ||
                     !inputValue.trim() ||
                     !allNotes ||
                     allNotes.length === 0

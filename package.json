@@ -73,6 +73,7 @@
     "cmdk": "^1.0.4",
     "embla-carousel-react": "^8.5.2",
     "jspdf": "^3.0.2",
+    "lru-cache": "^10.4.3",
     "lucide-react": "^0.468.0",
     "next": "14.2.23",
     "next-themes": "^0.2.1",
@@ -88,7 +89,9 @@
     "react-sketch-canvas": "^6.2.0",
     "stripe": "^17.6.0",
     "tempo-devtools": "^2.0.109",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "xss": "^1.0.15",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",

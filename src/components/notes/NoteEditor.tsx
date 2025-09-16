@@ -238,6 +238,43 @@ const NoteEditor = ({
     ),
   );
 
+  // Handle visibility changes with immediate save
+  const handleVisibilityChange = async (checked: boolean) => {
+    const newVisibility: PageVisibility = checked ? "friends" : "private";
+    setVisibility(newVisibility);
+    
+    // Immediately save the visibility change
+    if (pageId && onAutoSave) {
+      try {
+        setSaveStatus("saving");
+        await onAutoSave({
+          id: pageId,
+          title: title,
+          content: extractPlainText(content),
+          contentJson: content,
+          visibility: newVisibility,
+          sectionId,
+          parentPageId,
+        });
+        setSaveStatus("saved");
+        setLastSaved(new Date());
+        
+        // Update the initial data reference to prevent it from being marked as unsaved
+        initialDataRef.current = {
+          title: title,
+          content: content,
+        };
+        
+        console.log("Visibility change saved successfully:", newVisibility);
+      } catch (error) {
+        console.error("Failed to save visibility change:", error);
+        setSaveStatus("error");
+        // Revert the visibility change on error
+        setVisibility(visibility);
+      }
+    }
+  };
+
   // Sync with props when page changes - CRITICAL: Only when pageId actually changes
   useEffect(() => {
     if (!pageId) return; // Don't process if no pageId
@@ -658,9 +695,7 @@ const NoteEditor = ({
               </div>
               <Switch
                 checked={visibility === "friends"}
-                onCheckedChange={(checked) =>
-                  setVisibility(checked ? "friends" : "private")
-                }
+                onCheckedChange={handleVisibilityChange}
               />
             </div>
           </div>

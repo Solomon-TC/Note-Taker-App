@@ -726,6 +726,10 @@ export type Database = {
           page_visibility: string
         }[]
       }
+      test_friends_page_access_simple: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
+        Returns: Json
+      }
       test_friends_rls_logic: {
         Args: {
           p_current_user_id: string
@@ -744,6 +748,10 @@ export type Database = {
       }
       test_page_visibility_access: {
         Args: { p_page_id: string; p_test_user_id: string }
+        Returns: Json
+      }
+      test_rls_bypass_friends_pages: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
       test_user_page_access: {

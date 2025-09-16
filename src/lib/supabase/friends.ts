@@ -618,6 +618,7 @@ export interface GetSharedPagesResult {
 
 /**
  * Get pages shared by a friend (pages with visibility='friends' from a specific friend)
+ * SIMPLIFIED VERSION - Direct RLS query without complex debugging
  */
 export async function getFriendSharedPages(
   currentUserId: string,
@@ -638,7 +639,7 @@ export async function getFriendSharedPages(
       };
     }
 
-    console.log("📖 Starting enhanced shared pages fetch:", {
+    console.log("📖 Fetching friend shared pages:", {
       currentUserId,
       friendId,
       timestamp: new Date().toISOString(),
@@ -650,81 +651,15 @@ export async function getFriendSharedPages(
       error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("📖 Step 1: Auth context verification:", {
-      authUserId: currentAuthUser?.id,
-      expectedUserId: currentUserId,
-      authMatch: currentAuthUser?.id === currentUserId,
-      authError: authError?.message,
-    });
-
     if (!currentAuthUser || currentAuthUser.id !== currentUserId) {
-      console.error("📖 Auth context mismatch - this will cause RLS to fail");
+      console.error("📖 Auth context mismatch");
       return {
         success: false,
         error: "Authentication context mismatch. Please refresh and try again.",
       };
     }
 
-    // Step 2: Use the comprehensive debug function to check everything
-    console.log(
-      "📖 Step 2: Running comprehensive friendship and pages debug...",
-    );
-    try {
-      const { data: debugResult, error: debugError } = await supabase.rpc(
-        "get_friendship_and_pages_debug",
-        {
-          p_current_user_id: currentUserId,
-          p_friend_id: friendId,
-        },
-      );
-
-      if (debugError) {
-        console.error("📖 Debug function error:", debugError);
-      } else {
-        // Safely access debugResult properties with type checking
-        const debugResultObj =
-          debugResult &&
-          typeof debugResult === "object" &&
-          !Array.isArray(debugResult)
-            ? (debugResult as Record<string, any>)
-            : {};
-
-        console.log("📖 Comprehensive debug result:", {
-          friendshipExists: debugResultObj.friendship_exists ?? false,
-          friendshipData: debugResultObj.friendship_data ?? null,
-          totalPages: debugResultObj.friend_pages_total ?? 0,
-          privatePages: debugResultObj.friend_pages_private ?? 0,
-          friendsPages: debugResultObj.friend_pages_friends ?? 0,
-          accessiblePages: debugResultObj.accessible_pages ?? [],
-        });
-
-        // If no friendship exists, return early
-        if (!debugResultObj.friendship_exists) {
-          return {
-            success: false,
-            error:
-              "You are not friends with this user. Please ensure you have accepted each other's friend requests.",
-          };
-        }
-
-        // If friendship exists but no friends pages, return empty result
-        if (debugResultObj.friend_pages_friends === 0) {
-          console.log("📖 Friendship exists but no friends pages found");
-          return {
-            success: true,
-            data: [],
-          };
-        }
-      }
-    } catch (debugErr) {
-      console.warn(
-        "📖 Debug function not available, continuing with manual checks:",
-        debugErr,
-      );
-    }
-
-    // Step 3: Manual friendship verification as fallback
-    console.log("📖 Step 3: Manual friendship verification...");
+    // Step 2: Quick friendship verification
     const { data: friendship, error: friendshipError } = await supabase
       .from("friends")
       .select("*")
@@ -746,8 +681,7 @@ export async function getFriendSharedPages(
       console.log("📖 No friendship found between users");
       return {
         success: false,
-        error:
-          "You are not friends with this user. Please ensure you have accepted each other's friend requests.",
+        error: "You are not friends with this user. Please ensure you have accepted each other's friend requests.",
       };
     }
 
@@ -755,68 +689,10 @@ export async function getFriendSharedPages(
       friendship_id: friendship.id,
       user_id: friendship.user_id,
       friend_id: friendship.friend_id,
-      created_at: friendship.created_at,
     });
 
-    // Step 4: Test individual page access before bulk query
-    console.log("📖 Step 4: Testing page access with debug function...");
-
-    // First get all friend's pages to test access
-    const { data: allFriendPages, error: allPagesError } = await supabase
-      .from("pages")
-      .select("id, title, user_id, visibility, created_at, updated_at")
-      .eq("user_id", friendId)
-      .eq("visibility", "friends");
-
-    if (allPagesError) {
-      console.error(
-        "📖 Error fetching friend's pages for testing:",
-        allPagesError,
-      );
-    } else {
-      console.log("📖 Friend's pages found for testing:", {
-        total: allFriendPages?.length || 0,
-        pages: allFriendPages?.map((p: { id: string; title: string; visibility: string }) => ({
-          id: p.id,
-          title: p.title,
-          visibility: p.visibility,
-        })),
-      });
-
-      // Test access to first few pages
-      if (allFriendPages && allFriendPages.length > 0) {
-        for (const page of allFriendPages.slice(0, 3)) {
-          try {
-            const { data: accessTest, error: accessError } = await supabase.rpc(
-              "test_page_access",
-              {
-                p_page_id: page.id,
-                p_user_id: currentUserId,
-              },
-            );
-            // Safely access accessTest properties with type checking
-            const accessTestObj =
-              accessTest &&
-              typeof accessTest === "object" &&
-              !Array.isArray(accessTest)
-                ? (accessTest as Record<string, any>)
-                : {};
-
-            console.log(`📖 Access test for page ${page.id} (${page.title}):`, {
-              canAccess: accessTestObj.can_access ?? null,
-              accessReason: accessTestObj.access_reason ?? null,
-              friendshipCheck: accessTestObj.friendship_check ?? null,
-              error: accessError?.message,
-            });
-          } catch (testErr) {
-            console.log(`📖 Access test error for page ${page.id}:`, testErr);
-          }
-        }
-      }
-    }
-
-    // Step 5: Attempt the actual RLS-filtered query
-    console.log("📖 Step 5: Attempting RLS-filtered pages query...");
+    // Step 3: Direct RLS-filtered query for shared pages
+    console.log("📖 Querying shared pages with RLS...");
     const { data: sharedPagesData, error: sharedPagesError } = await supabase
       .from("pages")
       .select(
@@ -854,22 +730,13 @@ export async function getFriendSharedPages(
         error: sharedPagesError,
         code: sharedPagesError.code,
         message: sharedPagesError.message,
-        details: sharedPagesError.details,
-        hint: sharedPagesError.hint,
       });
 
       // Provide specific error guidance
       if (sharedPagesError.code === "42501") {
         return {
           success: false,
-          error: `Access denied by RLS policies. This indicates the friendship verification in the database policies is failing. Error: ${sharedPagesError.message}`,
-        };
-      }
-
-      if (sharedPagesError.message?.includes("policy")) {
-        return {
-          success: false,
-          error: `RLS policy error: ${sharedPagesError.message}. Please check that the friendship exists and RLS policies are correctly configured.`,
+          error: `Access denied by RLS policies. The friendship verification in the database policies is failing. Please check that both users have properly accepted the friend request.`,
         };
       }
 
@@ -885,11 +752,6 @@ export async function getFriendSharedPages(
         id: p.id,
         title: p.title,
         visibility: p.visibility,
-        user_id: p.user_id,
-        section_name: p.sections?.name,
-        notebook_name: p.sections?.notebooks?.name,
-        author_name: p.users?.full_name,
-        author_email: p.users?.email,
       })),
     });
 
@@ -912,18 +774,10 @@ export async function getFriendSharedPages(
       }),
     );
 
-    console.log("📖 Final enhanced result:", {
+    console.log("📖 Final result:", {
       success: true,
       friendId,
       pagesCount: transformedPages.length,
-      pages: transformedPages.map((p) => ({
-        id: p.id,
-        title: p.title,
-        visibility: p.visibility,
-        author_email: p.author_email,
-        section_name: p.section_name,
-        notebook_name: p.notebook_name,
-      })),
     });
 
     return {
@@ -934,10 +788,8 @@ export async function getFriendSharedPages(
     console.error("📖 Unexpected error in getFriendSharedPages:", {
       error,
       message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : "No stack trace",
       currentUserId,
       friendId,
-      timestamp: new Date().toISOString(),
     });
     return {
       success: false,

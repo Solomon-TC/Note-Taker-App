@@ -651,6 +651,10 @@ export type Database = {
         Args: { p_friend_id: string; p_request_id: string; p_user_id: string }
         Returns: undefined
       }
+      can_user_access_page: {
+        Args: { p_page_id: string; p_user_id: string }
+        Returns: Json
+      }
       debug_friendship_access: {
         Args: { p_current_user_id: string; p_page_owner_id: string }
         Returns: Json
@@ -670,6 +674,10 @@ export type Database = {
           title: string
           updated_at: string
         }[]
+      }
+      get_friend_shared_pages_for_user: {
+        Args: { p_user_id: string }
+        Returns: Json
       }
       get_friendship_and_pages_debug: {
         Args: { p_current_user_id: string; p_friend_id: string }
@@ -699,8 +707,20 @@ export type Database = {
           id: string
         }[]
       }
+      test_friends_rls_logic: {
+        Args: {
+          p_current_user_id: string
+          p_page_owner_id: string
+          p_page_visibility: string
+        }
+        Returns: Json
+      }
       test_page_access: {
         Args: { p_page_id: string; p_user_id: string }
+        Returns: Json
+      }
+      test_page_select_with_rls: {
+        Args: { p_user_id: string }
         Returns: Json
       }
       test_page_visibility_access: {

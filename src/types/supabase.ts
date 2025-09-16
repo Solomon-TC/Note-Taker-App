@@ -659,6 +659,10 @@ export type Database = {
         Args: { p_user1_id: string; p_user2_id: string }
         Returns: Json
       }
+      debug_friends_page_access: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
+        Returns: Json
+      }
       debug_friendship_access: {
         Args: { p_current_user_id: string; p_page_owner_id: string }
         Returns: Json
@@ -709,6 +713,17 @@ export type Database = {
         Returns: {
           email: string
           id: string
+        }[]
+      }
+      simulate_friends_page_query: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
+        Returns: {
+          access_granted: boolean
+          access_reason: string
+          page_created_at: string
+          page_id: string
+          page_title: string
+          page_visibility: string
         }[]
       }
       test_friends_rls_logic: {

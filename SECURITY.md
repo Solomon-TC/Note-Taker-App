@@ -9,6 +9,7 @@ This document outlines the comprehensive security measures implemented in the Sc
 - **User isolation** - users can only access their own data
 - **Friend-based sharing** - controlled access to shared content
 - **Conservative defaults** - deny access unless explicitly allowed
+- **Fixed policies** - resolved issues with friend page visibility and page saving
 
 ### 2. Input Validation & Sanitization
 - **Zod schemas** for all API endpoints
@@ -46,12 +47,13 @@ This document outlines the comprehensive security measures implemented in the Sc
 -- Prevents privilege escalation
 ```
 
-#### Pages/Notes Table
+#### Pages/Notes Table (FIXED)
 ```sql
--- Authors have full access to their pages
+-- Users can view/create/update/delete their own pages
 -- Friends can view pages with 'friends' visibility
 -- Public pages visible to authenticated users
--- Strict ownership validation
+-- Separate policies for each operation (SELECT, INSERT, UPDATE, DELETE)
+-- Fixed friendship verification logic
 ```
 
 #### Friends & Friend Requests
@@ -59,6 +61,7 @@ This document outlines the comprehensive security measures implemented in the Sc
 -- Users can only see their own friendships
 -- Controlled friend request workflow
 -- Prevents unauthorized relationship access
+-- Fixed bidirectional friendship checking
 ```
 
 #### Feedback System
@@ -127,13 +130,31 @@ SELECT * FROM pages;
 SELECT * FROM pages WHERE user_id = 'user-b-uuid';
 ```
 
-#### Test Friend Access
+#### Test Friend Access (FIXED)
 ```sql
 -- Test friend can view shared pages
 SET LOCAL "request.jwt.claims" = '{"sub": "friend-user-uuid"}';
 
 -- Should return friend's shared pages
 SELECT * FROM pages WHERE visibility = 'friends';
+
+-- Use debug function to test friendship access
+SELECT debug_friendship_access('current-user-uuid', 'friend-user-uuid');
+```
+
+#### Test Page Saving (FIXED)
+```sql
+-- Test page update as owner
+SET LOCAL "request.jwt.claims" = '{"sub": "page-owner-uuid"}';
+
+-- Should succeed
+UPDATE pages SET title = 'Updated Title' WHERE id = 'page-uuid' AND user_id = 'page-owner-uuid';
+
+-- Test page update as non-owner (should fail)
+SET LOCAL "request.jwt.claims" = '{"sub": "other-user-uuid"}';
+
+-- Should fail
+UPDATE pages SET title = 'Hacked Title' WHERE id = 'page-uuid';
 ```
 
 #### Test Feedback System
@@ -146,6 +167,21 @@ SELECT * FROM feedback;
 
 -- Should only allow insert with own user_id
 INSERT INTO feedback (user_id, title, content) VALUES ('user-uuid', 'Test', 'Content');
+```
+
+### Debug Functions
+
+Use these functions to troubleshoot RLS issues:
+
+```sql
+-- Debug friendship access
+SELECT debug_friendship_access('current-user-uuid', 'friend-user-uuid');
+
+-- Test specific page access
+SELECT test_page_access('page-uuid', 'user-uuid');
+
+-- Get comprehensive friendship and pages debug info
+SELECT get_friendship_and_pages_debug('current-user-uuid', 'friend-user-uuid');
 ```
 
 ### API Endpoint Testing
@@ -223,26 +259,28 @@ NEXT_PUBLIC_APP_URL=https://your-app.com
 Run the environment validation script:
 ```bash
 # Check all environment variables
-npm run check:env
+node scripts/verify-env.js
 
 # Generate .env template
-npm run check:env:template
+node scripts/verify-env.js template
 
 # Check for vulnerabilities
-npm run check:vuln
+npm audit --audit-level=moderate
 ```
 
 ## 🚨 Security Checklist
 
 ### Before Deployment
-- [ ] Run `npm run check:env` to validate environment variables
-- [ ] Run `npm run check:vuln` to check for vulnerabilities
+- [ ] Run `node scripts/verify-env.js` to validate environment variables
+- [ ] Run `npm audit --audit-level=moderate` to check for vulnerabilities
 - [ ] Test RLS policies with different user contexts
 - [ ] Verify rate limiting is working on sensitive endpoints
 - [ ] Check that security headers are present
 - [ ] Ensure no secrets are exposed in client-side code
 - [ ] Test input validation and sanitization
 - [ ] Verify webhook signature validation
+- [ ] Test friend page visibility functionality
+- [ ] Test page saving functionality
 
 ### Production Monitoring
 - [ ] Set up error monitoring (Sentry recommended)
@@ -254,7 +292,7 @@ npm run check:vuln
 
 ## 🔄 Rollback Instructions
 
-### Disable RLS Policies
+### Disable RLS Policies (Emergency)
 ```sql
 -- Emergency rollback - disable all RLS
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -282,6 +320,37 @@ Comment out security headers in `middleware.ts`:
 ```typescript
 // Temporarily disable security headers
 // addSecurityHeaders(response);
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues and Solutions
+
+#### Friend Page Visibility Not Working
+1. **Check friendship exists**: Use `debug_friendship_access()` function
+2. **Verify page visibility**: Ensure pages are set to `visibility = 'friends'`
+3. **Test RLS policies**: Use `test_page_access()` function
+4. **Check authentication**: Ensure user is properly authenticated
+
+#### Page Saving Issues
+1. **Check user ownership**: Verify `auth.uid() = user_id`
+2. **Test RLS policies**: Use debug functions to verify access
+3. **Check content validation**: Ensure content passes Zod validation
+4. **Verify authentication**: Check JWT token is valid
+
+#### Debug SQL Queries
+```sql
+-- Check current user context
+SELECT auth.uid(), auth.role();
+
+-- Check friendship status
+SELECT * FROM friends WHERE user_id = 'user-a' OR friend_id = 'user-a';
+
+-- Check page visibility settings
+SELECT id, title, user_id, visibility FROM pages WHERE user_id = 'friend-id';
+
+-- Test page access with debug function
+SELECT test_page_access('page-id', 'current-user-id');
 ```
 
 ## 📚 Additional Recommendations
@@ -335,6 +404,20 @@ Comment out security headers in `middleware.ts`:
 
 ---
 
-**Last Updated**: [Current Date]
-**Version**: 1.0
+**Last Updated**: December 2024
+**Version**: 1.1 (Fixed RLS policies for friend page visibility and page saving)
 **Maintained By**: Security Team
+
+## 🔧 Recent Fixes (v1.1)
+
+### Fixed Issues
+1. **Friend Page Visibility**: Fixed RLS policies to properly allow friends to view shared pages
+2. **Page Saving**: Fixed RLS policies that were blocking legitimate page save operations
+3. **Friendship Verification**: Improved bidirectional friendship checking in RLS policies
+4. **Debug Functions**: Added comprehensive debug functions for troubleshooting
+
+### Changes Made
+- Separated RLS policies by operation type (SELECT, INSERT, UPDATE, DELETE)
+- Fixed friendship verification logic in page access policies
+- Added debug functions for troubleshooting RLS issues
+- Improved error handling and logging

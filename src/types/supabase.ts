@@ -655,6 +655,10 @@ export type Database = {
         Args: { p_page_id: string; p_user_id: string }
         Returns: Json
       }
+      check_friendship_status: {
+        Args: { p_user1_id: string; p_user2_id: string }
+        Returns: Json
+      }
       debug_friendship_access: {
         Args: { p_current_user_id: string; p_page_owner_id: string }
         Returns: Json
@@ -726,6 +730,17 @@ export type Database = {
       test_page_visibility_access: {
         Args: { p_page_id: string; p_test_user_id: string }
         Returns: Json
+      }
+      test_user_page_access: {
+        Args: { p_user_id: string }
+        Returns: {
+          access_type: string
+          can_access: boolean
+          page_id: string
+          page_owner_id: string
+          page_title: string
+          page_visibility: string
+        }[]
       }
       verify_shared_pages_schema: {
         Args: Record<PropertyKey, never>

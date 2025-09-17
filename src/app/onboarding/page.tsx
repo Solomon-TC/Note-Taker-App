@@ -698,11 +698,12 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
+                    key="ai-demo-video"
                   >
-                    <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
+                    <source src="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
                       Your browser doesn't support video playback. 
-                      <a href="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" className="underline">
+                      <a href="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4" className="underline">
                         Download the video instead
                       </a>
                     </p>
@@ -760,10 +761,10 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                   >
-                    <source src="/uploads/Friends Demo - Made with Clipchamp.mp4" type="video/mp4" />
+                    <source src="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
                       Your browser doesn't support video playback. 
-                      <a href="/uploads/Friends Demo - Made with Clipchamp.mp4" className="underline">
+                      <a href="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4" className="underline">
                         Download the video instead
                       </a>
                     </p>
@@ -821,6 +822,25 @@ export default function OnboardingPage() {
               </p>
             </CardHeader>
             <CardContent>
+              {/* Video Section */}
+              <div className="mb-6">
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                  <video
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                  >
+                    <source src="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <p className="text-white p-4">
+                      Your browser doesn't support video playback. 
+                      <a href="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4" className="underline">
+                        Download the video instead
+                      </a>
+                    </p>
+                  </video>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="text-center p-6 rounded-lg bg-muted/50">
                   <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
@@ -896,10 +916,10 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                   >
-                    <source src="/uploads/Feedback Demo - Made with Clipchamp.mp4" type="video/mp4" />
+                    <source src="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
                       Your browser doesn't support video playback. 
-                      <a href="/uploads/Feedback Demo - Made with Clipchamp.mp4" className="underline">
+                      <a href="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4" className="underline">
                         Download the video instead
                       </a>
                     </p>

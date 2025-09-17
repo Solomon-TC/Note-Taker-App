@@ -968,7 +968,7 @@
   }
 
   /* CRITICAL: Force font size rendering with highest specificity */
-  .ProseMirror span[style*="font-size"] {
+  .ProseMirror span[style*="font-size:"] {
     /* Ensure font-size inline styles are not overridden */
   }
 

@@ -23,6 +23,7 @@ import Strike from "@tiptap/extension-strike";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
+import { FontFamily } from "@tiptap/extension-font-family";
 import { storageService } from "@/lib/storage";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
@@ -370,6 +371,11 @@ const TiptapEditor = ({
         HTMLAttributes: {
           class: "text-style",
         },
+      }),
+
+      // CRITICAL: Load FontFamily extension with proper configuration
+      FontFamily.configure({
+        types: ["textStyle"],
       }),
 
       // CRITICAL: Load Color extension with proper configuration

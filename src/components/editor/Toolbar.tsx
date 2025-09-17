@@ -231,48 +231,29 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           editor.commands.focus();
         }
 
-        // Check if FontSize extension is available
-        const hasFontSizeExtension = editor.extensionManager.extensions.some(
-          (ext: any) => ext.name === "fontSize"
-        );
-
-        console.log("FontSize extension available:", hasFontSizeExtension);
-
         if (fontSize === "default") {
-          // Use the custom unsetFontSize command if available
-          if (hasFontSizeExtension && (editor as any).commands.unsetFontSize) {
-            const result = (editor as any).chain().focus().unsetFontSize().run();
-            console.log("Unset font size result:", result);
+          // Remove fontSize attribute from textStyle
+          const currentAttributes = editor.getAttributes('textStyle');
+          const { fontSize: _, ...otherAttributes } = currentAttributes;
+          
+          if (Object.keys(otherAttributes).length > 0) {
+            const result = editor.chain().focus().setMark('textStyle', otherAttributes).run();
+            console.log("Removed font size, kept other attributes:", result);
           } else {
-            // Fallback: remove fontSize attribute from textStyle
-            const currentAttributes = editor.getAttributes('textStyle');
-            const { fontSize: _, ...otherAttributes } = currentAttributes;
-            
-            if (Object.keys(otherAttributes).length > 0) {
-              const result = editor.chain().focus().setMark('textStyle', otherAttributes).run();
-              console.log("Removed font size, kept other attributes:", result);
-            } else {
-              const result = editor.chain().focus().unsetMark('textStyle').run();
-              console.log("Removed entire textStyle mark:", result);
-            }
+            const result = editor.chain().focus().unsetMark('textStyle').run();
+            console.log("Removed entire textStyle mark:", result);
           }
         } else {
           // Format the font size properly
           const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
           
-          // Use the custom setFontSize command if available
-          if (hasFontSizeExtension && (editor as any).commands.setFontSize) {
-            const result = (editor as any).chain().focus().setFontSize(formattedSize).run();
-            console.log("Set font size with custom command result:", result);
-          } else {
-            // Fallback: use textStyle mark directly
-            const currentAttributes = editor.getAttributes('textStyle');
-            const result = editor.chain().focus().setMark('textStyle', {
-              ...currentAttributes,
-              fontSize: formattedSize
-            }).run();
-            console.log("Set font size with textStyle fallback result:", result);
-          }
+          // Get current textStyle attributes and add fontSize
+          const currentAttributes = editor.getAttributes('textStyle');
+          const result = editor.chain().focus().setMark('textStyle', {
+            ...currentAttributes,
+            fontSize: formattedSize
+          }).run();
+          console.log("Set font size with textStyle result:", result);
           
           console.log("Font size applied:", formattedSize);
           
@@ -294,19 +275,22 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
       if (!editor) return;
 
       try {
+        console.log("Setting font family:", fontFamily);
+        
         if (fontFamily === "default") {
           // Remove fontFamily using unsetFontFamily command
-          (editor as any).chain().focus().unsetFontFamily().run();
+          const result = editor.chain().focus().unsetFontFamily().run();
+          console.log("Unset font family result:", result);
         } else {
           // Set fontFamily using setFontFamily command
-          (editor as any).chain().focus().setFontFamily(fontFamily).run();
+          const result = editor.chain().focus().setFontFamily(fontFamily).run();
+          console.log("Set font family result:", result);
         }
 
         console.log("Font family applied:", { fontFamily });
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error setting font family:", error);
-        }
+        console.error("Error setting font family:", error);
+        alert("Failed to change font family. Please try selecting the text again.");
       }
     },
     [editor],

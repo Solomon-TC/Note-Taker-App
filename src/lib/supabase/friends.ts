@@ -618,7 +618,7 @@ export interface GetSharedPagesResult {
 
 /**
  * Get pages shared by a friend (pages with visibility='friends' from a specific friend)
- * SIMPLIFIED VERSION - Direct RLS query without complex debugging
+ * UPDATED VERSION - Uses the new database function for reliable access
  */
 export async function getFriendSharedPages(
   currentUserId: string,
@@ -659,94 +659,98 @@ export async function getFriendSharedPages(
       };
     }
 
-    // Step 2: Quick friendship verification
-    const { data: friendship, error: friendshipError } = await supabase
-      .from("friends")
-      .select("*")
-      .or(
-        `and(user_id.eq.${currentUserId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUserId})`,
-      )
-      .limit(1)
-      .maybeSingle();
-
-    if (friendshipError && friendshipError.code !== "PGRST116") {
-      console.error("📖 Friendship verification error:", friendshipError);
-      return {
-        success: false,
-        error: `Failed to verify friendship: ${friendshipError.message}`,
-      };
-    }
-
-    if (!friendship) {
-      console.log("📖 No friendship found between users");
-      return {
-        success: false,
-        error: "You are not friends with this user. Please ensure you have accepted each other's friend requests.",
-      };
-    }
-
-    console.log("📖 Friendship verified:", {
-      friendship_id: friendship.id,
-      user_id: friendship.user_id,
-      friend_id: friendship.friend_id,
-    });
-
-    // Step 3: Direct RLS-filtered query for shared pages
-    console.log("📖 Querying shared pages with RLS...");
+    // Step 2: Use the new database function to get shared pages
+    console.log("📖 Using database function to get shared pages...");
     const { data: sharedPagesData, error: sharedPagesError } = await supabase
-      .from("pages")
-      .select(
-        `
-        id,
-        title,
-        content,
-        content_json,
-        created_at,
-        updated_at,
-        user_id,
-        section_id,
-        visibility,
-        sections!pages_section_id_fkey(
-          id,
-          name,
-          notebooks!sections_notebook_id_fkey(
-            id,
-            name
-          )
-        ),
-        users!pages_user_id_fkey(
-          id,
-          full_name,
-          email
-        )
-        `,
-      )
-      .eq("user_id", friendId)
-      .eq("visibility", "friends")
-      .order("updated_at", { ascending: false });
+      .rpc("get_friend_shared_pages_direct", {
+        p_current_user_id: currentUserId,
+        p_friend_user_id: friendId,
+      });
 
     if (sharedPagesError) {
-      console.error("📖 RLS-filtered pages query error:", {
+      console.error("📖 Database function error:", {
         error: sharedPagesError,
         code: sharedPagesError.code,
         message: sharedPagesError.message,
       });
 
-      // Provide specific error guidance
-      if (sharedPagesError.code === "42501") {
+      // Fallback to direct RLS query if function fails
+      console.log("📖 Falling back to direct RLS query...");
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("pages")
+        .select(
+          `
+          id,
+          title,
+          content,
+          content_json,
+          created_at,
+          updated_at,
+          user_id,
+          section_id,
+          visibility,
+          sections!pages_section_id_fkey(
+            id,
+            name,
+            notebooks!sections_notebook_id_fkey(
+              id,
+              name
+            )
+          ),
+          users!pages_user_id_fkey(
+            id,
+            full_name,
+            email
+          )
+          `,
+        )
+        .eq("user_id", friendId)
+        .eq("visibility", "friends")
+        .order("updated_at", { ascending: false });
+
+      if (fallbackError) {
+        console.error("📖 Fallback query also failed:", fallbackError);
         return {
           success: false,
-          error: `Access denied by RLS policies. The friendship verification in the database policies is failing. Please check that both users have properly accepted the friend request.`,
+          error: `Failed to fetch shared pages: ${fallbackError.message}. This might be due to RLS policies or missing friendship.`,
         };
       }
 
+      // Transform fallback data
+      const transformedFallbackPages: SharedPage[] = (fallbackData || []).map(
+        (page: any) => ({
+          id: page.id,
+          title: page.title || "Untitled Note",
+          content: page.content,
+          content_json: page.content_json,
+          created_at: page.created_at,
+          updated_at: page.updated_at,
+          user_id: page.user_id,
+          section_id: page.section_id,
+          visibility: page.visibility,
+          author_name: page.users?.full_name || null,
+          author_email: page.users?.email || "Unknown",
+          section_name: page.sections?.name || null,
+          notebook_name: page.sections?.notebooks?.name || null,
+        }),
+      );
+
+      console.log("📖 Fallback query result:", {
+        found: transformedFallbackPages.length,
+        pages: transformedFallbackPages.map((p) => ({
+          id: p.id,
+          title: p.title,
+          visibility: p.visibility,
+        })),
+      });
+
       return {
-        success: false,
-        error: `Failed to fetch shared pages: ${sharedPagesError.message}`,
+        success: true,
+        data: transformedFallbackPages,
       };
     }
 
-    console.log("📖 RLS-filtered pages query result:", {
+    console.log("📖 Database function result:", {
       found: sharedPagesData?.length || 0,
       pages: sharedPagesData?.map((p: any) => ({
         id: p.id,
@@ -755,7 +759,7 @@ export async function getFriendSharedPages(
       })),
     });
 
-    // Transform the data to match our interface
+    // Transform the data from the database function
     const transformedPages: SharedPage[] = (sharedPagesData || []).map(
       (page: any) => ({
         id: page.id,
@@ -767,10 +771,10 @@ export async function getFriendSharedPages(
         user_id: page.user_id,
         section_id: page.section_id,
         visibility: page.visibility,
-        author_name: page.users?.full_name || null,
-        author_email: page.users?.email || "Unknown",
-        section_name: page.sections?.name || null,
-        notebook_name: page.sections?.notebooks?.name || null,
+        author_name: page.author_name || null,
+        author_email: page.author_email || "Unknown",
+        section_name: page.section_name || null,
+        notebook_name: page.notebook_name || null,
       }),
     );
 
@@ -801,6 +805,7 @@ export async function getFriendSharedPages(
 /**
  * Debug function to test shared pages access
  * This function helps identify issues with the shared pages system
+ * UPDATED VERSION - Uses new database functions for better debugging
  */
 export async function debugSharedPagesAccess(
   currentUserId: string,
@@ -823,29 +828,27 @@ export async function debugSharedPagesAccess(
     });
 
     const debug: any = {
-      step1_users: null,
+      step1_auth: null,
       step2_friendship: null,
-      step3_auth: null,
-      step4_pages_all: null,
-      step5_pages_friends: null,
-      step6_rls_test: null,
+      step3_database_function_test: null,
+      step4_rls_test: null,
+      step5_direct_pages_check: null,
     };
 
-    // Step 1: Verify both users exist
-    const { data: users, error: usersError } = await supabase
-      .from("users")
-      .select("id, email, full_name")
-      .in("id", [currentUserId, friendId]);
-
-    debug.step1_users = {
-      success: !usersError,
-      error: usersError?.message,
-      users: users?.map((u: { id: string; email: string }) => ({ id: u.id, email: u.email })),
-      currentUserExists: users?.some((u: { id: string; email: string }) => u.id === currentUserId),
-      friendExists: users?.some((u: { id: string; email: string }) => u.id === friendId),
+    // Step 1: Check auth context
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+    debug.step1_auth = {
+      success: !authError,
+      error: authError?.message,
+      authUserId: authUser?.id,
+      expectedUserId: currentUserId,
+      authMatch: authUser?.id === currentUserId,
     };
 
-    // Step 2: Check friendship
+    // Step 2: Check friendship using the friends table directly
     const { data: friendship, error: friendshipError } = await supabase
       .from("friends")
       .select("*")
@@ -860,88 +863,55 @@ export async function debugSharedPagesAccess(
       friendshipData: friendship,
     };
 
-    // Step 3: Check auth context
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser();
-    debug.step3_auth = {
-      success: !authError,
-      error: authError?.message,
-      authUserId: authUser?.id,
-      expectedUserId: currentUserId,
-      authMatch: authUser?.id === currentUserId,
+    // Step 3: Test the new database function
+    const { data: dbFunctionResult, error: dbFunctionError } = await supabase
+      .rpc("debug_friendship_access", {
+        p_current_user_id: currentUserId,
+        p_page_owner_id: friendId,
+      });
+
+    debug.step3_database_function_test = {
+      success: !dbFunctionError,
+      error: dbFunctionError?.message,
+      result: dbFunctionResult,
     };
 
-    // Step 4: Check all pages by friend
-    const { data: allPages, error: allPagesError } = await supabase
-      .from("pages")
-      .select("id, title, user_id, visibility, created_at")
-      .eq("user_id", friendId);
+    // Step 4: Test the direct shared pages function
+    const { data: directPagesResult, error: directPagesError } = await supabase
+      .rpc("get_friend_shared_pages_direct", {
+        p_current_user_id: currentUserId,
+        p_friend_user_id: friendId,
+      });
 
-    debug.step4_pages_all = {
-      success: !allPagesError,
-      error: allPagesError?.message,
-      totalPages: allPages?.length || 0,
-      pagesByVisibility: {
-        private:
-          allPages?.filter((p: { visibility: string }) => p.visibility === "private").length || 0,
-        friends:
-          allPages?.filter((p: { visibility: string }) => p.visibility === "friends").length || 0,
-      },
-      friendsPages: allPages
-        ?.filter((p: { id: string; title: string; visibility: string }) => p.visibility === "friends")
-        .map((p: { id: string; title: string; visibility: string }) => ({
-          id: p.id,
-          title: p.title,
-          visibility: p.visibility,
-        })),
-    };
-
-    // Step 5: Try to fetch friends pages with RLS
-    const { data: friendsPages, error: friendsPagesError } = await supabase
-      .from("pages")
-      .select(
-        "id, title, content, content_json, created_at, updated_at, user_id, section_id, visibility",
-      )
-      .eq("user_id", friendId)
-      .eq("visibility", "friends")
-      .order("updated_at", { ascending: false });
-
-    debug.step5_pages_friends = {
-      success: !friendsPagesError,
-      error: friendsPagesError?.message,
-      errorCode: friendsPagesError?.code,
-      pagesFound: friendsPages?.length || 0,
-      pages: friendsPages?.map((p: { id: string; title: string; visibility: string }) => ({
+    debug.step4_rls_test = {
+      success: !directPagesError,
+      error: directPagesError?.message,
+      pagesFound: directPagesResult?.length || 0,
+      pages: directPagesResult?.map((p: any) => ({
         id: p.id,
         title: p.title,
         visibility: p.visibility,
       })),
     };
 
-    // Step 6: Test RLS policy directly if debug function exists
-    try {
-      const { data: rlsTest, error: rlsError } = await supabase.rpc(
-        "debug_friendship_access",
-        {
-          p_current_user_id: currentUserId,
-          p_page_owner_id: friendId,
-        },
-      );
+    // Step 5: Try direct RLS query to see what happens
+    const { data: rlsPages, error: rlsPagesError } = await supabase
+      .from("pages")
+      .select("id, title, user_id, visibility, created_at")
+      .eq("user_id", friendId)
+      .eq("visibility", "friends");
 
-      debug.step6_rls_test = {
-        success: !rlsError,
-        error: rlsError?.message,
-        result: rlsTest,
-      };
-    } catch (rlsErr) {
-      debug.step6_rls_test = {
-        success: false,
-        error: "Debug function not available",
-        exception: rlsErr instanceof Error ? rlsErr.message : "Unknown error",
-      };
-    }
+    debug.step5_direct_pages_check = {
+      success: !rlsPagesError,
+      error: rlsPagesError?.message,
+      errorCode: rlsPagesError?.code,
+      pagesFound: rlsPages?.length || 0,
+      pages: rlsPages?.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        visibility: p.visibility,
+      })),
+    };
 
     console.log("🔍 DEBUG: Complete debug results:", debug);
 

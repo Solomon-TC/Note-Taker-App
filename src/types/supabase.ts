@@ -683,6 +683,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_friend_shared_pages_direct: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
+        Returns: {
+          author_email: string
+          author_name: string
+          content: string
+          content_json: Json
+          created_at: string
+          id: string
+          notebook_name: string
+          section_id: string
+          section_name: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }[]
+      }
       get_friend_shared_pages_for_user: {
         Args: { p_user_id: string }
         Returns: Json

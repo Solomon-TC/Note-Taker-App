@@ -663,6 +663,14 @@ export type Database = {
         Args: { p_user1_id: string; p_user2_id: string }
         Returns: Json
       }
+      create_test_shared_page: {
+        Args: {
+          owner_user_id: string
+          page_title?: string
+          page_visibility?: string
+        }
+        Returns: string
+      }
       debug_friend_access_simple: {
         Args: { current_user_id: string; target_friend_id: string }
         Returns: Json

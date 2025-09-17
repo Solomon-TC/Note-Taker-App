@@ -232,53 +232,32 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
         }
 
         if (fontSize === "default") {
-          // Remove fontSize using unsetFontSize command
-          const result = (editor as any).chain().focus().unsetFontSize().run();
+          // Remove fontSize by unsetting the textStyle mark with fontSize
+          const result = editor.chain().focus().unsetMark('textStyle').run();
           console.log("Unset font size result:", result);
         } else {
-          // Set fontSize using setFontSize command with proper format
+          // Set fontSize using textStyle mark with proper format
           const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
           
-          // Try multiple methods to ensure font size is applied
-          let result = false;
+          // Get current textStyle attributes to preserve other styling
+          const currentAttributes = editor.getAttributes('textStyle');
           
-          // Method 1: Use the custom FontSize extension command
-          try {
-            result = (editor as any).chain().focus().setFontSize(formattedSize).run();
-            console.log("Primary setFontSize result:", result);
-          } catch (error) {
-            console.warn("Primary setFontSize failed:", error);
-          }
+          // Apply fontSize while preserving other textStyle attributes
+          const result = editor.chain().focus().setMark('textStyle', {
+            ...currentAttributes,
+            fontSize: formattedSize
+          }).run();
           
-          // Method 2: Use textStyle mark directly if first method fails
-          if (!result) {
-            try {
-              result = editor.chain().focus().setMark('textStyle', { fontSize: formattedSize }).run();
-              console.log("Alternative textStyle result:", result);
-            } catch (error) {
-              console.warn("Alternative textStyle failed:", error);
-            }
-          }
-          
-          // Method 3: Force update using updateAttributes
-          if (!result) {
-            try {
-              const { state, dispatch } = editor.view;
-              const { from, to } = state.selection;
-              const tr = state.tr.addMark(from, to, state.schema.marks.textStyle.create({ fontSize: formattedSize }));
-              dispatch(tr);
-              result = true;
-              console.log("Force update result:", result);
-            } catch (error) {
-              console.warn("Force update failed:", error);
-            }
-          }
+          console.log("Set font size result:", result, "with attributes:", {
+            ...currentAttributes,
+            fontSize: formattedSize
+          });
           
           if (result) {
             console.log("Font size applied successfully:", formattedSize);
           } else {
-            console.error("All font size methods failed");
-            alert("Failed to apply font size. The text selection may not support this formatting.");
+            console.error("Font size application failed");
+            alert("Failed to apply font size. Please try selecting the text again.");
           }
         }
       } catch (error) {

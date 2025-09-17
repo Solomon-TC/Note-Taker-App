@@ -21,7 +21,6 @@ import Blockquote from "@tiptap/extension-blockquote";
 import Code from "@tiptap/extension-code";
 import Strike from "@tiptap/extension-strike";
 import { TextStyle } from "@tiptap/extension-text-style";
-import FontFamily from "@tiptap/extension-font-family";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { storageService } from "@/lib/storage";
@@ -386,11 +385,6 @@ const TiptapEditor = ({
         },
       }),
 
-      // CRITICAL: Load font extensions with proper configuration
-      FontFamily.configure({
-        types: ["textStyle"],
-      }),
-      
       // Other formatting extensions
       Underline,
       Strike,
@@ -567,9 +561,6 @@ const TiptapEditor = ({
         hasHighlight: !!editor.extensionManager.extensions.find(
           (ext) => ext.name === "highlight",
         ),
-        hasFontSize: !!editor.extensionManager.extensions.find(
-          (ext) => ext.name === "fontSize",
-        ),
         extensionNames: editor.extensionManager.extensions.map(
           (ext) => ext.name,
         ),
@@ -617,11 +608,6 @@ const TiptapEditor = ({
         if (!extensionInfo.hasHighlight) {
           console.error(
             "CRITICAL: Highlight extension not found! Highlight functionality will not work.",
-          );
-        }
-        if (!extensionInfo.hasFontSize) {
-          console.error(
-            "CRITICAL: FontSize extension not found! Font size functionality will not work.",
           );
         }
       }

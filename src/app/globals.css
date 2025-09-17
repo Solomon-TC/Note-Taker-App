@@ -967,6 +967,11 @@
     /* This class should not override inline styles */
   }
 
+  /* CRITICAL: Force font size rendering with highest specificity */
+  .ProseMirror span[style*="font-size"] {
+    /* Ensure font-size inline styles are not overridden */
+  }
+
   /* Support for common font sizes with !important to ensure they work */
   .ProseMirror *[style*="font-size: 8pt"] { font-size: 8pt !important; }
   .ProseMirror *[style*="font-size: 10pt"] { font-size: 10pt !important; }

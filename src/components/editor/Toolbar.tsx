@@ -231,49 +231,55 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           editor.commands.focus();
         }
 
+        // Check if FontSize extension is available
+        const hasFontSizeExtension = editor.extensionManager.extensions.some(
+          (ext: any) => ext.name === "fontSize"
+        );
+
+        console.log("FontSize extension available:", hasFontSizeExtension);
+
         if (fontSize === "default") {
-          // Remove fontSize by unsetting the textStyle mark with fontSize
-          const currentAttributes = editor.getAttributes('textStyle');
-          const { fontSize: _, ...otherAttributes } = currentAttributes;
-          
-          if (Object.keys(otherAttributes).length > 0) {
-            // Keep other textStyle attributes, just remove fontSize
-            const result = editor.chain().focus().setMark('textStyle', otherAttributes).run();
-            console.log("Removed font size, kept other attributes:", result);
+          // Use the custom unsetFontSize command if available
+          if (hasFontSizeExtension && (editor as any).commands.unsetFontSize) {
+            const result = (editor as any).chain().focus().unsetFontSize().run();
+            console.log("Unset font size result:", result);
           } else {
-            // Remove entire textStyle mark if no other attributes
-            const result = editor.chain().focus().unsetMark('textStyle').run();
-            console.log("Removed entire textStyle mark:", result);
+            // Fallback: remove fontSize attribute from textStyle
+            const currentAttributes = editor.getAttributes('textStyle');
+            const { fontSize: _, ...otherAttributes } = currentAttributes;
+            
+            if (Object.keys(otherAttributes).length > 0) {
+              const result = editor.chain().focus().setMark('textStyle', otherAttributes).run();
+              console.log("Removed font size, kept other attributes:", result);
+            } else {
+              const result = editor.chain().focus().unsetMark('textStyle').run();
+              console.log("Removed entire textStyle mark:", result);
+            }
           }
         } else {
-          // Set fontSize using textStyle mark with proper format
+          // Format the font size properly
           const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
           
-          // Get current textStyle attributes to preserve other styling
-          const currentAttributes = editor.getAttributes('textStyle');
-          
-          // Apply fontSize while preserving other textStyle attributes
-          const result = editor.chain().focus().setMark('textStyle', {
-            ...currentAttributes,
-            fontSize: formattedSize
-          }).run();
-          
-          console.log("Set font size result:", result, "with attributes:", {
-            ...currentAttributes,
-            fontSize: formattedSize
-          });
-          
-          if (result) {
-            console.log("Font size applied successfully:", formattedSize);
-            
-            // Force a re-render to ensure the change is visible
-            setTimeout(() => {
-              editor.commands.focus();
-            }, 10);
+          // Use the custom setFontSize command if available
+          if (hasFontSizeExtension && (editor as any).commands.setFontSize) {
+            const result = (editor as any).chain().focus().setFontSize(formattedSize).run();
+            console.log("Set font size with custom command result:", result);
           } else {
-            console.error("Font size application failed");
-            alert("Failed to apply font size. Please try selecting the text again.");
+            // Fallback: use textStyle mark directly
+            const currentAttributes = editor.getAttributes('textStyle');
+            const result = editor.chain().focus().setMark('textStyle', {
+              ...currentAttributes,
+              fontSize: formattedSize
+            }).run();
+            console.log("Set font size with textStyle fallback result:", result);
           }
+          
+          console.log("Font size applied:", formattedSize);
+          
+          // Force a re-render to ensure the change is visible
+          setTimeout(() => {
+            editor.commands.focus();
+          }, 10);
         }
       } catch (error) {
         console.error("Error setting font size:", error);

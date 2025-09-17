@@ -651,6 +651,10 @@ export type Database = {
         Args: { p_friend_id: string; p_request_id: string; p_user_id: string }
         Returns: undefined
       }
+      are_users_friends: {
+        Args: { user1_id: string; user2_id: string }
+        Returns: boolean
+      }
       can_user_access_page: {
         Args: { p_page_id: string; p_user_id: string }
         Returns: Json
@@ -659,17 +663,33 @@ export type Database = {
         Args: { p_user1_id: string; p_user2_id: string }
         Returns: Json
       }
-      debug_friends_page_access: {
-        Args: { p_current_user_id: string; p_friend_user_id: string }
+      debug_friend_access_simple: {
+        Args: { current_user_id: string; target_friend_id: string }
         Returns: Json
       }
-      debug_friends_sharing_comprehensive: {
+      debug_friends_page_access: {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
       debug_user_friendships: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      get_accessible_friend_pages: {
+        Args: { friend_user_id: string; requesting_user_id: string }
+        Returns: {
+          author_email: string
+          author_name: string
+          content: string
+          content_json: Json
+          created_at: string
+          id: string
+          section_id: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }[]
       }
       get_friend_shared_pages: {
         Args: { friend_user_id: string }
@@ -686,24 +706,6 @@ export type Database = {
       get_friend_shared_pages_for_user: {
         Args: { p_user_id: string }
         Returns: Json
-      }
-      get_friend_shared_pages_secure: {
-        Args: { p_current_user_id: string; p_friend_user_id: string }
-        Returns: {
-          author_email: string
-          author_name: string
-          content: string
-          content_json: Json
-          created_at: string
-          id: string
-          notebook_name: string
-          section_id: string
-          section_name: string
-          title: string
-          updated_at: string
-          user_id: string
-          visibility: string
-        }[]
       }
       get_friendship_and_pages_debug: {
         Args: { p_current_user_id: string; p_friend_id: string }
@@ -772,10 +774,6 @@ export type Database = {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
-      test_rls_friends_access: {
-        Args: { p_current_user_id: string; p_friend_user_id: string }
-        Returns: Json
-      }
       test_user_page_access: {
         Args: { p_user_id: string }
         Returns: {
@@ -787,12 +785,12 @@ export type Database = {
           page_visibility: string
         }[]
       }
-      verify_friendship: {
-        Args: { p_user1_id: string; p_user2_id: string }
-        Returns: boolean
-      }
       verify_shared_pages_schema: {
         Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      verify_test_data: {
+        Args: { user1_id: string; user2_id: string }
         Returns: Json
       }
     }

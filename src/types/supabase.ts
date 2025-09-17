@@ -663,8 +663,8 @@ export type Database = {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
-      debug_friendship_access: {
-        Args: { p_current_user_id: string; p_page_owner_id: string }
+      debug_friends_sharing_comprehensive: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
       debug_user_friendships: {
@@ -683,7 +683,11 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_friend_shared_pages_direct: {
+      get_friend_shared_pages_for_user: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      get_friend_shared_pages_secure: {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: {
           author_email: string
@@ -700,10 +704,6 @@ export type Database = {
           user_id: string
           visibility: string
         }[]
-      }
-      get_friend_shared_pages_for_user: {
-        Args: { p_user_id: string }
-        Returns: Json
       }
       get_friendship_and_pages_debug: {
         Args: { p_current_user_id: string; p_friend_id: string }
@@ -772,6 +772,10 @@ export type Database = {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
+      test_rls_friends_access: {
+        Args: { p_current_user_id: string; p_friend_user_id: string }
+        Returns: Json
+      }
       test_user_page_access: {
         Args: { p_user_id: string }
         Returns: {
@@ -782,6 +786,10 @@ export type Database = {
           page_title: string
           page_visibility: string
         }[]
+      }
+      verify_friendship: {
+        Args: { p_user1_id: string; p_user2_id: string }
+        Returns: boolean
       }
       verify_shared_pages_schema: {
         Args: Record<PropertyKey, never>

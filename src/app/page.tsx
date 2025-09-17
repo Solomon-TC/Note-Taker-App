@@ -473,9 +473,8 @@ export default function LandingPage() {
               Ready to Transform Your Learning?
             </h2>
             <p className="text-xl text-primary-foreground/80 max-w-2xl mx-auto leading-relaxed">
-              Join thousands of students who are already using Scribly to ace
-              their studies. Start your journey to smarter, more effective
-              learning today.
+              Join students who are already using Scribly to ace their studies.
+              Start your journey to smarter, more effective learning today.
             </p>
             <div className="pt-4">
               <Button

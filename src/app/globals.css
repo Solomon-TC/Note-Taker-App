@@ -953,7 +953,7 @@
     -o-user-drag: none;
   }
 
-  /* CRITICAL: Font size support - ensure inline font-size styles are preserved */
+  /* CRITICAL: Font size support - ensure inline font-size styles are preserved and rendered */
   .ProseMirror span[style*="font-size:"] {
     /* Font size styles are preserved and take precedence */
   }
@@ -962,17 +962,22 @@
     /* Ensure textStyle marks with font-size are preserved */
   }
 
-  /* Support for common font sizes */
-  .ProseMirror .font-size-8pt { font-size: 8pt !important; }
-  .ProseMirror .font-size-10pt { font-size: 10pt !important; }
-  .ProseMirror .font-size-12pt { font-size: 12pt !important; }
-  .ProseMirror .font-size-14pt { font-size: 14pt !important; }
-  .ProseMirror .font-size-16pt { font-size: 16pt !important; }
-  .ProseMirror .font-size-18pt { font-size: 18pt !important; }
-  .ProseMirror .font-size-20pt { font-size: 20pt !important; }
-  .ProseMirror .font-size-24pt { font-size: 24pt !important; }
-  .ProseMirror .font-size-28pt { font-size: 28pt !important; }
-  .ProseMirror .font-size-32pt { font-size: 32pt !important; }
-  .ProseMirror .font-size-36pt { font-size: 36pt !important; }
-  .ProseMirror .font-size-48pt { font-size: 48pt !important; }
+  /* CRITICAL: Ensure textStyle marks render their inline styles properly */
+  .ProseMirror .text-style {
+    /* This class should not override inline styles */
+  }
+
+  /* Support for common font sizes with !important to ensure they work */
+  .ProseMirror *[style*="font-size: 8pt"] { font-size: 8pt !important; }
+  .ProseMirror *[style*="font-size: 10pt"] { font-size: 10pt !important; }
+  .ProseMirror *[style*="font-size: 12pt"] { font-size: 12pt !important; }
+  .ProseMirror *[style*="font-size: 14pt"] { font-size: 14pt !important; }
+  .ProseMirror *[style*="font-size: 16pt"] { font-size: 16pt !important; }
+  .ProseMirror *[style*="font-size: 18pt"] { font-size: 18pt !important; }
+  .ProseMirror *[style*="font-size: 20pt"] { font-size: 20pt !important; }
+  .ProseMirror *[style*="font-size: 24pt"] { font-size: 24pt !important; }
+  .ProseMirror *[style*="font-size: 28pt"] { font-size: 28pt !important; }
+  .ProseMirror *[style*="font-size: 32pt"] { font-size: 32pt !important; }
+  .ProseMirror *[style*="font-size: 36pt"] { font-size: 36pt !important; }
+  .ProseMirror *[style*="font-size: 48pt"] { font-size: 48pt !important; }
 }

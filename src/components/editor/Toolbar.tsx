@@ -233,8 +233,18 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
 
         if (fontSize === "default") {
           // Remove fontSize by unsetting the textStyle mark with fontSize
-          const result = editor.chain().focus().unsetMark('textStyle').run();
-          console.log("Unset font size result:", result);
+          const currentAttributes = editor.getAttributes('textStyle');
+          const { fontSize: _, ...otherAttributes } = currentAttributes;
+          
+          if (Object.keys(otherAttributes).length > 0) {
+            // Keep other textStyle attributes, just remove fontSize
+            const result = editor.chain().focus().setMark('textStyle', otherAttributes).run();
+            console.log("Removed font size, kept other attributes:", result);
+          } else {
+            // Remove entire textStyle mark if no other attributes
+            const result = editor.chain().focus().unsetMark('textStyle').run();
+            console.log("Removed entire textStyle mark:", result);
+          }
         } else {
           // Set fontSize using textStyle mark with proper format
           const formattedSize = fontSize.includes('pt') ? fontSize : `${fontSize}pt`;
@@ -255,6 +265,11 @@ const Toolbar = ({ editor, onInsertImage, onInsertDrawing }: ToolbarProps) => {
           
           if (result) {
             console.log("Font size applied successfully:", formattedSize);
+            
+            // Force a re-render to ensure the change is visible
+            setTimeout(() => {
+              editor.commands.focus();
+            }, 10);
           } else {
             console.error("Font size application failed");
             alert("Failed to apply font size. Please try selecting the text again.");

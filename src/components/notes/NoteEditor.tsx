@@ -15,6 +15,7 @@ import {
   Download,
   Maximize,
   Minimize,
+  Construction,
 } from "lucide-react";
 import TiptapEditor from "@/components/editor/TiptapEditor";
 import { storageService } from "@/lib/storage";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/editor/json";
 import { PageVisibility, DEFAULT_PAGE_VISIBILITY } from "@/types/page";
 import { generateAdvancedNotePDF } from "@/lib/pdf-generator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface NoteEditorProps {
   pageId?: string;
@@ -696,9 +698,21 @@ const NoteEditor = ({
               <Switch
                 checked={visibility === "friends"}
                 onCheckedChange={handleVisibilityChange}
+                disabled={true}
               />
             </div>
           </div>
+          
+          {/* Maintenance Banner for Note Sharing */}
+          {visibility === "friends" && (
+            <Alert className="mt-2 border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+              <Construction className="h-3 w-3 text-orange-500" />
+              <AlertDescription className="text-xs text-orange-700 dark:text-orange-300">
+                Note sharing is temporarily under maintenance. Your note is currently private.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Save Status Indicator */}
           <div className="flex items-center gap-2 mt-1">
             {saveStatus === "saving" && (

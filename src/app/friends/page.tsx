@@ -49,6 +49,7 @@ import {
   FileText,
   Eye,
   BookOpen,
+  Construction,
 } from "lucide-react";
 import UserMenu from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -971,6 +972,14 @@ export default function FriendsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Maintenance Banner */}
+                  <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+                    <Construction className="h-4 w-4 text-orange-500" />
+                    <AlertDescription className="text-orange-700 dark:text-orange-300">
+                      <strong>Note Sharing Under Maintenance</strong> - We're working to improve the note sharing experience. This feature will be available again soon.
+                    </AlertDescription>
+                  </Alert>
+
                   {loadingSharedPages ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -997,30 +1006,16 @@ export default function FriendsPage() {
                         collaborative learning.
                       </p>
 
-                      {/* Debug Information */}
-                      <div className="mt-6 p-4 bg-muted/20 rounded-lg text-left max-w-md mx-auto">
+                      {/* Debug Information - Hide during maintenance */}
+                      <div className="mt-6 p-4 bg-muted/20 rounded-lg text-left max-w-md mx-auto opacity-50">
                         <h5 className="text-xs font-medium text-muted-foreground mb-2">
-                          Debug Info (for troubleshooting):
+                          Feature temporarily unavailable
                         </h5>
                         <div className="text-xs text-muted-foreground space-y-1">
-                          <p>• Friend ID: {selectedFriend.friend_id}</p>
-                          <p>• Your ID: {user?.id}</p>
-                          <p>• Check browser console for detailed logs</p>
-                          <p>
-                            • Ensure friend has set notes to 'Friends'
-                            visibility
-                          </p>
+                          <p>• Note sharing is currently under maintenance</p>
+                          <p>• We're working to improve the experience</p>
+                          <p>• Check back soon for updates</p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            loadSharedPages(selectedFriend.friend_id)
-                          }
-                          className="mt-2 text-xs sleek-button"
-                        >
-                          Retry Loading
-                        </Button>
                       </div>
                     </div>
                   ) : (
@@ -1028,7 +1023,7 @@ export default function FriendsPage() {
                       {sharedPages.map((page) => (
                         <div
                           key={page.id}
-                          className="rounded-lg border border-border/50 p-4 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer group"
+                          className="rounded-lg border border-border/50 p-4 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer group opacity-50"
                           onClick={() => handleViewSharedPage(page)}
                         >
                           <div className="flex items-start justify-between">
@@ -1076,6 +1071,7 @@ export default function FriendsPage() {
                                 e.stopPropagation();
                                 handleViewSharedPage(page);
                               }}
+                              disabled
                             >
                               <Eye className="h-4 w-4" />
                             </Button>

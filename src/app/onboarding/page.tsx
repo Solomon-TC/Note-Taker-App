@@ -681,7 +681,7 @@ export default function OnboardingPage() {
 
         {/* AI Demo Step */}
         {currentStep === "aiDemo" && (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-3xl mx-auto">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold mb-2">
                 Meet your AI Study Assistant
@@ -691,18 +691,27 @@ export default function OnboardingPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/50 rounded-lg p-6 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Play className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">AI Assistant Demo</h3>
-                    <p className="text-sm text-muted-foreground">
-                      See how AI can help with your studies
+              {/* Video Section */}
+              <div className="mb-6">
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                  <video
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                    poster="/api/placeholder/800/450" // Optional: Add a poster image
+                  >
+                    <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
+                    <p className="text-white p-4">
+                      Your browser doesn't support video playback. 
+                      <a href="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" className="underline">
+                        Download the video instead
+                      </a>
                     </p>
-                  </div>
+                  </video>
                 </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-6 mb-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Brain className="h-4 w-4 text-primary" />
@@ -734,7 +743,7 @@ export default function OnboardingPage() {
 
         {/* Friends Step */}
         {currentStep === "friends" && (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-3xl mx-auto">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold mb-2">
                 Want to study smarter with friends?
@@ -744,20 +753,27 @@ export default function OnboardingPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/50 rounded-lg p-6 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Play className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">
-                      Friends & Collaboration Demo
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      See how to study together
+              {/* Video Section */}
+              <div className="mb-6">
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                  <video
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                    poster="/api/placeholder/800/450" // Optional: Add a poster image
+                  >
+                    <source src="/uploads/Friends Demo - Made with Clipchamp.mp4" type="video/mp4" />
+                    <p className="text-white p-4">
+                      Your browser doesn't support video playback. 
+                      <a href="/uploads/Friends Demo - Made with Clipchamp.mp4" className="underline">
+                        Download the video instead
+                      </a>
                     </p>
-                  </div>
+                  </video>
                 </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-6 mb-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Users className="h-4 w-4 text-primary" />
@@ -795,55 +811,9 @@ export default function OnboardingPage() {
           </Card>
         )}
 
-        {/* Tour Step */}
-        {currentStep === "tour" && (
-          <Card className="max-w-3xl mx-auto">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold mb-2">
-                Quick tour of your new workspace
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="text-center p-6 rounded-lg bg-muted/50">
-                  <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">Notes Dashboard</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Keep every class organized.
-                  </p>
-                </div>
-                <div className="text-center p-6 rounded-lg bg-muted/50">
-                  <Brain className="h-12 w-12 text-primary mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">AI Assistant Button</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Instant study help.
-                  </p>
-                </div>
-                <div className="text-center p-6 rounded-lg bg-muted/50">
-                  <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">Friend Notes Section</h3>
-                  <p className="text-sm text-muted-foreground">
-                    See what your friends share.
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={handlePrevious}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <Button onClick={handleNext}>
-                  Continue
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Feedback Demo Step */}
         {currentStep === "feedbackDemo" && (
-          <Card className="max-w-2xl mx-auto">
+          <Card className="max-w-3xl mx-auto">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold mb-2">
                 Help us improve Scribly
@@ -853,18 +823,27 @@ export default function OnboardingPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="bg-muted/50 rounded-lg p-6 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Play className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Feedback System Demo</h3>
-                    <p className="text-sm text-muted-foreground">
-                      See how to share your thoughts
+              {/* Video Section */}
+              <div className="mb-6">
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+                  <video
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                    poster="/api/placeholder/800/450" // Optional: Add a poster image
+                  >
+                    <source src="/uploads/Feedback Demo - Made with Clipchamp.mp4" type="video/mp4" />
+                    <p className="text-white p-4">
+                      Your browser doesn't support video playback. 
+                      <a href="/uploads/Feedback Demo - Made with Clipchamp.mp4" className="underline">
+                        Download the video instead
+                      </a>
                     </p>
-                  </div>
+                  </video>
                 </div>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-6 mb-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <MessageSquare className="h-4 w-4 text-primary" />

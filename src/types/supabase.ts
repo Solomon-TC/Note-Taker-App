@@ -667,6 +667,10 @@ export type Database = {
         Args: { current_user_id: string; target_friend_id: string }
         Returns: Json
       }
+      debug_friend_pages_access: {
+        Args: { friend_user_id: string; requesting_user_id: string }
+        Returns: Json
+      }
       debug_friends_page_access: {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
@@ -675,7 +679,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
-      get_accessible_friend_pages: {
+      get_friend_pages_direct: {
         Args: { friend_user_id: string; requesting_user_id: string }
         Returns: {
           author_email: string
@@ -768,6 +772,10 @@ export type Database = {
       }
       test_page_visibility_access: {
         Args: { p_page_id: string; p_test_user_id: string }
+        Returns: Json
+      }
+      test_pages_access: {
+        Args: { friend_user_id: string }
         Returns: Json
       }
       test_rls_bypass_friends_pages: {

@@ -40,6 +40,28 @@ export interface UnfriendResult {
   error?: string;
 }
 
+export interface SharedPage {
+  id: string;
+  title: string;
+  content: string | null;
+  content_json: any | null;
+  created_at: string | null;
+  updated_at: string | null;
+  user_id: string;
+  section_id: string;
+  visibility: string;
+  author_name: string | null;
+  author_email: string;
+  section_name: string | null;
+  notebook_name: string | null;
+}
+
+export interface GetSharedPagesResult {
+  success: boolean;
+  error?: string;
+  data?: SharedPage[];
+}
+
 /**
  * Send a friend request to a user by their email address
  */
@@ -594,31 +616,9 @@ export async function getFriends(userId: string): Promise<Friend[]> {
   }
 }
 
-export interface SharedPage {
-  id: string;
-  title: string;
-  content: string | null;
-  content_json: any | null;
-  created_at: string | null;
-  updated_at: string | null;
-  user_id: string;
-  section_id: string;
-  visibility: string;
-  author_name: string | null;
-  author_email: string;
-  section_name: string | null;
-  notebook_name: string | null;
-}
-
-export interface GetSharedPagesResult {
-  success: boolean;
-  error?: string;
-  data?: SharedPage[];
-}
-
 /**
- * Get pages shared by a friend (ULTIMATE SIMPLIFIED VERSION)
- * This version uses the new bulletproof database functions and simple RLS policies
+ * Get pages shared by a friend (DIRECT DATABASE ACCESS VERSION)
+ * This version bypasses RLS entirely and uses direct database functions
  */
 export async function getFriendSharedPages(
   currentUserId: string,
@@ -632,121 +632,36 @@ export async function getFriendSharedPages(
   try {
     // Validate input
     if (!currentUserId || !friendId) {
-      console.error("📖 [ULTIMATE] Invalid input:", { currentUserId, friendId });
+      console.error("📖 [DIRECT] Invalid input:", { currentUserId, friendId });
       return {
         success: false,
         error: "Current user ID and friend ID are required",
       };
     }
 
-    console.log("📖 [ULTIMATE] Starting friend shared pages fetch:", {
+    console.log("📖 [DIRECT] Starting direct database access:", {
       currentUserId,
       friendId,
       timestamp: new Date().toISOString(),
     });
 
-    // Step 1: Verify authentication
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !authUser) {
-      console.error("📖 [ULTIMATE] Authentication failed:", authError);
-      return {
-        success: false,
-        error: "Authentication required. Please log in.",
-      };
-    }
-
-    if (authUser.id !== currentUserId) {
-      console.error("📖 [ULTIMATE] Auth mismatch:", {
-        authUserId: authUser.id,
-        expectedUserId: currentUserId,
-      });
-      return {
-        success: false,
-        error: "Authentication mismatch. Please refresh the page.",
-      };
-    }
-
-    console.log("📖 [ULTIMATE] Authentication verified:", {
-      userId: authUser.id,
-      email: authUser.email,
-    });
-
-    // Step 2: Use the new bulletproof database function
-    console.log("📖 [ULTIMATE] Calling database function...");
+    // Step 1: Use the direct database function that bypasses RLS
+    console.log("📖 [DIRECT] Calling direct database function...");
     const { data: pagesData, error: pagesError } = await supabase
-      .rpc("get_accessible_friend_pages", {
+      .rpc("get_friend_pages_direct", {
         requesting_user_id: currentUserId,
         friend_user_id: friendId,
       });
 
     if (pagesError) {
-      console.error("📖 [ULTIMATE] Database function error:", pagesError);
-      
-      // Fallback: Try direct query with RLS
-      console.log("📖 [ULTIMATE] Trying fallback direct query...");
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("pages")
-        .select(`
-          id,
-          title,
-          content,
-          content_json,
-          created_at,
-          updated_at,
-          user_id,
-          section_id,
-          visibility,
-          users!pages_user_id_fkey(
-            full_name,
-            email
-          )
-        `)
-        .eq("user_id", friendId)
-        .in("visibility", ["public", "friends"])
-        .order("updated_at", { ascending: false });
-
-      if (fallbackError) {
-        console.error("📖 [ULTIMATE] Fallback also failed:", fallbackError);
-        return {
-          success: false,
-          error: `Failed to fetch pages: ${fallbackError.message}`,
-        };
-      }
-
-      console.log("📖 [ULTIMATE] Fallback succeeded:", {
-        pagesFound: fallbackData?.length || 0,
-      });
-
-      // Transform fallback data
-      const transformedFallbackPages: SharedPage[] = (fallbackData || []).map(
-        (page: any) => ({
-          id: page.id,
-          title: page.title || "Untitled Note",
-          content: page.content,
-          content_json: page.content_json,
-          created_at: page.created_at,
-          updated_at: page.updated_at,
-          user_id: page.user_id,
-          section_id: page.section_id,
-          visibility: page.visibility,
-          author_name: page.users?.full_name || null,
-          author_email: page.users?.email || "Unknown",
-          section_name: null,
-          notebook_name: null,
-        }),
-      );
-
+      console.error("📖 [DIRECT] Database function error:", pagesError);
       return {
-        success: true,
-        data: transformedFallbackPages,
+        success: false,
+        error: `Database error: ${pagesError.message}`,
       };
     }
 
-    console.log("📖 [ULTIMATE] Database function succeeded:", {
+    console.log("📖 [DIRECT] Database function succeeded:", {
       pagesFound: pagesData?.length || 0,
       pages: pagesData?.map((p: any) => ({
         id: p.id,
@@ -755,7 +670,7 @@ export async function getFriendSharedPages(
       })),
     });
 
-    // Transform the data from the database function
+    // Transform the data
     const transformedPages: SharedPage[] = (pagesData || []).map(
       (page: any) => ({
         id: page.id,
@@ -774,7 +689,7 @@ export async function getFriendSharedPages(
       }),
     );
 
-    console.log("📖 [ULTIMATE] Final result:", {
+    console.log("📖 [DIRECT] Final result:", {
       success: true,
       friendId,
       pagesCount: transformedPages.length,
@@ -787,7 +702,7 @@ export async function getFriendSharedPages(
       data: transformedPages,
     };
   } catch (error) {
-    console.error("📖 [ULTIMATE] Unexpected error:", {
+    console.error("📖 [DIRECT] Unexpected error:", {
       error,
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
@@ -802,7 +717,7 @@ export async function getFriendSharedPages(
 }
 
 /**
- * Debug function to test shared pages access (ULTIMATE SIMPLIFIED VERSION)
+ * Debug function to test shared pages access (DIRECT DATABASE VERSION)
  */
 export async function debugSharedPagesAccess(
   currentUserId: string,
@@ -818,92 +733,69 @@ export async function debugSharedPagesAccess(
   );
 
   try {
-    console.log("🔍 [ULTIMATE] Starting comprehensive debug:", {
+    console.log("🔍 [DIRECT] Starting direct database debug:", {
       currentUserId,
       friendId,
       timestamp: new Date().toISOString(),
     });
 
     const debug: any = {
-      step1_auth_check: null,
-      step2_test_data_verification: null,
-      step3_comprehensive_debug: null,
-      step4_direct_pages_test: null,
+      step1_comprehensive_debug: null,
+      step2_test_pages_access: null,
+      step3_direct_function_test: null,
     };
 
-    // Step 1: Check authentication
-    const {
-      data: { user: authUser },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    debug.step1_auth_check = {
-      success: !authError && !!authUser,
-      error: authError?.message,
-      authUserId: authUser?.id,
-      authEmail: authUser?.email,
-      expectedUserId: currentUserId,
-      authMatch: authUser?.id === currentUserId,
-    };
-
-    // Step 2: Verify test data exists
-    const { data: testDataResult, error: testDataError } = await supabase
-      .rpc("verify_test_data", {
-        user1_id: currentUserId,
-        user2_id: friendId,
-      });
-
-    debug.step2_test_data_verification = {
-      success: !testDataError,
-      error: testDataError?.message,
-      result: testDataResult,
-    };
-
-    // Step 3: Run comprehensive debug
+    // Step 1: Run comprehensive debug
     const { data: debugResult, error: debugError } = await supabase
-      .rpc("debug_friend_access_simple", {
-        current_user_id: currentUserId,
-        target_friend_id: friendId,
+      .rpc("debug_friend_pages_access", {
+        requesting_user_id: currentUserId,
+        friend_user_id: friendId,
       });
 
-    debug.step3_comprehensive_debug = {
+    debug.step1_comprehensive_debug = {
       success: !debugError,
       error: debugError?.message,
       result: debugResult,
     };
 
-    // Step 4: Test direct pages access
-    const { data: directPages, error: directPagesError } = await supabase
-      .from("pages")
-      .select("id, title, visibility, created_at, updated_at")
-      .eq("user_id", friendId)
-      .order("updated_at", { ascending: false });
+    // Step 2: Test pages access directly
+    const { data: testResult, error: testError } = await supabase
+      .rpc("test_pages_access", {
+        friend_user_id: friendId,
+      });
 
-    debug.step4_direct_pages_test = {
-      success: !directPagesError,
-      error: directPagesError?.message,
-      errorCode: directPagesError?.code,
-      pagesFound: directPages?.length || 0,
-      pagesByVisibility: directPages?.reduce((acc: any, page: any) => {
-        acc[page.visibility] = (acc[page.visibility] || 0) + 1;
-        return acc;
-      }, {}),
-      pages: directPages?.map((p: any) => ({
+    debug.step2_test_pages_access = {
+      success: !testError,
+      error: testError?.message,
+      result: testResult,
+    };
+
+    // Step 3: Test the direct function
+    const { data: directResult, error: directError } = await supabase
+      .rpc("get_friend_pages_direct", {
+        requesting_user_id: currentUserId,
+        friend_user_id: friendId,
+      });
+
+    debug.step3_direct_function_test = {
+      success: !directError,
+      error: directError?.message,
+      pagesFound: directResult?.length || 0,
+      pages: directResult?.map((p: any) => ({
         id: p.id,
         title: p.title,
         visibility: p.visibility,
-        created_at: p.created_at,
       })),
     };
 
-    console.log("🔍 [ULTIMATE] Debug complete:", debug);
+    console.log("🔍 [DIRECT] Debug complete:", debug);
 
     return {
       success: true,
       debug,
     };
   } catch (error) {
-    console.error("🔍 [ULTIMATE] Debug error:", error);
+    console.error("🔍 [DIRECT] Debug error:", error);
     return {
       success: false,
       debug: null,

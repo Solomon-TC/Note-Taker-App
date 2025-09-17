@@ -698,7 +698,6 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
-                    poster="/api/placeholder/800/450" // Optional: Add a poster image
                   >
                     <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
@@ -760,7 +759,6 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
-                    poster="/api/placeholder/800/450" // Optional: Add a poster image
                   >
                     <source src="/uploads/Friends Demo - Made with Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
@@ -811,6 +809,73 @@ export default function OnboardingPage() {
           </Card>
         )}
 
+        {/* Tour Step */}
+        {currentStep === "tour" && (
+          <Card className="max-w-3xl mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold mb-2">
+                Quick Tour of Scribly
+              </CardTitle>
+              <p className="text-muted-foreground">
+                Let's walk through the key features you'll use every day.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="text-center p-6 rounded-lg bg-muted/50">
+                  <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h3 className="font-semibold mb-2">Organized Notebooks</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Each class gets its own notebook with sections and pages
+                  </p>
+                </div>
+                <div className="text-center p-6 rounded-lg bg-muted/50">
+                  <Brain className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h3 className="font-semibold mb-2">AI Assistant</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get summaries, practice questions, and study help
+                  </p>
+                </div>
+                <div className="text-center p-6 rounded-lg bg-muted/50">
+                  <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h3 className="font-semibold mb-2">Friend Sharing</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Share notes and collaborate with classmates
+                  </p>
+                </div>
+                <div className="text-center p-6 rounded-lg bg-muted/50">
+                  <Target className="h-12 w-12 text-primary mx-auto mb-4" />
+                  <h3 className="font-semibold mb-2">Progress Tracking</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Earn XP and track your study streaks
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-primary/10 rounded-lg p-6 mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  <h4 className="font-semibold">Pro Tip</h4>
+                </div>
+                <p className="text-sm">
+                  Start by creating a note in your first class, then ask the AI assistant to generate a summary or practice questions. You'll see how powerful this combination can be!
+                </p>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={handlePrevious}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button onClick={handleNext}>
+                  Continue
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Feedback Demo Step */}
         {currentStep === "feedbackDemo" && (
           <Card className="max-w-3xl mx-auto">
@@ -830,7 +895,6 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
-                    poster="/api/placeholder/800/450" // Optional: Add a poster image
                   >
                     <source src="/uploads/Feedback Demo - Made with Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">

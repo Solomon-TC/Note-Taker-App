@@ -702,7 +702,6 @@ export default function OnboardingPage() {
                   >
                     <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
                     <source src="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
-                    <source src="/uploads/ai-demo-test.mp4" type="video/mp4" />
                     <p className="text-white p-4">
                       Your browser doesn't support video playback. 
                       <a href="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" className="underline">

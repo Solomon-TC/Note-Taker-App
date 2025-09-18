@@ -699,20 +699,10 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                     key="ai-demo-video"
-                    onLoadStart={() => console.log('AI Demo video: Load started')}
-                    onLoadedMetadata={() => console.log('AI Demo video: Metadata loaded')}
-                    onLoadedData={() => console.log('AI Demo video: Data loaded')}
-                    onCanPlay={() => console.log('AI Demo video: Can play')}
-                    onError={(e) => {
-                      console.error('AI Demo video error:', e);
-                      const videoElement = e.target as HTMLVideoElement;
-                      if (videoElement.error) {
-                        console.error('Video error details:', videoElement.error);
-                      }
-                    }}
                   >
                     <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
                     <source src="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <source src="/uploads/ai-demo-test.mp4" type="video/mp4" />
                     <p className="text-white p-4">
                       Your browser doesn't support video playback. 
                       <a href="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" className="underline">
@@ -720,11 +710,6 @@ export default function OnboardingPage() {
                       </a>
                     </p>
                   </video>
-                  
-                  {/* Debug info - remove after fixing */}
-                  <div className="absolute top-2 left-2 bg-black/50 text-white text-xs p-2 rounded">
-                    Video: AI Demo
-                  </div>
                 </div>
               </div>
 

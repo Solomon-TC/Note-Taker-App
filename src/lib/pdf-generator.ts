@@ -8,80 +8,7 @@ interface PDFGenerationOptions {
   filename?: string;
 }
 
-export const generateNotePDF = ({ title, content, filename }: PDFGenerationOptions) => {
-  try {
-    // Create new PDF document
-    const pdf = new jsPDF();
-    
-    // Set up document properties
-    pdf.setProperties({
-      title: title,
-      creator: 'Scribly Note-Taking App'
-    });
-
-    // Page dimensions and margins
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    const maxWidth = pageWidth - (margin * 2);
-    let currentY = margin;
-
-    // Title styling
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    
-    // Add title with word wrapping
-    const titleLines = pdf.splitTextToSize(title, maxWidth);
-    pdf.text(titleLines, margin, currentY);
-    currentY += titleLines.length * 10 + 15; // Line height + spacing
-
-    // Extract plain text from Tiptap content
-    const plainText = extractPlainText(content);
-    
-    if (plainText.trim()) {
-      // Body text styling
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      
-      // Split text into lines that fit the page width
-      const textLines = pdf.splitTextToSize(plainText, maxWidth);
-      
-      // Add text with pagination
-      for (let i = 0; i < textLines.length; i++) {
-        // Check if we need a new page
-        if (currentY + 8 > pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
-        
-        pdf.text(textLines[i], margin, currentY);
-        currentY += 6; // Line height for body text
-      }
-    } else {
-      // Handle empty content
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'italic');
-      pdf.text('(This note is empty)', margin, currentY);
-    }
-
-    // Generate filename
-    const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const finalFilename = filename || `${sanitizedTitle || 'untitled_note'}.pdf`;
-
-    // Save the PDF
-    pdf.save(finalFilename);
-    
-    return { success: true, filename: finalFilename };
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
-    };
-  }
-};
-
-// Enhanced function with image support
+// Enhanced PDF generator with proper formatting support
 export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFGenerationOptions) => {
   try {
     const pdf = new jsPDF();
@@ -106,6 +33,77 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
       }
     };
 
+    // Helper function to add formatted text with proper styling
+    const addFormattedText = (text: string, node: any, indent: number = 0) => {
+      if (!text.trim()) return;
+
+      // Apply text formatting based on marks
+      let isBold = false;
+      let isItalic = false;
+      let isCode = false;
+      let fontSize = 12;
+      let fontStyle: 'normal' | 'bold' | 'italic' | 'bolditalic' = 'normal';
+
+      // Check for text marks (bold, italic, code, etc.)
+      if (node.marks && Array.isArray(node.marks)) {
+        for (const mark of node.marks) {
+          switch (mark.type) {
+            case 'bold':
+            case 'strong':
+              isBold = true;
+              break;
+            case 'italic':
+            case 'em':
+              isItalic = true;
+              break;
+            case 'code':
+              isCode = true;
+              break;
+          }
+        }
+      }
+
+      // Set font style
+      if (isBold && isItalic) {
+        fontStyle = 'bolditalic';
+      } else if (isBold) {
+        fontStyle = 'bold';
+      } else if (isItalic) {
+        fontStyle = 'italic';
+      }
+
+      // Apply code formatting
+      if (isCode) {
+        pdf.setFont('courier', fontStyle);
+        pdf.setFontSize(10);
+      } else {
+        pdf.setFont('helvetica', fontStyle);
+        pdf.setFontSize(fontSize);
+      }
+
+      // Split text to fit page width with proper indentation
+      const effectiveWidth = maxWidth - indent;
+      const textLines = pdf.splitTextToSize(text, effectiveWidth);
+      
+      // Add each line
+      for (const line of textLines) {
+        checkNewPage();
+        pdf.text(line, margin + indent, currentY);
+        currentY += fontSize * 0.5; // Line height
+      }
+    };
+
+    // Helper function to process text content with formatting
+    const processTextContent = (nodes: any[], indent: number = 0) => {
+      for (const node of nodes) {
+        if (node.type === 'text') {
+          addFormattedText(node.text || '', node, indent);
+        } else if (node.content && Array.isArray(node.content)) {
+          processTextContent(node.content, indent);
+        }
+      }
+    };
+
     // Helper function to fetch and add image to PDF
     const addImageToPDF = async (node: any) => {
       try {
@@ -113,7 +111,6 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
         
         // Try to get image data from different sources
         if (node.attrs?.objectKey) {
-          // Try to fetch from storage using objectKey
           try {
             const response = await fetch(node.attrs.src);
             if (response.ok) {
@@ -128,7 +125,6 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
             console.warn('Failed to fetch image from storage:', fetchError);
           }
         } else if (node.attrs?.src) {
-          // Try to use the src directly if it's a data URL or accessible URL
           if (node.attrs.src.startsWith('data:')) {
             imageData = node.attrs.src;
           } else {
@@ -149,20 +145,16 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
         }
 
         if (imageData) {
-          // Calculate image dimensions to fit within page
-          const maxImageWidth = maxWidth * 0.8; // Use 80% of available width
-          const maxImageHeight = 150; // Maximum height in points
+          const maxImageWidth = maxWidth * 0.8;
+          const maxImageHeight = 150;
           
-          // Add some space before image
           checkNewPage(maxImageHeight + 20);
           currentY += 10;
           
-          // Add image to PDF
           try {
             pdf.addImage(imageData, 'JPEG', margin, currentY, maxImageWidth, maxImageHeight);
             currentY += maxImageHeight + 15;
             
-            // Add caption if available
             if (node.attrs?.alt && node.attrs.alt !== 'Drawing') {
               pdf.setFontSize(10);
               pdf.setFont('helvetica', 'italic');
@@ -185,14 +177,14 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
       }
     };
 
-    // Add title
-    pdf.setFontSize(20);
+    // Add title with proper formatting
+    pdf.setFontSize(24);
     pdf.setFont('helvetica', 'bold');
     const titleLines = pdf.splitTextToSize(title, maxWidth);
     pdf.text(titleLines, margin, currentY);
-    currentY += titleLines.length * 10 + 20;
+    currentY += titleLines.length * 14 + 20;
 
-    // Enhanced content processing with image support
+    // Process content with enhanced formatting
     if (content.content && content.content.length > 0) {
       for (const node of content.content) {
         checkNewPage();
@@ -200,36 +192,64 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
         switch (node.type) {
           case 'heading':
             const level = node.attrs?.level || 1;
-            const headingSize = Math.max(16 - (level - 1) * 2, 12);
+            const headingSize = Math.max(20 - (level - 1) * 2, 14);
             pdf.setFontSize(headingSize);
             pdf.setFont('helvetica', 'bold');
             
-            // Extract text from heading content
-            const headingText = extractTextFromNode(node);
-            if (headingText) {
-              const headingLines = pdf.splitTextToSize(headingText, maxWidth);
-              pdf.text(headingLines, margin, currentY);
-              currentY += headingLines.length * (headingSize * 0.6) + 10;
+            currentY += 10; // Space before heading
+            checkNewPage(headingSize + 10);
+            
+            if (node.content && Array.isArray(node.content)) {
+              processTextContent(node.content);
             }
+            currentY += 15; // Space after heading
             break;
             
           case 'paragraph':
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'normal');
             
-            // Extract text from paragraph content
-            const paragraphText = extractTextFromNode(node);
-            if (paragraphText) {
-              const paragraphLines = pdf.splitTextToSize(paragraphText, maxWidth);
-              pdf.text(paragraphLines, margin, currentY);
-              currentY += paragraphLines.length * 6 + 8;
+            if (node.content && Array.isArray(node.content)) {
+              const startY = currentY;
+              processTextContent(node.content);
+              // Add paragraph spacing only if content was added
+              if (currentY > startY) {
+                currentY += 8;
+              } else {
+                // Empty paragraph
+                currentY += 6;
+              }
             } else {
-              // Empty paragraph - add some space
-              currentY += 8;
+              // Empty paragraph
+              currentY += 6;
             }
             break;
             
           case 'bulletList':
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'normal');
+            
+            if (node.content) {
+              for (const listItem of node.content) {
+                if (listItem.type === 'listItem' && listItem.content) {
+                  checkNewPage();
+                  
+                  // Add bullet point
+                  pdf.text('•', margin + 10, currentY);
+                  
+                  // Process list item content with indentation
+                  for (const itemNode of listItem.content) {
+                    if (itemNode.type === 'paragraph' && itemNode.content) {
+                      processTextContent(itemNode.content, 20);
+                    }
+                  }
+                  currentY += 4; // Space between list items
+                }
+              }
+              currentY += 8; // Space after list
+            }
+            break;
+            
           case 'orderedList':
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'normal');
@@ -240,17 +260,19 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
                 if (listItem.type === 'listItem' && listItem.content) {
                   checkNewPage();
                   
-                  const bullet = node.type === 'bulletList' ? '• ' : `${i + 1}. `;
-                  const itemText = extractTextFromNode(listItem);
+                  // Add number
+                  pdf.text(`${i + 1}.`, margin + 10, currentY);
                   
-                  if (itemText) {
-                    const itemLines = pdf.splitTextToSize(`${bullet}${itemText}`, maxWidth - 10);
-                    pdf.text(itemLines, margin + 10, currentY);
-                    currentY += itemLines.length * 6 + 4;
+                  // Process list item content with indentation
+                  for (const itemNode of listItem.content) {
+                    if (itemNode.type === 'paragraph' && itemNode.content) {
+                      processTextContent(itemNode.content, 25);
+                    }
                   }
+                  currentY += 4; // Space between list items
                 }
               }
-              currentY += 8; // Extra space after list
+              currentY += 8; // Space after list
             }
             break;
             
@@ -258,21 +280,60 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
             pdf.setFontSize(12);
             pdf.setFont('helvetica', 'italic');
             
-            const quoteText = extractTextFromNode(node);
-            if (quoteText) {
-              const formattedQuote = `"${quoteText}"`;
-              const quoteLines = pdf.splitTextToSize(formattedQuote, maxWidth - 20);
-              pdf.text(quoteLines, margin + 20, currentY);
-              currentY += quoteLines.length * 6 + 12;
+            currentY += 8; // Space before quote
+            checkNewPage();
+            
+            // Add quote indicator
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('❝', margin, currentY);
+            pdf.setFont('helvetica', 'italic');
+            
+            if (node.content && Array.isArray(node.content)) {
+              for (const quoteNode of node.content) {
+                if (quoteNode.type === 'paragraph' && quoteNode.content) {
+                  processTextContent(quoteNode.content, 15);
+                }
+              }
             }
+            currentY += 12; // Space after quote
+            break;
+
+          case 'codeBlock':
+            pdf.setFontSize(10);
+            pdf.setFont('courier', 'normal');
+            
+            currentY += 8; // Space before code block
+            checkNewPage();
+            
+            // Add background effect (simple border)
+            const codeStartY = currentY - 5;
+            
+            if (node.content && Array.isArray(node.content)) {
+              for (const codeNode of node.content) {
+                if (codeNode.type === 'text') {
+                  const codeLines = (codeNode.text || '').split('\n');
+                  for (const line of codeLines) {
+                    checkNewPage();
+                    pdf.text(line, margin + 10, currentY);
+                    currentY += 12;
+                  }
+                }
+              }
+            }
+            
+            // Draw border around code block
+            const codeEndY = currentY + 5;
+            pdf.setDrawColor(200, 200, 200);
+            pdf.rect(margin + 5, codeStartY, maxWidth - 10, codeEndY - codeStartY);
+            
+            currentY += 12; // Space after code block
             break;
 
           case 'image':
-            // Try to add actual image
             const imageAdded = await addImageToPDF(node);
             
             if (!imageAdded) {
-              // Fallback to text placeholder if image couldn't be added
+              // Fallback to text placeholder
               pdf.setFontSize(10);
               pdf.setFont('helvetica', 'italic');
               const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
@@ -280,16 +341,18 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
               currentY += 15;
             }
             break;
+
+          case 'hardBreak':
+            currentY += 12; // Line break
+            break;
             
           default:
-            // For other node types, extract text content
-            const nodeText = extractTextFromNode(node);
-            if (nodeText.trim()) {
+            // For other node types, try to extract and format text content
+            if (node.content && Array.isArray(node.content)) {
               pdf.setFontSize(12);
               pdf.setFont('helvetica', 'normal');
-              const defaultLines = pdf.splitTextToSize(nodeText, maxWidth);
-              pdf.text(defaultLines, margin, currentY);
-              currentY += defaultLines.length * 6 + 8;
+              processTextContent(node.content);
+              currentY += 8;
             }
         }
       }
@@ -315,6 +378,11 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
       error: error instanceof Error ? error.message : 'Unknown error occurred' 
     };
   }
+};
+
+// Keep the simple version for backward compatibility
+export const generateNotePDF = ({ title, content, filename }: PDFGenerationOptions) => {
+  return generateAdvancedNotePDF({ title, content, filename });
 };
 
 // Helper function to extract text from any node type

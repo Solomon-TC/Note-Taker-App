@@ -79,7 +79,7 @@ export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
-  
+
   // Use direct type casting to bypass Supabase type inference issues
   const supabaseTyped = supabase as any;
 
@@ -698,13 +698,17 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
-                    key="ai-demo-video"
                   >
-                    <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />
-                    <source src="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <source
+                      src="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4"
+                      type="video/mp4"
+                    />
                     <p className="text-white p-4">
-                      Your browser doesn't support video playback. 
-                      <a href="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" className="underline">
+                      Your browser doesn't support video playback.
+                      <a
+                        href="/uploads/AI%20Demo%20Onboarding%20-%20Made%20with%20Clipchamp.mp4"
+                        className="underline"
+                      >
                         Download the video instead
                       </a>
                     </p>
@@ -762,10 +766,16 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                   >
-                    <source src="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <source
+                      src="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4"
+                      type="video/mp4"
+                    />
                     <p className="text-white p-4">
-                      Your browser doesn't support video playback. 
-                      <a href="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4" className="underline">
+                      Your browser doesn't support video playback.
+                      <a
+                        href="/uploads/Friends%20Demo%20-%20Made%20with%20Clipchamp.mp4"
+                        className="underline"
+                      >
                         Download the video instead
                       </a>
                     </p>
@@ -831,10 +841,16 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                   >
-                    <source src="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <source
+                      src="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4"
+                      type="video/mp4"
+                    />
                     <p className="text-white p-4">
-                      Your browser doesn't support video playback. 
-                      <a href="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4" className="underline">
+                      Your browser doesn't support video playback.
+                      <a
+                        href="/uploads/Tour%20Demo%20Video%20-%20Made%20with%20Clipchamp.mp4"
+                        className="underline"
+                      >
                         Download the video instead
                       </a>
                     </p>
@@ -872,14 +888,16 @@ export default function OnboardingPage() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="bg-primary/10 rounded-lg p-6 mb-6">
                 <div className="flex items-center gap-3 mb-3">
                   <Lightbulb className="h-5 w-5 text-primary" />
                   <h4 className="font-semibold">Pro Tip</h4>
                 </div>
                 <p className="text-sm">
-                  Start by creating a note in your first class, then ask the AI assistant to generate a summary or practice questions. You'll see how powerful this combination can be!
+                  Start by creating a note in your first class, then ask the AI
+                  assistant to generate a summary or practice questions. You'll
+                  see how powerful this combination can be!
                 </p>
               </div>
 
@@ -917,10 +935,16 @@ export default function OnboardingPage() {
                     controls
                     preload="metadata"
                   >
-                    <source src="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
+                    <source
+                      src="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4"
+                      type="video/mp4"
+                    />
                     <p className="text-white p-4">
-                      Your browser doesn't support video playback. 
-                      <a href="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4" className="underline">
+                      Your browser doesn't support video playback.
+                      <a
+                        href="/uploads/Feedback%20Demo%20-%20Made%20with%20Clipchamp.mp4"
+                        className="underline"
+                      >
                         Download the video instead
                       </a>
                     </p>

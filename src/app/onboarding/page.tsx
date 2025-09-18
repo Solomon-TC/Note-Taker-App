@@ -795,14 +795,6 @@ export default function OnboardingPage() {
                   </div>
                 </div>
               </div>
-              <div className="text-center mb-6">
-                <Button variant="outline" className="mb-2">
-                  Invite a friend via email
-                </Button>
-                <p className="text-sm text-muted-foreground">
-                  You can always do this later from your dashboard
-                </p>
-              </div>
               <div className="flex justify-between">
                 <Button variant="outline" onClick={handlePrevious}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -874,13 +866,6 @@ export default function OnboardingPage() {
                   <h3 className="font-semibold mb-2">Friend Sharing</h3>
                   <p className="text-sm text-muted-foreground">
                     Share notes and collaborate with classmates
-                  </p>
-                </div>
-                <div className="text-center p-6 rounded-lg bg-muted/50">
-                  <Target className="h-12 w-12 text-primary mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">Progress Tracking</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Earn XP and track your study streaks
                   </p>
                 </div>
               </div>

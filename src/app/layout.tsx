@@ -6,6 +6,7 @@ import { ErrorBoundary, AsyncErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 function ClientProviders({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ export default function RootLayout({
             <TempoInit />
           </ClientProviders>
         </ErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );

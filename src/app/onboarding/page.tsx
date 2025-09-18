@@ -698,17 +698,13 @@ export default function OnboardingPage() {
                     className="w-full h-full object-cover"
                     controls
                     preload="metadata"
+                    key="ai-demo-video"
                   >
-                    <source
-                      src="/uploads/AI%20Demo%20-%20Made%20with%20Clipchamp.mp4"
-                      type="video/mp4"
-                    />
+                    <source src="/uploads/AI Demo - Made with Clipchamp.mp4" type="video/mp4" />
+                    <source src="/uploads/AI%20Demo%20-%20Made%20with%20Clipchamp.mp4" type="video/mp4" />
                     <p className="text-white p-4">
-                      Your browser doesn't support video playback.
-                      <a
-                        href="/uploads/AI%20Demo%20-%20Made%20with%20Clipchamp.mp4"
-                        className="underline"
-                      >
+                      Your browser doesn't support video playback. 
+                      <a href="/uploads/AI Demo - Made with Clipchamp.mp4" className="underline">
                         Download the video instead
                       </a>
                     </p>

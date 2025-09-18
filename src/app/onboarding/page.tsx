@@ -705,7 +705,10 @@ export default function OnboardingPage() {
                     onCanPlay={() => console.log('AI Demo video: Can play')}
                     onError={(e) => {
                       console.error('AI Demo video error:', e);
-                      console.error('Video error details:', e.target.error);
+                      const videoElement = e.target as HTMLVideoElement;
+                      if (videoElement.error) {
+                        console.error('Video error details:', videoElement.error);
+                      }
                     }}
                   >
                     <source src="/uploads/AI Demo Onboarding - Made with Clipchamp.mp4" type="video/mp4" />

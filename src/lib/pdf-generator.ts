@@ -93,14 +93,225 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
       }
     };
 
-    // Helper function to process text content with formatting
-    const processTextContent = (nodes: any[], indent: number = 0) => {
-      for (const node of nodes) {
-        if (node.type === 'text') {
+    // Enhanced recursive function to process any content node
+    const processContentNode = async (node: any, indent: number = 0, listLevel: number = 0): Promise<void> => {
+      if (!node) return;
+
+      switch (node.type) {
+        case 'text':
           addFormattedText(node.text || '', node, indent);
-        } else if (node.content && Array.isArray(node.content)) {
-          processTextContent(node.content, indent);
+          break;
+
+        case 'paragraph':
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'normal');
+          
+          if (node.content && Array.isArray(node.content)) {
+            const startY = currentY;
+            for (const childNode of node.content) {
+              await processContentNode(childNode, indent, listLevel);
+            }
+            // Add paragraph spacing only if content was added
+            if (currentY > startY) {
+              currentY += 8;
+            } else {
+              // Empty paragraph
+              currentY += 6;
+            }
+          } else {
+            // Empty paragraph
+            currentY += 6;
+          }
+          break;
+
+        case 'heading':
+          const level = node.attrs?.level || 1;
+          const headingSize = Math.max(20 - (level - 1) * 2, 14);
+          pdf.setFontSize(headingSize);
+          pdf.setFont('helvetica', 'bold');
+          
+          currentY += 10; // Space before heading
+          checkNewPage(headingSize + 10);
+          
+          if (node.content && Array.isArray(node.content)) {
+            for (const childNode of node.content) {
+              await processContentNode(childNode, indent, listLevel);
+            }
+          }
+          currentY += 15; // Space after heading
+          break;
+
+        case 'bulletList':
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'normal');
+          
+          if (node.content && Array.isArray(node.content)) {
+            for (const listItem of node.content) {
+              if (listItem.type === 'listItem') {
+                await processListItem(listItem, indent, listLevel, 'bullet');
+              }
+            }
+            currentY += 8; // Space after list
+          }
+          break;
+
+        case 'orderedList':
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'normal');
+          
+          if (node.content && Array.isArray(node.content)) {
+            for (let i = 0; i < node.content.length; i++) {
+              const listItem = node.content[i];
+              if (listItem.type === 'listItem') {
+                await processListItem(listItem, indent, listLevel, 'ordered', i + 1);
+              }
+            }
+            currentY += 8; // Space after list
+          }
+          break;
+
+        case 'listItem':
+          // This should be handled by processListItem, but include for completeness
+          await processListItem(node, indent, listLevel, 'bullet');
+          break;
+
+        case 'blockquote':
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'italic');
+          
+          currentY += 8; // Space before quote
+          checkNewPage();
+          
+          // Add quote indicator
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('❝', margin + indent, currentY);
+          pdf.setFont('helvetica', 'italic');
+          
+          if (node.content && Array.isArray(node.content)) {
+            for (const childNode of node.content) {
+              await processContentNode(childNode, indent + 15, listLevel);
+            }
+          }
+          currentY += 12; // Space after quote
+          break;
+
+        case 'codeBlock':
+          pdf.setFontSize(10);
+          pdf.setFont('courier', 'normal');
+          
+          currentY += 8; // Space before code block
+          checkNewPage();
+          
+          // Add background effect (simple border)
+          const codeStartY = currentY - 5;
+          
+          if (node.content && Array.isArray(node.content)) {
+            for (const codeNode of node.content) {
+              if (codeNode.type === 'text') {
+                const codeLines = (codeNode.text || '').split('\\n');
+                for (const line of codeLines) {
+                  checkNewPage();
+                  pdf.text(line, margin + indent + 10, currentY);
+                  currentY += 12;
+                }
+              }
+            }
+          }
+          
+          // Draw border around code block
+          const codeEndY = currentY + 5;
+          pdf.setDrawColor(200, 200, 200);
+          pdf.rect(margin + indent + 5, codeStartY, maxWidth - indent - 10, codeEndY - codeStartY);
+          
+          currentY += 12; // Space after code block
+          break;
+
+        case 'image':
+          const imageAdded = await addImageToPDF(node);
+          
+          if (!imageAdded) {
+            // Fallback to text placeholder
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'italic');
+            const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
+            pdf.text(imageText, margin + indent, currentY);
+            currentY += 15;
+          }
+          break;
+
+        case 'hardBreak':
+          currentY += 12; // Line break
+          break;
+
+        default:
+          // For any other node types, recursively process content
+          if (node.content && Array.isArray(node.content)) {
+            for (const childNode of node.content) {
+              await processContentNode(childNode, indent, listLevel);
+            }
+          }
+          break;
+      }
+    };
+
+    // Enhanced function to process list items with full nesting support
+    const processListItem = async (listItem: any, baseIndent: number = 0, listLevel: number = 0, listType: 'bullet' | 'ordered' = 'bullet', itemNumber?: number) => {
+      if (!listItem.content || !Array.isArray(listItem.content)) return;
+
+      checkNewPage();
+      
+      // Calculate indentation based on nesting level
+      const currentIndent = baseIndent + (listLevel * 20) + 10;
+      const contentIndent = currentIndent + 15;
+      
+      // Add bullet or number
+      if (listType === 'bullet') {
+        const bulletChar = listLevel === 0 ? '•' : listLevel === 1 ? '◦' : '▪';
+        pdf.text(bulletChar, margin + currentIndent, currentY);
+      } else {
+        pdf.text(`${itemNumber}.`, margin + currentIndent, currentY);
+      }
+
+      let hasProcessedFirstParagraph = false;
+
+      // Process all content within the list item
+      for (const itemNode of listItem.content) {
+        switch (itemNode.type) {
+          case 'paragraph':
+            if (itemNode.content && Array.isArray(itemNode.content)) {
+              // For the first paragraph, don't add extra spacing
+              if (hasProcessedFirstParagraph) {
+                currentY += 6; // Small spacing between paragraphs in list item
+              }
+              
+              for (const textNode of itemNode.content) {
+                await processContentNode(textNode, contentIndent, listLevel);
+              }
+              hasProcessedFirstParagraph = true;
+            }
+            break;
+
+          case 'bulletList':
+          case 'orderedList':
+            // Handle nested lists with increased indentation and level
+            currentY += 4; // Small space before nested list
+            await processContentNode(itemNode, contentIndent, listLevel + 1);
+            break;
+
+          default:
+            // Handle any other content types within list items
+            await processContentNode(itemNode, contentIndent, listLevel);
+            break;
         }
+      }
+
+      currentY += 4; // Space between list items
+    };
+
+    // Helper function to process text content with formatting (kept for compatibility)
+    const processTextContent = async (nodes: any[], indent: number = 0) => {
+      for (const node of nodes) {
+        await processContentNode(node, indent, 0);
       }
     };
 
@@ -184,177 +395,11 @@ export const generateAdvancedNotePDF = async ({ title, content, filename }: PDFG
     pdf.text(titleLines, margin, currentY);
     currentY += titleLines.length * 14 + 20;
 
-    // Process content with enhanced formatting
+    // Process content with enhanced recursive formatting
     if (content.content && content.content.length > 0) {
       for (const node of content.content) {
         checkNewPage();
-        
-        switch (node.type) {
-          case 'heading':
-            const level = node.attrs?.level || 1;
-            const headingSize = Math.max(20 - (level - 1) * 2, 14);
-            pdf.setFontSize(headingSize);
-            pdf.setFont('helvetica', 'bold');
-            
-            currentY += 10; // Space before heading
-            checkNewPage(headingSize + 10);
-            
-            if (node.content && Array.isArray(node.content)) {
-              processTextContent(node.content);
-            }
-            currentY += 15; // Space after heading
-            break;
-            
-          case 'paragraph':
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'normal');
-            
-            if (node.content && Array.isArray(node.content)) {
-              const startY = currentY;
-              processTextContent(node.content);
-              // Add paragraph spacing only if content was added
-              if (currentY > startY) {
-                currentY += 8;
-              } else {
-                // Empty paragraph
-                currentY += 6;
-              }
-            } else {
-              // Empty paragraph
-              currentY += 6;
-            }
-            break;
-            
-          case 'bulletList':
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'normal');
-            
-            if (node.content) {
-              for (const listItem of node.content) {
-                if (listItem.type === 'listItem' && listItem.content) {
-                  checkNewPage();
-                  
-                  // Add bullet point
-                  pdf.text('•', margin + 10, currentY);
-                  
-                  // Process list item content with indentation
-                  for (const itemNode of listItem.content) {
-                    if (itemNode.type === 'paragraph' && itemNode.content) {
-                      processTextContent(itemNode.content, 20);
-                    }
-                  }
-                  currentY += 4; // Space between list items
-                }
-              }
-              currentY += 8; // Space after list
-            }
-            break;
-            
-          case 'orderedList':
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'normal');
-            
-            if (node.content) {
-              for (let i = 0; i < node.content.length; i++) {
-                const listItem = node.content[i];
-                if (listItem.type === 'listItem' && listItem.content) {
-                  checkNewPage();
-                  
-                  // Add number
-                  pdf.text(`${i + 1}.`, margin + 10, currentY);
-                  
-                  // Process list item content with indentation
-                  for (const itemNode of listItem.content) {
-                    if (itemNode.type === 'paragraph' && itemNode.content) {
-                      processTextContent(itemNode.content, 25);
-                    }
-                  }
-                  currentY += 4; // Space between list items
-                }
-              }
-              currentY += 8; // Space after list
-            }
-            break;
-            
-          case 'blockquote':
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'italic');
-            
-            currentY += 8; // Space before quote
-            checkNewPage();
-            
-            // Add quote indicator
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('❝', margin, currentY);
-            pdf.setFont('helvetica', 'italic');
-            
-            if (node.content && Array.isArray(node.content)) {
-              for (const quoteNode of node.content) {
-                if (quoteNode.type === 'paragraph' && quoteNode.content) {
-                  processTextContent(quoteNode.content, 15);
-                }
-              }
-            }
-            currentY += 12; // Space after quote
-            break;
-
-          case 'codeBlock':
-            pdf.setFontSize(10);
-            pdf.setFont('courier', 'normal');
-            
-            currentY += 8; // Space before code block
-            checkNewPage();
-            
-            // Add background effect (simple border)
-            const codeStartY = currentY - 5;
-            
-            if (node.content && Array.isArray(node.content)) {
-              for (const codeNode of node.content) {
-                if (codeNode.type === 'text') {
-                  const codeLines = (codeNode.text || '').split('\n');
-                  for (const line of codeLines) {
-                    checkNewPage();
-                    pdf.text(line, margin + 10, currentY);
-                    currentY += 12;
-                  }
-                }
-              }
-            }
-            
-            // Draw border around code block
-            const codeEndY = currentY + 5;
-            pdf.setDrawColor(200, 200, 200);
-            pdf.rect(margin + 5, codeStartY, maxWidth - 10, codeEndY - codeStartY);
-            
-            currentY += 12; // Space after code block
-            break;
-
-          case 'image':
-            const imageAdded = await addImageToPDF(node);
-            
-            if (!imageAdded) {
-              // Fallback to text placeholder
-              pdf.setFontSize(10);
-              pdf.setFont('helvetica', 'italic');
-              const imageText = `[Image: ${node.attrs?.alt || 'Untitled'}]`;
-              pdf.text(imageText, margin, currentY);
-              currentY += 15;
-            }
-            break;
-
-          case 'hardBreak':
-            currentY += 12; // Line break
-            break;
-            
-          default:
-            // For other node types, try to extract and format text content
-            if (node.content && Array.isArray(node.content)) {
-              pdf.setFontSize(12);
-              pdf.setFont('helvetica', 'normal');
-              processTextContent(node.content);
-              currentY += 8;
-            }
-        }
+        await processContentNode(node, 0, 0);
       }
     } else {
       // Handle empty content

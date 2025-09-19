@@ -258,18 +258,19 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-card border border-border">
               <video
                 ref={videoRef}
-                className="w-full h-auto"
+                className="w-full aspect-video"
                 muted
                 loop
                 controls
                 playsInline
-                poster="/uploads/video-poster.jpg"
+                poster="/uploads/video-poster.png"
+                style={{ minHeight: '400px' }}
               >
-                <source src="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4" type="video/mp4" />
+                <source src="/uploads/Tour Demo Video - Made with Clipchamp.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
               

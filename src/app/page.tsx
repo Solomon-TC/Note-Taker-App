@@ -270,7 +270,7 @@ export default function LandingPage() {
                 poster="/uploads/video-poster.png"
                 style={{ minHeight: '400px' }}
               >
-                <source src="/uploads/Tour Demo Video - Made with Clipchamp.mp4" type="video/mp4" />
+                <source src="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
               

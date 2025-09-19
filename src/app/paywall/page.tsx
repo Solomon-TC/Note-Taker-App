@@ -13,8 +13,31 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Check, Zap, Crown, Sparkles } from "lucide-react";
+import { 
+  Loader2, 
+  Check, 
+  Zap, 
+  Crown, 
+  Sparkles, 
+  Calendar,
+  CreditCard,
+  Download,
+  AlertTriangle,
+  Settings,
+  ExternalLink
+} from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MONTHLY_PRICE = "$7.99";
 const YEARLY_PRICE = "$59.99";
@@ -27,13 +50,75 @@ const features = [
   "Friend note sharing",
 ];
 
+interface SubscriptionData {
+  hasSubscription: boolean;
+  subscription: {
+    id: string;
+    status: string;
+    current_period_start: string;
+    current_period_end: string;
+    cancel_at_period_end: boolean;
+    canceled_at: string | null;
+    plan: {
+      id: string;
+      amount: number;
+      currency: string;
+      interval: string;
+      interval_count: number;
+    };
+  } | null;
+  invoices: Array<{
+    id: string;
+    amount_paid: number;
+    currency: string;
+    status: string;
+    created: string;
+    hosted_invoice_url: string;
+    invoice_pdf: string;
+  }>;
+}
+
 export default function PaywallPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const supabase = createClient();
+
+  // Fetch subscription data
+  const fetchSubscriptionData = async () => {
+    if (!user) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch("/api/stripe/subscription-info", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching subscription data:", error);
+    } finally {
+      setLoadingSubscription(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      fetchSubscriptionData();
+    }
+  }, [user, authLoading]);
 
   // Handle checkout success/cancelled states
   useEffect(() => {
@@ -123,7 +208,82 @@ export default function PaywallPage() {
     }
   };
 
-  if (authLoading) {
+  const handleManageBilling = async () => {
+    if (!user) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch("/api/stripe/manage-billing", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error(data.error || "Failed to open billing portal");
+      }
+    } catch (error) {
+      console.error("Error opening billing portal:", error);
+      toast({
+        title: "Error",
+        description: "Failed to open billing portal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelSubscription = async (cancelImmediately = false) => {
+    if (!user) return;
+
+    setCancelingSubscription(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch("/api/stripe/cancel-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ cancelImmediately }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: cancelImmediately ? "Subscription Cancelled" : "Subscription Will Cancel",
+          description: cancelImmediately 
+            ? "Your subscription has been cancelled immediately."
+            : "Your subscription will cancel at the end of the current billing period.",
+        });
+        // Refresh subscription data
+        await fetchSubscriptionData();
+      } else {
+        throw new Error(data.error || "Failed to cancel subscription");
+      }
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelingSubscription(false);
+    }
+  };
+
+  if (authLoading || loadingSubscription) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -135,6 +295,214 @@ export default function PaywallPage() {
     return null; // Will redirect via useEffect
   }
 
+  // Show subscription management for existing subscribers
+  if (subscriptionData?.hasSubscription && subscriptionData.subscription) {
+    const { subscription, invoices } = subscriptionData;
+    const isYearly = subscription.plan.interval === "year";
+    const nextBillingDate = new Date(subscription.current_period_end);
+    const isActive = subscription.status === "active";
+    const willCancel = subscription.cancel_at_period_end;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                <Crown className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <h1 className="text-3xl font-bold text-foreground">Subscription Management</h1>
+            </div>
+            <p className="text-lg text-muted-foreground">
+              Manage your Scribly Pro subscription and billing
+            </p>
+          </div>
+
+          {/* Current Subscription Card */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-primary" />
+                    Scribly Pro {isYearly ? "Yearly" : "Monthly"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isActive ? "Active subscription" : `Status: ${subscription.status}`}
+                  </CardDescription>
+                </div>
+                <Badge variant={isActive ? "default" : "secondary"}>
+                  {isActive ? "Active" : subscription.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Subscription Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Plan</h4>
+                    <p className="text-lg font-semibold">
+                      ${subscription.plan.amount}/{subscription.plan.interval}
+                      {isYearly && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          (${(subscription.plan.amount / 12).toFixed(2)}/month)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">
+                      {willCancel ? "Cancels on" : "Next billing date"}
+                    </h4>
+                    <p className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {nextBillingDate.toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Features</h4>
+                    <ul className="space-y-1">
+                      {features.map((feature, index) => (
+                        <li key={index} className="flex items-center gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Warning */}
+              {willCancel && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                    <AlertTriangle className="h-5 w-5" />
+                    <p className="font-semibold">Subscription will cancel</p>
+                  </div>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    Your subscription will end on {nextBillingDate.toLocaleDateString()}. 
+                    You'll lose access to Pro features after this date.
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleManageBilling} variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage Billing
+                </Button>
+                
+                {!willCancel && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive hover:text-destructive">
+                        Cancel Subscription
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel your subscription? You'll lose access to Pro features 
+                          at the end of your current billing period ({nextBillingDate.toLocaleDateString()}).
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleCancelSubscription(false)}
+                          disabled={cancelingSubscription}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {cancelingSubscription ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Cancelling...
+                            </>
+                          ) : (
+                            "Cancel at Period End"
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Billing History */}
+          {invoices.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Billing History
+                </CardTitle>
+                <CardDescription>
+                  Your recent invoices and payments
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {invoices.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">
+                            ${invoice.amount_paid.toFixed(2)} {invoice.currency.toUpperCase()}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(invoice.created).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={invoice.status === "paid" ? "default" : "secondary"}>
+                          {invoice.status}
+                        </Badge>
+                        {invoice.hosted_invoice_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(invoice.hosted_invoice_url, "_blank")}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        )}
+                        {invoice.invoice_pdf && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(invoice.invoice_pdf, "_blank")}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            PDF
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show upgrade options for non-subscribers
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

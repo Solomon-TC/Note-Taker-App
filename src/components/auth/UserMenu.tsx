@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Sun, Moon, Laptop } from "lucide-react";
+import { LogOut, User, Sun, Moon, Laptop, CreditCard } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
@@ -94,6 +94,13 @@ export default function UserMenu() {
             <DropdownMenuSeparator />
           </>
         )}
+
+        {/* Manage Subscription */}
+        <DropdownMenuItem onClick={() => window.open('/paywall', '_blank')}>
+          <CreditCard className="mr-2 h-4 w-4" />
+          <span>Manage Subscription</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" />

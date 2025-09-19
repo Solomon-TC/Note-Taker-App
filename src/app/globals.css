@@ -91,6 +91,24 @@
 }
 
 @layer components {
+  /* Feature Carousel Animation */
+  @keyframes scroll-infinite {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-33.333%); /* Move by 1/3 since we have 3 sets */
+    }
+  }
+
+  .animate-scroll-infinite {
+    animation: scroll-infinite 20s linear infinite;
+  }
+
+  .animate-scroll-infinite:hover {
+    animation-play-state: paused;
+  }
+
   /* Enhanced Modern Dashboard Components */
   .dashboard-card {
     @apply bg-card/95 backdrop-blur-sm border border-border/20 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 ease-out;

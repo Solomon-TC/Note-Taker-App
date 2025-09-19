@@ -245,25 +245,64 @@ export default function LandingPage() {
               </Button>
             </div>
 
-            {/* Feature Preview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="text-center p-6 rounded-xl bg-card hover:bg-accent/50 transition-colors cursor-pointer border border-border/20"
-                  onClick={() => setActiveFeature(index)}
-                >
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <div className="text-primary">{feature.icon}</div>
+            {/* Feature Preview Carousel */}
+            <div className="relative overflow-hidden max-w-full mx-auto">
+              <div className="flex animate-scroll-infinite gap-8 w-max">
+                {/* First set of features */}
+                {features.map((feature, index) => (
+                  <div
+                    key={`first-${index}`}
+                    className="text-center p-6 rounded-xl bg-card hover:bg-accent/50 transition-colors cursor-pointer border border-border/20 flex-shrink-0 w-80"
+                    onClick={() => setActiveFeature(index)}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <div className="text-primary">{feature.icon}</div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
+                ))}
+                {/* Duplicate set for seamless loop */}
+                {features.map((feature, index) => (
+                  <div
+                    key={`second-${index}`}
+                    className="text-center p-6 rounded-xl bg-card hover:bg-accent/50 transition-colors cursor-pointer border border-border/20 flex-shrink-0 w-80"
+                    onClick={() => setActiveFeature(index)}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <div className="text-primary">{feature.icon}</div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                ))}
+                {/* Third set for extra smoothness */}
+                {features.map((feature, index) => (
+                  <div
+                    key={`third-${index}`}
+                    className="text-center p-6 rounded-xl bg-card hover:bg-accent/50 transition-colors cursor-pointer border border-border/20 flex-shrink-0 w-80"
+                    onClick={() => setActiveFeature(index)}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <div className="text-primary">{feature.icon}</div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

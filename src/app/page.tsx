@@ -61,16 +61,27 @@ export default function LandingPage() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            video.play().catch((error) => {
-              console.log("Video autoplay failed:", error);
-            });
+            // Ensure video is loaded before trying to play
+            if (video.readyState >= 2) {
+              video.play().catch((error) => {
+                console.log("Video autoplay failed:", error);
+              });
+            } else {
+              // Wait for video to load
+              video.addEventListener('loadeddata', () => {
+                video.play().catch((error) => {
+                  console.log("Video autoplay failed:", error);
+                });
+              }, { once: true });
+            }
           } else {
             video.pause();
           }
         });
       },
       {
-        threshold: 0.5, // Play when 50% of video is visible
+        threshold: 0.3, // Play when 30% of video is visible
+        rootMargin: '0px 0px -100px 0px' // Start playing a bit before fully visible
       }
     );
 
@@ -267,6 +278,7 @@ export default function LandingPage() {
                 loop
                 controls
                 playsInline
+                preload="metadata"
                 poster="/uploads/video-poster.png"
                 style={{ minHeight: '400px' }}
               >

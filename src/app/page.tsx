@@ -75,9 +75,10 @@ export default function LandingPage() {
           if (entry.isIntersecting) {
             console.log('Section coming into view:', entry.target);
             // Remove hidden classes and add visible classes
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
-            entry.target.classList.add('animate-fade-in-up');
+            const element = entry.target as HTMLElement;
+            element.style.opacity = '1';
+            element.style.transform = 'translateY(0)';
+            element.classList.add('animate-fade-in-up');
           }
         });
       },

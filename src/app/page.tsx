@@ -69,22 +69,22 @@ export default function LandingPage() {
       { ref: collaborationSectionRef, name: 'Collaboration Section' },
     ];
 
+    // Create intersection observer
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            console.log('Section coming into view:', entry.target);
-            // Remove hidden classes and add visible classes
             const element = entry.target as HTMLElement;
-            element.style.opacity = '1';
-            element.style.transform = 'translateY(0)';
-            element.classList.add('animate-fade-in-up');
+            // Add visible class for CSS transition
+            element.classList.add('visible');
+            // Stop observing this element once it's animated
+            observer.unobserve(element);
           }
         });
       },
       {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px',
+        threshold: 0.1, // Trigger when 10% of section is visible
+        rootMargin: '0px 0px -50px 0px', // Start animation 50px before section is fully visible
       }
     );
 
@@ -92,14 +92,9 @@ export default function LandingPage() {
     sections.forEach(({ ref, name }) => {
       const section = ref.current;
       if (section) {
-        console.log('Setting up fade animation for:', name);
-        // Set initial hidden state
-        section.style.opacity = '0';
-        section.style.transform = 'translateY(40px)';
-        section.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+        // Add fade-in-section class for initial hidden state
+        section.classList.add('fade-in-section');
         observer.observe(section);
-      } else {
-        console.log('Section ref not found:', name);
       }
     });
 

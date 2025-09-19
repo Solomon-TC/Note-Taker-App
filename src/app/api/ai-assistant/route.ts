@@ -224,9 +224,83 @@ QUALITY CONTROL:
         ];
         break;
 
+      case "flashcards":
+        const flashcardNotes = context?.currentPage
+          ? notes.filter((note: any) => note.id === context.currentPage.id)
+          : context?.currentSection
+            ? notes.filter(
+                (note: any) => note.sectionId === context.currentSection.id,
+              )
+            : notes;
+
+        const flashcardMediaDescription = buildMediaDescription(flashcardNotes);
+
+        systemPrompt = `You are an expert educational content designer specializing in creating effective flashcards for active recall and spaced repetition learning. You have multimodal analysis capabilities to process both textual and visual content.
+
+ENHANCED FLASHCARD CREATION CAPABILITIES:
+- Analyze both text content and visual materials (images, drawings, diagrams, charts)
+- Create flashcards that test understanding of visual content and text-visual relationships
+- Reference specific visual elements in flashcard content when appropriate
+- Design flashcards that help memorize visual patterns, diagrams, and data
+
+FLASHCARD DESIGN PRINCIPLES:
+- Create concise, focused question-answer pairs
+- Front side: Clear, specific question or prompt
+- Back side: Comprehensive but concise answer
+- Include key terms, definitions, concepts, and processes
+- Create flashcards for visual content when present (describe diagrams, explain charts, etc.)
+- Vary difficulty levels (easy, medium, hard)
+- Focus on active recall and memory reinforcement
+- Include context and examples when helpful
+
+${flashcardMediaDescription}
+
+CRITICAL FORMAT REQUIREMENTS:
+Present each flashcard in this EXACT format:
+
+Flashcard 1:
+Front: [Question or prompt]
+Back: [Answer or explanation]
+Topic: [Subject area]
+Difficulty: [easy/medium/hard]
+
+Flashcard 2:
+Front: [Question or prompt]
+Back: [Answer or explanation]
+Topic: [Subject area]
+Difficulty: [easy/medium/hard]
+
+QUALITY GUIDELINES:
+- Create 5-8 flashcards per request
+- Questions should be specific and testable
+- Answers should be complete but concise
+- Include flashcards for visual content when available
+- Focus on the most important concepts for memorization
+- Ensure each flashcard tests a single concept
+- Use clear, simple language
+- Include mnemonics or memory aids when helpful`;
+
+        userPrompt = `Create effective flashcards based on these notes and their visual content. Focus on key concepts, definitions, processes, and important information that students need to memorize. Include flashcards for visual content when present.
+
+Notes and visual content to create flashcards from:
+
+${flashcardNotes.map((note: any) => {
+          let noteContent = `**${note.title}**\n${note.content}`;
+          if (note.hasMedia && note.mediaContent) {
+            noteContent += `\n[Visual Content Available: This note contains ${note.mediaContent.filter((m: any) => m.type === 'image').length} images and ${note.mediaContent.filter((m: any) => m.type === 'drawing').length} drawings that can be used for flashcard creation]`;
+          }
+          return noteContent;
+        }).join("\n\n")}`;
+
+        messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ];
+        break;
+
       default:
         return NextResponse.json(
-          { error: "Invalid mode. Use 'chat', 'summaries', or 'practice'" },
+          { error: "Invalid mode. Use 'chat', 'summaries', 'practice', or 'flashcards'" },
           { status: 400 },
         );
     }
@@ -235,8 +309,8 @@ QUALITY CONTROL:
       model: "gpt-4o-mini", // Using more capable model for better accuracy
       messages: messages,
       max_tokens:
-        mode === "practice" ? 2000 : mode === "summaries" ? 1500 : 1200,
-      temperature: mode === "practice" ? 0.3 : 0.4, // Lower temperature for more consistent results
+        mode === "practice" ? 2000 : mode === "summaries" ? 1500 : mode === "flashcards" ? 1800 : 1200,
+      temperature: mode === "practice" ? 0.3 : mode === "flashcards" ? 0.4 : 0.4, // Consistent temperature for flashcards
       presence_penalty: 0.1,
       frequency_penalty: 0.1,
     });
@@ -250,8 +324,8 @@ QUALITY CONTROL:
       );
     }
 
-    // For practice mode, return the response as plain text
-    if (mode === "practice") {
+    // For practice and flashcards mode, return the response as plain text
+    if (mode === "practice" || mode === "flashcards") {
       return NextResponse.json({ response: { text: response } });
     }
 

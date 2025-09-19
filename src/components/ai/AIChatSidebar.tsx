@@ -23,6 +23,8 @@ import {
   MessageSquare,
   Play,
   Trash2,
+  CreditCard,
+  RotateCcw,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -195,9 +197,19 @@ interface PracticeQuestion {
   completed?: boolean;
 }
 
+interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  difficulty?: "easy" | "medium" | "hard";
+  topic?: string;
+  isFlipped?: boolean;
+  confidence?: "low" | "medium" | "high";
+}
+
 interface AISession {
   id: string;
-  session_type: "chat" | "summary" | "practice";
+  session_type: "chat" | "summary" | "practice" | "flashcards";
   title: string;
   context: any;
   messages: Message[];
@@ -531,6 +543,80 @@ const extractExplanation = (block: string): string => {
   return potentialExplanation?.trim() || "No explanation provided.";
 };
 
+// Helper function to parse flashcards from AI response
+const parseFlashcards = (text: string): Flashcard[] => {
+  const flashcards: Flashcard[] = [];
+  
+  // Split by flashcard numbers or patterns
+  const cardBlocks = text
+    .split(/(?:Flashcard\s+\d+|Card\s+\d+|^\d+\.)/i)
+    .filter((block) => block.trim());
+
+  cardBlocks.forEach((block, index) => {
+    const lines = block
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line);
+    
+    if (lines.length === 0) return;
+
+    let front = "";
+    let back = "";
+    let topic = "";
+    let difficulty: "easy" | "medium" | "hard" = "medium";
+
+    // Look for front/back patterns
+    const frontMatch = block.match(/(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/is);
+    const backMatch = block.match(/(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is);
+    
+    if (frontMatch && backMatch) {
+      front = frontMatch[1].trim();
+      back = backMatch[1].trim();
+    } else {
+      // Fallback: try to split by common patterns
+      const colonSplit = block.split(/:\s*/);
+      if (colonSplit.length >= 2) {
+        front = colonSplit[0].trim();
+        back = colonSplit.slice(1).join(": ").trim();
+      } else {
+        // Last resort: use first substantial line as front, rest as back
+        const substantialLines = lines.filter(line => line.length > 5);
+        if (substantialLines.length >= 2) {
+          front = substantialLines[0];
+          back = substantialLines.slice(1).join(" ");
+        }
+      }
+    }
+
+    // Extract topic if present
+    const topicMatch = block.match(/(?:Topic|Subject):\s*(.+?)(?=\n|$)/i);
+    if (topicMatch) {
+      topic = topicMatch[1].trim();
+    }
+
+    // Extract difficulty if present
+    const difficultyMatch = block.match(/(?:Difficulty|Level):\s*(easy|medium|hard)/i);
+    if (difficultyMatch) {
+      difficulty = difficultyMatch[1].toLowerCase() as "easy" | "medium" | "hard";
+    }
+
+    // Only add if we have both front and back content
+    if (front && back && front.length > 3 && back.length > 3) {
+      flashcards.push({
+        id: `flashcard-${Date.now()}-${index}`,
+        front: front,
+        back: back,
+        topic: topic || undefined,
+        difficulty: difficulty,
+        isFlipped: false,
+        confidence: "medium",
+      });
+    }
+  });
+
+  return flashcards;
+};
+
 const AIChatSidebar = ({
   currentNote,
   context,
@@ -563,11 +649,13 @@ const AIChatSidebar = ({
   const [practiceQuestions, setPracticeQuestions] = useState<
     PracticeQuestion[]
   >([]);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [allNotes, setAllNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notesLoadError, setNotesLoadError] = useState<string | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
+  const [isFlashcardsLoading, setIsFlashcardsLoading] = useState(false);
   const [aiSessions, setAISessions] = useState<AISession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -884,7 +972,7 @@ const AIChatSidebar = ({
 
   // Save current session to database
   const saveCurrentSession = async (
-    sessionType: "chat" | "summary" | "practice",
+    sessionType: "chat" | "summary" | "practice" | "flashcards",
     title: string,
     sessionMessages: Message[],
     metadata: any = {},
@@ -1208,6 +1296,87 @@ const AIChatSidebar = ({
     }
   };
 
+  const handleGenerateFlashcards = async () => {
+    if (!user || allNotes.length === 0) return;
+
+    setActiveTab("flashcards");
+    setIsFlashcardsLoading(true);
+
+    try {
+      const response = await fetch("/api/ai-assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "flashcards",
+          notes: allNotes || [],
+          context: context || {},
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate flashcards");
+      }
+
+      const responseText =
+        typeof data.response === "string"
+          ? data.response
+          : data.response?.text ||
+            "No flashcards could be generated from your notes.";
+
+      console.log("AI Response for flashcards:", responseText);
+
+      // Parse the response to extract flashcards
+      const parsedFlashcards = parseFlashcards(responseText);
+
+      console.log("Parsed flashcards result:", parsedFlashcards);
+
+      if (parsedFlashcards.length > 0) {
+        setFlashcards(parsedFlashcards);
+
+        // Save session for flashcards
+        const flashcardsTitle = `Flashcards: ${context?.currentPage?.title || context?.currentSection?.name || "Study Session"}`;
+        await saveCurrentSession("flashcards" as any, flashcardsTitle, [], {
+          flashcardsCount: parsedFlashcards.length,
+          context: context || {},
+          rawResponse: responseText,
+        });
+      } else {
+        console.warn("No flashcards parsed from AI response. Raw response:", responseText);
+        
+        // Fallback flashcard
+        const fallbackFlashcard: Flashcard = {
+          id: `flashcard-fallback-${Date.now()}`,
+          front: "What are the main topics covered in your notes?",
+          back: "Review your notes to identify key concepts, definitions, and important information that should be studied.",
+          difficulty: "medium",
+          topic: "Study Strategy",
+          isFlipped: false,
+          confidence: "medium",
+        };
+        setFlashcards([fallbackFlashcard]);
+      }
+    } catch (error) {
+      console.error("Error generating flashcards:", error);
+      
+      // Show error flashcard
+      const errorFlashcard: Flashcard = {
+        id: `flashcard-error-${Date.now()}`,
+        front: "Error generating flashcards",
+        back: `There was an error creating flashcards: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
+        difficulty: "medium",
+        isFlipped: false,
+        confidence: "low",
+      };
+      setFlashcards([errorFlashcard]);
+    } finally {
+      setIsFlashcardsLoading(false);
+    }
+  };
+
   const handleAnalyzeNote = async () => {
     onAnalyzeNote();
     setActiveTab("chat");
@@ -1392,6 +1561,26 @@ const AIChatSidebar = ({
     }
   };
 
+  const handleFlipCard = (cardId: string) => {
+    setFlashcards(prev => 
+      prev.map(card => 
+        card.id === cardId 
+          ? { ...card, isFlipped: !card.isFlipped }
+          : card
+      )
+    );
+  };
+
+  const handleCardConfidence = (cardId: string, confidence: "low" | "medium" | "high") => {
+    setFlashcards(prev => 
+      prev.map(card => 
+        card.id === cardId 
+          ? { ...card, confidence }
+          : card
+      )
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -1453,6 +1642,13 @@ const AIChatSidebar = ({
             >
               <BookOpen size={14} />
               Practice
+            </TabsTrigger>
+            <TabsTrigger
+              value="flashcards"
+              className="flex gap-1 items-center text-xs"
+            >
+              <CreditCard size={14} />
+              Flashcards
             </TabsTrigger>
             <TabsTrigger
               value="history"
@@ -1574,6 +1770,19 @@ const AIChatSidebar = ({
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       "Practice"
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateFlashcards}
+                    disabled={isFlashcardsLoading}
+                    className="text-xs h-7 px-2"
+                  >
+                    {isFlashcardsLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      "Flashcards"
                     )}
                   </Button>
                   <Button
@@ -1975,6 +2184,183 @@ const AIChatSidebar = ({
           </TabsContent>
 
           <TabsContent
+            value="flashcards"
+            className="flex-1 flex flex-col m-0 data-[state=active]:flex h-full"
+          >
+            {/* Flashcards Content - Takes up all available space */}
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full w-full">
+                <div className="p-4 space-y-4">
+                  {isFlashcardsLoading && (
+                    <Card className="border-dashed">
+                      <CardContent className="py-6">
+                        <div className="flex items-center justify-center gap-3">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <span className="text-sm font-medium">
+                            Generating flashcards...
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {flashcards.map((card, index) => (
+                    <Card
+                      key={card.id}
+                      className="shadow-sm hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => handleFlipCard(card.id)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <CardTitle className="text-sm font-semibold">
+                              Flashcard {index + 1}
+                              {card.topic && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  • {card.topic}
+                                </span>
+                              )}
+                            </CardTitle>
+                            <div className="flex gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {card.difficulty}
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  card.confidence === "high" 
+                                    ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-950/50 dark:text-green-400 dark:border-green-800"
+                                    : card.confidence === "low"
+                                    ? "bg-red-50 text-red-700 border-red-300 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800"
+                                    : "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950/50 dark:text-yellow-400 dark:border-yellow-800"
+                                }`}
+                              >
+                                {card.confidence} confidence
+                              </Badge>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFlipCard(card.id);
+                            }}
+                            className="h-7 w-7 p-0"
+                            title="Flip card"
+                          >
+                            <RotateCcw size={12} />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="min-h-[120px] flex items-center justify-center">
+                          <div className="text-center w-full">
+                            <div className="mb-2">
+                              <Badge variant="outline" className="text-xs mb-3">
+                                {card.isFlipped ? "Back" : "Front"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-medium leading-relaxed">
+                              {card.isFlipped ? card.back : card.front}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {card.isFlipped && (
+                          <div className="mt-4 pt-4 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-3 text-center">
+                              How well did you know this?
+                            </p>
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant={card.confidence === "low" ? "default" : "outline"}
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCardConfidence(card.id, "low");
+                                }}
+                                className="text-xs h-7 px-3"
+                              >
+                                Need Review
+                              </Button>
+                              <Button
+                                variant={card.confidence === "medium" ? "default" : "outline"}
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCardConfidence(card.id, "medium");
+                                }}
+                                className="text-xs h-7 px-3"
+                              >
+                                Okay
+                              </Button>
+                              <Button
+                                variant={card.confidence === "high" ? "default" : "outline"}
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCardConfidence(card.id, "high");
+                                }}
+                                className="text-xs h-7 px-3"
+                              >
+                                Know Well
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {!card.isFlipped && (
+                          <div className="mt-4 pt-4 border-t border-border/50 text-center">
+                            <p className="text-xs text-muted-foreground">
+                              Click to reveal answer
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {flashcards.length === 0 && !isFlashcardsLoading && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="rounded-full bg-muted/50 p-4 mb-4">
+                        <CreditCard className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="font-medium text-foreground mb-2">
+                        No flashcards yet
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                        Generate AI-powered flashcards from your notes to help memorize key concepts and definitions
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Generate Button - Fixed at bottom */}
+            <div className="flex-shrink-0 p-4 border-t bg-background/95 backdrop-blur-sm">
+              <Button
+                onClick={handleGenerateFlashcards}
+                className="w-full h-10"
+                disabled={
+                  isFlashcardsLoading || !allNotes || allNotes.length === 0
+                }
+              >
+                {isFlashcardsLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Generate New Flashcards
+                  </>
+                )}
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent
             value="history"
             className="flex-1 flex flex-col m-0 data-[state=active]:flex h-full"
           >
@@ -2016,6 +2402,9 @@ const AIChatSidebar = ({
                                 {session.session_type === "practice" && (
                                   <BookOpen size={10} className="mr-1" />
                                 )}
+                                {session.session_type === "flashcards" && (
+                                  <Award size={10} className="mr-1" />
+                                )}
                                 {session.session_type}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
@@ -2048,6 +2437,10 @@ const AIChatSidebar = ({
                                   session.session_type === "practice"
                                 ) {
                                   setActiveTab("practice");
+                                } else if (
+                                  session.session_type === "flashcards"
+                                ) {
+                                  setActiveTab("flashcards");
                                 }
                               }}
                               className="h-7 w-7 p-0 hover:bg-primary/10"

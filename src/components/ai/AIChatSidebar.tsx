@@ -566,8 +566,8 @@ const parseFlashcards = (text: string): Flashcard[] => {
     let difficulty: "easy" | "medium" | "hard" = "medium";
 
     // Look for front/back patterns
-    const frontMatch = block.match(/(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/is);
-    const backMatch = block.match(/(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is);
+    const frontMatch = block.match(/(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/i);
+    const backMatch = block.match(/(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/i);
     
     if (frontMatch && backMatch) {
       front = frontMatch[1].trim();

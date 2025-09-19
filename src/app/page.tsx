@@ -58,7 +58,7 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fade-in animations for sections
+  // Fade-in animations for sections - COMPREHENSIVE FIX
   useEffect(() => {
     if (!mounted) return;
 
@@ -69,32 +69,54 @@ export default function LandingPage() {
       { ref: collaborationSectionRef, name: 'Collaboration Section' },
     ];
 
-    // Create intersection observer
+    // Apply initial hidden state immediately
+    sections.forEach(({ ref, name }) => {
+      const section = ref.current;
+      if (section) {
+        console.log('Setting up fade animation for:', name);
+        // Add both classes for maximum compatibility
+        section.classList.add('fade-in-section', 'landing-section');
+        // Force initial state with inline styles as backup
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(60px)';
+        section.style.transition = 'opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)';
+      } else {
+        console.log('Section ref not found:', name);
+      }
+    });
+
+    // Create intersection observer with more aggressive settings
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const element = entry.target as HTMLElement;
-            // Add visible class for CSS transition
-            element.classList.add('visible');
+            console.log('Section coming into view:', element);
+            
+            // Apply animation with multiple methods for reliability
+            element.classList.add('visible', 'animate-in', 'animate-fade-in-up');
+            
+            // Also apply inline styles as backup
+            element.style.opacity = '1';
+            element.style.transform = 'translateY(0)';
+            
             // Stop observing this element once it's animated
             observer.unobserve(element);
           }
         });
       },
       {
-        threshold: 0.1, // Trigger when 10% of section is visible
-        rootMargin: '0px 0px -50px 0px', // Start animation 50px before section is fully visible
+        threshold: 0.05, // Very low threshold - trigger early
+        rootMargin: '0px 0px -20px 0px', // Start animation earlier
       }
     );
 
-    // Apply initial styles and observe sections
+    // Observe all sections
     sections.forEach(({ ref, name }) => {
       const section = ref.current;
       if (section) {
-        // Add fade-in-section class for initial hidden state
-        section.classList.add('fade-in-section');
         observer.observe(section);
+        console.log('Observing section:', name);
       }
     });
 

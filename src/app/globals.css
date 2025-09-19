@@ -281,24 +281,25 @@
     }
   }
 
-  /* Fade-in section utilities */
+  /* Fade-in section utilities - FIXED AND ENHANCED */
   .fade-in-section {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0 !important;
+    transform: translateY(60px) !important;
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    will-change: opacity, transform;
   }
 
   .fade-in-section.visible {
-    opacity: 1;
-    transform: translateY(0);
+    opacity: 1 !important;
+    transform: translateY(0) !important;
   }
 
-  /* Alternative fade-in animation using keyframes */
+  /* Alternative fade-in animation using keyframes - ENHANCED */
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(40px);
+      transform: translateY(60px);
     }
     to {
       opacity: 1;
@@ -307,7 +308,21 @@
   }
 
   .animate-fade-in-up {
-    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  /* Ensure sections are initially hidden */
+  .landing-section {
+    opacity: 0;
+    transform: translateY(60px);
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+
+  .landing-section.animate-in {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   /* Enhanced Hover Effects */

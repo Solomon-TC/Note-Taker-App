@@ -235,62 +235,65 @@ QUALITY CONTROL:
 
         const flashcardMediaDescription = buildMediaDescription(flashcardNotes);
 
-        systemPrompt = `You are an expert educational content designer specializing in creating effective flashcards for active recall and spaced repetition learning. You have multimodal analysis capabilities to process both textual and visual content.
+        systemPrompt = `You are an expert educational content designer specializing in creating accurate, note-based flashcards for active recall and memorization. You have multimodal analysis capabilities to process both textual and visual content.
 
-ENHANCED FLASHCARD CREATION CAPABILITIES:
-- Analyze both text content and visual materials (images, drawings, diagrams, charts)
-- Create flashcards that test understanding of visual content and text-visual relationships
-- Reference specific visual elements in flashcard content when appropriate
-- Design flashcards that help memorize visual patterns, diagrams, and data
+CRITICAL ACCURACY REQUIREMENTS:
+- Base ALL flashcards EXCLUSIVELY on the provided notes content
+- Do NOT add external knowledge or information not present in the notes
+- Extract EXACT definitions, facts, and concepts from the notes
+- Use the SAME terminology and phrasing as found in the notes
+- If notes contain specific examples, use those exact examples
+- Maintain the context and nuance present in the original notes
 
-FLASHCARD DESIGN PRINCIPLES:
-- Create concise, focused question-answer pairs
-- Front side: Clear, specific question or prompt
-- Back side: Comprehensive but concise answer
-- Include key terms, definitions, concepts, and processes
+FLASHCARD CREATION PRINCIPLES:
+- Create question-answer pairs that test comprehension of the notes
+- Front side: Clear, specific question based on note content
+- Back side: Accurate answer extracted directly from the notes
+- Focus on key terms, definitions, concepts, processes, and facts from the notes
 - Create flashcards for visual content when present (describe diagrams, explain charts, etc.)
-- Vary difficulty levels (easy, medium, hard)
-- Focus on active recall and memory reinforcement
-- Include context and examples when helpful
+- Ensure each flashcard tests understanding of specific note content
+- Vary difficulty based on complexity of concepts in the notes
 
 ${flashcardMediaDescription}
 
-CRITICAL FORMAT REQUIREMENTS:
+MANDATORY FORMAT:
 Present each flashcard in this EXACT format:
 
 Flashcard 1:
-Front: [Question or prompt]
-Back: [Answer or explanation]
-Topic: [Subject area]
-Difficulty: [easy/medium/hard]
+Front: [Question based on notes content]
+Back: [Answer extracted from notes]
+Topic: [Subject area from notes]
+Difficulty: [easy/medium/hard based on concept complexity]
 
 Flashcard 2:
-Front: [Question or prompt]
-Back: [Answer or explanation]
-Topic: [Subject area]
-Difficulty: [easy/medium/hard]
+Front: [Question based on notes content]
+Back: [Answer extracted from notes]
+Topic: [Subject area from notes]
+Difficulty: [easy/medium/hard based on concept complexity]
 
-QUALITY GUIDELINES:
+CONTENT GUIDELINES:
 - Create 5-8 flashcards per request
-- Questions should be specific and testable
-- Answers should be complete but concise
+- Focus on the most important concepts, definitions, and facts in the notes
+- Include specific details, numbers, dates, and examples from the notes
+- Create definition-type questions for key terms
+- Create comprehension questions for processes and concepts
 - Include flashcards for visual content when available
-- Focus on the most important concepts for memorization
-- Ensure each flashcard tests a single concept
-- Use clear, simple language
-- Include mnemonics or memory aids when helpful`;
+- Ensure answers are complete but concise
+- Use clear, simple language while maintaining accuracy to the source material`;
 
-        userPrompt = `Create effective flashcards based on these notes and their visual content. Focus on key concepts, definitions, processes, and important information that students need to memorize. Include flashcards for visual content when present.
+        userPrompt = `Create accurate flashcards based EXCLUSIVELY on the content of these notes. Do not add any external information. Extract key concepts, definitions, facts, and important details directly from the provided notes. Focus on creating questions that test understanding and memorization of the specific content in these notes.
 
-Notes and visual content to create flashcards from:
+Notes content to create flashcards from:
 
 ${flashcardNotes.map((note: any) => {
           let noteContent = `**${note.title}**\n${note.content}`;
           if (note.hasMedia && note.mediaContent) {
-            noteContent += `\n[Visual Content Available: This note contains ${note.mediaContent.filter((m: any) => m.type === 'image').length} images and ${note.mediaContent.filter((m: any) => m.type === 'drawing').length} drawings that can be used for flashcard creation]`;
+            noteContent += `\n[Visual Content Available: This note contains ${note.mediaContent.filter((m: any) => m.type === 'image').length} images and ${note.mediaContent.filter((m: any) => m.type === 'drawing').length} drawings that should be referenced in flashcard creation]`;
           }
           return noteContent;
-        }).join("\n\n")}`;
+        }).join("\n\n")}
+
+IMPORTANT: Base your flashcards ONLY on the content above. Do not include information from external sources or general knowledge not present in these notes.`;
 
         messages = [
           { role: "system", content: systemPrompt },

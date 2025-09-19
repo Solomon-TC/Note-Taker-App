@@ -565,13 +565,13 @@ const parseFlashcards = (text: string): Flashcard[] => {
     let topic = "";
     let difficulty: "easy" | "medium" | "hard" = "medium";
 
-    // Look for front/back patterns
+    // Look for front/back patterns with more flexible matching
     const frontMatch = block.match(/(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/i);
     const backMatch = block.match(/(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/i);
     
     if (frontMatch && backMatch) {
-      front = frontMatch[1].trim();
-      back = backMatch[1].trim();
+      front = frontMatch[1].trim().replace(/\n/g, " ");
+      back = backMatch[1].trim().replace(/\n/g, " ");
     } else {
       // Fallback: try to split by common patterns
       const colonSplit = block.split(/:\s*/);
@@ -600,7 +600,11 @@ const parseFlashcards = (text: string): Flashcard[] => {
       difficulty = difficultyMatch[1].toLowerCase() as "easy" | "medium" | "hard";
     }
 
-    // Only add if we have both front and back content
+    // Clean up the content
+    front = front.replace(/^(Front|Question|Term):\s*/i, "").trim();
+    back = back.replace(/^(Back|Answer|Definition):\s*/i, "").trim();
+
+    // Only add if we have both front and back content with meaningful length
     if (front && back && front.length > 3 && back.length > 3) {
       flashcards.push({
         id: `flashcard-${Date.now()}-${index}`,

@@ -60,45 +60,52 @@ export default function LandingPage() {
 
   // Fade-in animations for sections
   useEffect(() => {
-    const sections = [
-      aiSectionRef.current,
-      organizationSectionRef.current,
-      editorSectionRef.current,
-      collaborationSectionRef.current,
-    ].filter(Boolean);
+    if (!mounted) return;
 
-    if (sections.length === 0) return;
+    const sections = [
+      { ref: aiSectionRef, name: 'AI Section' },
+      { ref: organizationSectionRef, name: 'Organization Section' },
+      { ref: editorSectionRef, name: 'Editor Section' },
+      { ref: collaborationSectionRef, name: 'Collaboration Section' },
+    ];
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Add visible class for fade-in effect
-            entry.target.classList.add('visible');
-            // Also add the animation class as backup
+            console.log('Section coming into view:', entry.target);
+            // Remove hidden classes and add visible classes
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
             entry.target.classList.add('animate-fade-in-up');
           }
         });
       },
       {
-        threshold: 0.1, // Trigger when 10% of section is visible
-        rootMargin: '0px 0px -50px 0px', // Start animation 50px before section is fully visible
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px',
       }
     );
 
     // Apply initial styles and observe sections
-    sections.forEach((section) => {
+    sections.forEach(({ ref, name }) => {
+      const section = ref.current;
       if (section) {
-        // Set initial hidden state with fade-in-section class
-        section.classList.add('fade-in-section');
+        console.log('Setting up fade animation for:', name);
+        // Set initial hidden state
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(40px)';
+        section.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
         observer.observe(section);
+      } else {
+        console.log('Section ref not found:', name);
       }
     });
 
     return () => {
       observer.disconnect();
     };
-  }, [mounted]); // Add mounted dependency to ensure DOM is ready
+  }, [mounted]);
 
   // Video autoplay on scroll
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   Rocket,
   Shield,
   Globe,
+  Play,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -30,6 +31,7 @@ export default function LandingPage() {
   const { user, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -48,6 +50,35 @@ export default function LandingPage() {
       setActiveFeature((prev) => (prev + 1) % 3);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Video autoplay on scroll
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch((error) => {
+              console.log("Video autoplay failed:", error);
+            });
+          } else {
+            video.pause();
+          }
+        });
+      },
+      {
+        threshold: 0.5, // Play when 50% of video is visible
+      }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   // Show loading screen while checking authentication or mounting
@@ -214,8 +245,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Demo Video Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              See Scribly in Action
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Watch how Scribly transforms the way you take notes, organize your thoughts, 
+              and collaborate with classmates. Experience the future of learning.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-card border border-border">
+              <video
+                ref={videoRef}
+                className="w-full h-auto"
+                muted
+                loop
+                controls
+                playsInline
+                poster="/uploads/video-poster.jpg"
+              >
+                <source src="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              
+              {/* Video overlay for better UX */}
+              <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center">
+                  <Play className="h-8 w-8 text-primary-foreground ml-1" />
+                </div>
+              </div>
+            </div>
+
+            {/* Video description */}
+            <div className="text-center mt-8">
+              <p className="text-muted-foreground leading-relaxed">
+                This demo showcases Scribly's intuitive interface, powerful AI features, 
+                and seamless collaboration tools that make studying more effective and enjoyable.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* AI Assistant Section */}
-      <section id="features" className="py-20 bg-muted/30">
+      <section id="features" className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -278,7 +356,7 @@ export default function LandingPage() {
       </section>
 
       {/* Organization Section */}
-      <section className="py-20 bg-background">
+      <section className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -346,7 +424,7 @@ export default function LandingPage() {
       </section>
 
       {/* Rich Editor Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -385,7 +463,7 @@ export default function LandingPage() {
       </section>
 
       {/* Collaboration Section */}
-      <section className="py-20 bg-background">
+      <section className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">

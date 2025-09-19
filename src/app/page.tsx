@@ -67,21 +67,26 @@ export default function LandingPage() {
       collaborationSectionRef.current,
     ].filter(Boolean);
 
+    if (sections.length === 0) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             // Add visible class for fade-in effect
             entry.target.classList.add('visible');
+            // Also add the animation class as backup
+            entry.target.classList.add('animate-fade-in-up');
           }
         });
       },
       {
-        threshold: 0.15, // Trigger when 15% of section is visible
-        rootMargin: '0px 0px -100px 0px', // Start animation 100px before section is fully visible
+        threshold: 0.1, // Trigger when 10% of section is visible
+        rootMargin: '0px 0px -50px 0px', // Start animation 50px before section is fully visible
       }
     );
 
+    // Apply initial styles and observe sections
     sections.forEach((section) => {
       if (section) {
         // Set initial hidden state with fade-in-section class
@@ -93,7 +98,7 @@ export default function LandingPage() {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [mounted]); // Add mounted dependency to ensure DOM is ready
 
   // Video autoplay on scroll
   useEffect(() => {

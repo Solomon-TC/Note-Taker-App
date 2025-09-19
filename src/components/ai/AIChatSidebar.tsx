@@ -590,14 +590,14 @@ const parseFlashcards = (text: string): Flashcard[] => {
     ];
 
     // Try multiple patterns for front content
-    let frontMatch = null;
+    let frontMatch: RegExpMatchArray | null = null;
     for (const pattern of frontPatterns) {
       frontMatch = block.match(pattern);
       if (frontMatch) break;
     }
 
     // Try multiple patterns for back content
-    let backMatch = null;
+    let backMatch: RegExpMatchArray | null = null;
     for (const pattern of backPatterns) {
       backMatch = block.match(pattern);
       if (backMatch) break;

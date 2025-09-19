@@ -547,43 +547,125 @@ const extractExplanation = (block: string): string => {
 const parseFlashcards = (text: string): Flashcard[] => {
   const flashcards: Flashcard[] = [];
   
-  // Split by flashcard numbers or patterns
+  console.log("=== PARSING FLASHCARDS ===");
+  console.log("Raw AI response:", text);
+  
+  // Split by flashcard numbers or patterns - more comprehensive regex
   const cardBlocks = text
-    .split(/(?:Flashcard\s+\d+|Card\s+\d+|^\d+\.)/i)
+    .split(/(?:Flashcard\s+\d+|Card\s+\d+|^\d+\.|\n\d+\.)/i)
     .filter((block) => block.trim());
 
+  console.log(`Found ${cardBlocks.length} potential flashcard blocks`);
+
   cardBlocks.forEach((block, index) => {
+    console.log(`\n--- Processing block ${index + 1} ---`);
+    console.log("Block content:", block.substring(0, 200) + "...");
+    
     const lines = block
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line);
     
-    if (lines.length === 0) return;
+    if (lines.length === 0) {
+      console.log("Empty block, skipping");
+      return;
+    }
 
     let front = "";
     let back = "";
     let topic = "";
     let difficulty: "easy" | "medium" | "hard" = "medium";
 
-    // Look for front/back patterns with more flexible matching
-    const frontMatch = block.match(/(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/i);
-    const backMatch = block.match(/(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/i);
+    // Enhanced pattern matching for front/back content
+    const frontPatterns = [
+      /(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/is,
+      /(?:Q|Question):\s*(.+?)(?=(?:A|Answer):|$)/is,
+      /Front:\s*(.+?)(?=Back:|$)/is
+    ];
+    
+    const backPatterns = [
+      /(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is,
+      /(?:A|Answer):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is,
+      /Back:\s*(.+?)(?=Topic:|$)/is
+    ];
+
+    // Try multiple patterns for front content
+    let frontMatch = null;
+    for (const pattern of frontPatterns) {
+      frontMatch = block.match(pattern);
+      if (frontMatch) break;
+    }
+
+    // Try multiple patterns for back content
+    let backMatch = null;
+    for (const pattern of backPatterns) {
+      backMatch = block.match(pattern);
+      if (backMatch) break;
+    }
     
     if (frontMatch && backMatch) {
       front = frontMatch[1].trim().replace(/\n/g, " ");
       back = backMatch[1].trim().replace(/\n/g, " ");
+      console.log("Found front/back using patterns");
     } else {
-      // Fallback: try to split by common patterns
-      const colonSplit = block.split(/:\s*/);
-      if (colonSplit.length >= 2) {
-        front = colonSplit[0].trim();
-        back = colonSplit.slice(1).join(": ").trim();
-      } else {
-        // Last resort: use first substantial line as front, rest as back
-        const substantialLines = lines.filter(line => line.length > 5);
+      console.log("Pattern matching failed, trying fallback methods");
+      
+      // Fallback 1: Look for colon-separated content
+      const colonLines = lines.filter(line => line.includes(':'));
+      if (colonLines.length >= 2) {
+        const frontLine = colonLines.find(line => 
+          line.toLowerCase().includes('front') || 
+          line.toLowerCase().includes('question') ||
+          line.toLowerCase().includes('q:')
+        );
+        const backLine = colonLines.find(line => 
+          line.toLowerCase().includes('back') || 
+          line.toLowerCase().includes('answer') ||
+          line.toLowerCase().includes('a:')
+        );
+        
+        if (frontLine && backLine) {
+          front = frontLine.split(':').slice(1).join(':').trim();
+          back = backLine.split(':').slice(1).join(':').trim();
+          console.log("Found front/back using colon method");
+        }
+      }
+      
+      // Fallback 2: Use line-by-line analysis
+      if (!front || !back) {
+        const substantialLines = lines.filter(line => 
+          line.length > 10 && 
+          !line.toLowerCase().includes('flashcard') &&
+          !line.toLowerCase().includes('topic:') &&
+          !line.toLowerCase().includes('difficulty:')
+        );
+        
         if (substantialLines.length >= 2) {
-          front = substantialLines[0];
-          back = substantialLines.slice(1).join(" ");
+          // Look for question-like patterns in the first few lines
+          const questionLine = substantialLines.find(line => 
+            line.includes('?') || 
+            line.toLowerCase().startsWith('what') ||
+            line.toLowerCase().startsWith('how') ||
+            line.toLowerCase().startsWith('when') ||
+            line.toLowerCase().startsWith('where') ||
+            line.toLowerCase().startsWith('why') ||
+            line.toLowerCase().startsWith('define') ||
+            line.toLowerCase().startsWith('explain')
+          );
+          
+          if (questionLine) {
+            front = questionLine;
+            // Find the next substantial line as the answer
+            const questionIndex = substantialLines.indexOf(questionLine);
+            if (questionIndex + 1 < substantialLines.length) {
+              back = substantialLines[questionIndex + 1];
+            }
+          } else {
+            // Last resort: use first two substantial lines
+            front = substantialLines[0];
+            back = substantialLines[1];
+          }
+          console.log("Found front/back using line analysis");
         }
       }
     }
@@ -601,23 +683,33 @@ const parseFlashcards = (text: string): Flashcard[] => {
     }
 
     // Clean up the content
-    front = front.replace(/^(Front|Question|Term):\s*/i, "").trim();
-    back = back.replace(/^(Back|Answer|Definition):\s*/i, "").trim();
+    front = front.replace(/^(Front|Question|Term|Q):\s*/i, "").trim();
+    back = back.replace(/^(Back|Answer|Definition|A):\s*/i, "").trim();
+
+    console.log(`Extracted - Front: "${front.substring(0, 50)}..."`);
+    console.log(`Extracted - Back: "${back.substring(0, 50)}..."`);
+    console.log(`Topic: "${topic}", Difficulty: "${difficulty}"`);
 
     // Only add if we have both front and back content with meaningful length
-    if (front && back && front.length > 3 && back.length > 3) {
-      flashcards.push({
+    if (front && back && front.length > 5 && back.length > 5) {
+      const flashcard = {
         id: `flashcard-${Date.now()}-${index}`,
         front: front,
         back: back,
         topic: topic || undefined,
         difficulty: difficulty,
         isFlipped: false,
-        confidence: "medium",
-      });
+        confidence: "medium" as const,
+      };
+      
+      flashcards.push(flashcard);
+      console.log(`✅ Added flashcard ${flashcards.length}`);
+    } else {
+      console.log(`❌ Skipped block - insufficient content. Front: ${front.length} chars, Back: ${back.length} chars`);
     }
   });
 
+  console.log(`=== PARSING COMPLETE: ${flashcards.length} flashcards created ===`);
   return flashcards;
 };
 
@@ -1307,6 +1399,10 @@ const AIChatSidebar = ({
     setIsFlashcardsLoading(true);
 
     try {
+      console.log("🎯 Starting flashcard generation...");
+      console.log("Notes available:", allNotes.length);
+      console.log("Context:", context);
+
       const response = await fetch("/api/ai-assistant", {
         method: "POST",
         headers: {
@@ -1331,12 +1427,18 @@ const AIChatSidebar = ({
           : data.response?.text ||
             "No flashcards could be generated from your notes.";
 
-      console.log("AI Response for flashcards:", responseText);
+      console.log("🤖 AI Response received:");
+      console.log("Response length:", responseText.length);
+      console.log("First 500 chars:", responseText.substring(0, 500));
 
       // Parse the response to extract flashcards
       const parsedFlashcards = parseFlashcards(responseText);
 
-      console.log("Parsed flashcards result:", parsedFlashcards);
+      console.log("📚 Parsing results:");
+      console.log("Flashcards parsed:", parsedFlashcards.length);
+      parsedFlashcards.forEach((card, index) => {
+        console.log(`Card ${index + 1}: "${card.front}" -> "${card.back}"`);
+      });
 
       if (parsedFlashcards.length > 0) {
         setFlashcards(parsedFlashcards);
@@ -1348,29 +1450,45 @@ const AIChatSidebar = ({
           context: context || {},
           rawResponse: responseText,
         });
+
+        console.log(`✅ Successfully generated ${parsedFlashcards.length} flashcards`);
       } else {
-        console.warn("No flashcards parsed from AI response. Raw response:", responseText);
+        console.warn("⚠️ No flashcards parsed from AI response");
+        console.log("Raw response for debugging:", responseText);
         
-        // Fallback flashcard
-        const fallbackFlashcard: Flashcard = {
-          id: `flashcard-fallback-${Date.now()}`,
-          front: "What are the main topics covered in your notes?",
-          back: "Review your notes to identify key concepts, definitions, and important information that should be studied.",
-          difficulty: "medium",
-          topic: "Study Strategy",
-          isFlipped: false,
-          confidence: "medium",
-        };
-        setFlashcards([fallbackFlashcard]);
+        // Enhanced fallback with better content
+        const fallbackFlashcards: Flashcard[] = [
+          {
+            id: `flashcard-fallback-1-${Date.now()}`,
+            front: "What are the main topics covered in your notes?",
+            back: "Review your notes to identify key concepts, definitions, and important information that should be studied.",
+            difficulty: "medium",
+            topic: "Study Strategy",
+            isFlipped: false,
+            confidence: "medium",
+          },
+          {
+            id: `flashcard-fallback-2-${Date.now()}`,
+            front: "How can you improve your note-taking for better flashcard generation?",
+            back: "Include clear definitions, key terms, important facts, and specific examples in your notes to help AI create better flashcards.",
+            difficulty: "medium",
+            topic: "Study Tips",
+            isFlipped: false,
+            confidence: "medium",
+          }
+        ];
+        
+        setFlashcards(fallbackFlashcards);
+        console.log("📝 Added fallback flashcards");
       }
     } catch (error) {
-      console.error("Error generating flashcards:", error);
+      console.error("❌ Error generating flashcards:", error);
       
-      // Show error flashcard
+      // Show error flashcard with helpful information
       const errorFlashcard: Flashcard = {
         id: `flashcard-error-${Date.now()}`,
         front: "Error generating flashcards",
-        back: `There was an error creating flashcards: ${error instanceof Error ? error.message : "Unknown error"}. Please try again.`,
+        back: `There was an error creating flashcards: ${error instanceof Error ? error.message : "Unknown error"}. Please try again or check that your notes contain sufficient content for flashcard generation.`,
         difficulty: "medium",
         isFlipped: false,
         confidence: "low",

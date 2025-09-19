@@ -237,51 +237,60 @@ QUALITY CONTROL:
 
         systemPrompt = `You are an expert educational content designer specializing in creating accurate, note-based flashcards for active recall and memorization. You have multimodal analysis capabilities to process both textual and visual content.
 
-CRITICAL ACCURACY REQUIREMENTS:
+CRITICAL REQUIREMENTS:
+- Create EXACTLY 6-10 flashcards to comprehensively cover the note content
 - Base ALL flashcards EXCLUSIVELY on the provided notes content
 - Do NOT add external knowledge or information not present in the notes
 - Extract EXACT definitions, facts, and concepts from the notes
 - Use the SAME terminology and phrasing as found in the notes
-- If notes contain specific examples, use those exact examples
-- Maintain the context and nuance present in the original notes
+- Create clear question-answer pairs with specific, factual answers
 
-FLASHCARD CREATION PRINCIPLES:
-- Create question-answer pairs that test comprehension of the notes
-- Front side: Clear, specific question based on note content
-- Back side: Accurate answer extracted directly from the notes
-- Focus on key terms, definitions, concepts, processes, and facts from the notes
-- Create flashcards for visual content when present (describe diagrams, explain charts, etc.)
-- Ensure each flashcard tests understanding of specific note content
-- Vary difficulty based on complexity of concepts in the notes
+FLASHCARD CREATION STRATEGY:
+- Cover ALL major concepts, definitions, and facts in the notes
+- Create flashcards for key terms and their definitions
+- Include specific details, numbers, dates, and examples from the notes
+- Create process-based questions for step-by-step information
+- Include comparison questions for related concepts
+- Create application questions using examples from the notes
+- Ensure comprehensive coverage of the entire note content
 
 ${flashcardMediaDescription}
 
-MANDATORY FORMAT:
-Present each flashcard in this EXACT format:
+MANDATORY FORMAT - Follow this EXACT structure for EACH flashcard:
 
 Flashcard 1:
-Front: [Question based on notes content]
-Back: [Answer extracted from notes]
+Front: What is [specific term from notes]?
+Back: [Exact definition from notes]
 Topic: [Subject area from notes]
-Difficulty: [easy/medium/hard based on concept complexity]
+Difficulty: easy
 
 Flashcard 2:
-Front: [Question based on notes content]
-Back: [Answer extracted from notes]
+Front: [Specific question about a fact from notes]
+Back: [Exact answer from notes with details]
 Topic: [Subject area from notes]
-Difficulty: [easy/medium/hard based on concept complexity]
+Difficulty: medium
+
+Continue this pattern for ALL flashcards...
 
 CONTENT GUIDELINES:
-- Create 5-8 flashcards per request
-- Focus on the most important concepts, definitions, and facts in the notes
+- Create 6-10 flashcards minimum to cover the entire content
+- Each flashcard must test a different concept or fact
+- Front side: Clear, specific question that can be answered definitively
+- Back side: Complete, accurate answer extracted directly from the notes
 - Include specific details, numbers, dates, and examples from the notes
-- Create definition-type questions for key terms
-- Create comprehension questions for processes and concepts
-- Include flashcards for visual content when available
-- Ensure answers are complete but concise
-- Use clear, simple language while maintaining accuracy to the source material`;
+- Vary question types: definitions, facts, processes, examples, comparisons
+- Ensure answers are complete but concise (1-3 sentences)
+- Use clear, simple language while maintaining accuracy to the source material
 
-        userPrompt = `Create accurate flashcards based EXCLUSIVELY on the content of these notes. Do not add any external information. Extract key concepts, definitions, facts, and important details directly from the provided notes. Focus on creating questions that test understanding and memorization of the specific content in these notes.
+QUALITY CONTROL:
+- Every flashcard must be answerable from the provided notes
+- No external information or general knowledge
+- Each flashcard should test understanding of specific note content
+- Ensure comprehensive coverage of all important information in the notes`;
+
+        userPrompt = `Create comprehensive flashcards based EXCLUSIVELY on the content of these notes. You must create 6-10 flashcards to thoroughly cover ALL the important information in the notes. Extract key concepts, definitions, facts, processes, and important details directly from the provided notes.
+
+Focus on creating questions with clear, specific answers that can be found in the notes. Cover the entire scope of the content - don't leave out important information.
 
 Notes content to create flashcards from:
 
@@ -293,7 +302,12 @@ ${flashcardNotes.map((note: any) => {
           return noteContent;
         }).join("\n\n")}
 
-IMPORTANT: Base your flashcards ONLY on the content above. Do not include information from external sources or general knowledge not present in these notes.`;
+IMPORTANT: 
+- Create 6-10 flashcards minimum to comprehensively cover this content
+- Base your flashcards ONLY on the content above
+- Do not include information from external sources
+- Follow the exact format specified
+- Ensure each flashcard tests different information from the notes`;
 
         messages = [
           { role: "system", content: systemPrompt },

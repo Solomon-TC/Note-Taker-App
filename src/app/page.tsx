@@ -57,22 +57,32 @@ export default function LandingPage() {
     const video = videoRef.current;
     if (!video) return;
 
+    // Function to attempt video play
+    const playVideo = async () => {
+      try {
+        await video.play();
+        console.log("Video started playing");
+      } catch (error) {
+        console.log("Video autoplay failed:", error);
+        // Fallback: show controls if autoplay fails
+        video.controls = true;
+      }
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             // Ensure video is loaded before trying to play
             if (video.readyState >= 2) {
-              video.play().catch((error) => {
-                console.log("Video autoplay failed:", error);
-              });
+              playVideo();
             } else {
               // Wait for video to load
-              video.addEventListener('loadeddata', () => {
-                video.play().catch((error) => {
-                  console.log("Video autoplay failed:", error);
-                });
-              }, { once: true });
+              const handleLoadedData = () => {
+                playVideo();
+                video.removeEventListener('loadeddata', handleLoadedData);
+              };
+              video.addEventListener('loadeddata', handleLoadedData);
             }
           } else {
             video.pause();
@@ -81,11 +91,14 @@ export default function LandingPage() {
       },
       {
         threshold: 0.3, // Play when 30% of video is visible
-        rootMargin: '0px 0px -100px 0px' // Start playing a bit before fully visible
+        rootMargin: '0px 0px -50px 0px' // Start playing a bit before fully visible
       }
     );
 
     observer.observe(video);
+
+    // Also try to load the video immediately
+    video.load();
 
     return () => {
       observer.disconnect();
@@ -278,11 +291,12 @@ export default function LandingPage() {
                 loop
                 controls
                 playsInline
-                preload="metadata"
-                poster="/uploads/video-poster.png"
+                preload="auto"
+                poster="/uploads/video-poster-new.png"
                 style={{ minHeight: '400px' }}
               >
                 <source src="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4" type="video/mp4" />
+                <source src="./uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
               

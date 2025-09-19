@@ -71,21 +71,21 @@ export default function LandingPage() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
-            entry.target.classList.remove('opacity-0', 'translate-y-8');
+            // Add visible class for fade-in effect
+            entry.target.classList.add('visible');
           }
         });
       },
       {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px',
+        threshold: 0.15, // Trigger when 15% of section is visible
+        rootMargin: '0px 0px -100px 0px', // Start animation 100px before section is fully visible
       }
     );
 
     sections.forEach((section) => {
       if (section) {
-        // Set initial state
-        section.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700', 'ease-out');
+        // Set initial hidden state with fade-in-section class
+        section.classList.add('fade-in-section');
         observer.observe(section);
       }
     });

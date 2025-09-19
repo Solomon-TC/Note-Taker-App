@@ -284,7 +284,7 @@
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(32px);
     }
     to {
       opacity: 1;
@@ -293,7 +293,20 @@
   }
 
   .animate-fade-in-up {
-    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Fade-in section utilities */
+  .fade-in-section {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fade-in-section.visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 
   /* Enhanced Hover Effects */

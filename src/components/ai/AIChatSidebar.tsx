@@ -578,15 +578,15 @@ const parseFlashcards = (text: string): Flashcard[] => {
 
     // Enhanced pattern matching for front/back content
     const frontPatterns = [
-      /(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/is,
-      /(?:Q|Question):\s*(.+?)(?=(?:A|Answer):|$)/is,
-      /Front:\s*(.+?)(?=Back:|$)/is
+      /(?:Front|Question|Term):\s*(.+?)(?=(?:Back|Answer|Definition):|$)/i,
+      /(?:Q|Question):\s*(.+?)(?=(?:A|Answer):|$)/i,
+      /Front:\s*(.+?)(?=Back:|$)/i
     ];
     
     const backPatterns = [
-      /(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is,
-      /(?:A|Answer):\s*(.+?)(?=(?:Topic|Difficulty):|$)/is,
-      /Back:\s*(.+?)(?=Topic:|$)/is
+      /(?:Back|Answer|Definition):\s*(.+?)(?=(?:Topic|Difficulty):|$)/i,
+      /(?:A|Answer):\s*(.+?)(?=(?:Topic|Difficulty):|$)/i,
+      /Back:\s*(.+?)(?=Topic:|$)/i
     ];
 
     // Try multiple patterns for front content

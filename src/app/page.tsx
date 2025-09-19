@@ -32,6 +32,12 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Refs for fade-in animations
+  const aiSectionRef = useRef<HTMLElement>(null);
+  const organizationSectionRef = useRef<HTMLElement>(null);
+  const editorSectionRef = useRef<HTMLElement>(null);
+  const collaborationSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -50,6 +56,43 @@ export default function LandingPage() {
       setActiveFeature((prev) => (prev + 1) % 3);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fade-in animations for sections
+  useEffect(() => {
+    const sections = [
+      aiSectionRef.current,
+      organizationSectionRef.current,
+      editorSectionRef.current,
+      collaborationSectionRef.current,
+    ].filter(Boolean);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fade-in-up');
+            entry.target.classList.remove('opacity-0', 'translate-y-8');
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px',
+      }
+    );
+
+    sections.forEach((section) => {
+      if (section) {
+        // Set initial state
+        section.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700', 'ease-out');
+        observer.observe(section);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   // Video autoplay on scroll
@@ -359,7 +402,7 @@ export default function LandingPage() {
       </section>
 
       {/* AI Assistant Section */}
-      <section id="features" className="py-20 bg-background">
+      <section ref={aiSectionRef} id="features" className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -422,7 +465,7 @@ export default function LandingPage() {
       </section>
 
       {/* Organization Section */}
-      <section className="py-20 bg-muted/30">
+      <section ref={organizationSectionRef} className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -490,7 +533,7 @@ export default function LandingPage() {
       </section>
 
       {/* Rich Editor Section */}
-      <section className="py-20 bg-background">
+      <section ref={editorSectionRef} className="py-20 bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -529,7 +572,7 @@ export default function LandingPage() {
       </section>
 
       {/* Collaboration Section */}
-      <section className="py-20 bg-muted/30">
+      <section ref={collaborationSectionRef} className="py-20 bg-muted/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">

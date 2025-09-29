@@ -51,6 +51,18 @@ type Page = Tables<"pages">;
 type PageInsert = TablesInsert<"pages">;
 type PageUpdate = TablesUpdate<"pages">;
 
+// Add state persistence interface
+interface DashboardState {
+  selectedNotebookId: string | null;
+  selectedSectionId: string | null;
+  selectedPageId: string | null;
+  isAIAssistantOpen: boolean;
+  timestamp: number;
+}
+
+const STORAGE_KEY = 'scribly_dashboard_state';
+const STATE_EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24 hours
+
 export default function DashboardPage() {
   const { user, loading, error, isPro } = useAuth();
   const router = useRouter();
@@ -77,9 +89,120 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const dataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasInitialized = useRef(false);
+  const stateRestoredRef = useRef(false);
+  const visibilityHandlerRef = useRef<(() => void) | null>(null);
+  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use direct type casting to bypass Supabase type inference issues
   const supabaseTyped = supabase as any;
+
+  // Save dashboard state to localStorage
+  const saveDashboardState = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    const state: DashboardState = {
+      selectedNotebookId,
+      selectedSectionId,
+      selectedPageId,
+      isAIAssistantOpen,
+      timestamp: Date.now(),
+    };
+    
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      console.log('💾 Dashboard: State saved to localStorage');
+    } catch (error) {
+      console.error('💾 Dashboard: Error saving state:', error);
+    }
+  }, [selectedNotebookId, selectedSectionId, selectedPageId, isAIAssistantOpen]);
+
+  // Restore dashboard state from localStorage
+  const restoreDashboardState = useCallback(() => {
+    if (typeof window === 'undefined' || stateRestoredRef.current) return;
+    
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (!savedState) return;
+      
+      const state: DashboardState = JSON.parse(savedState);
+      
+      // Check if state is not expired
+      if (Date.now() - state.timestamp > STATE_EXPIRY_TIME) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      
+      console.log('🔄 Dashboard: Restoring state from localStorage:', state);
+      
+      // Restore state
+      if (state.selectedNotebookId) {
+        setSelectedNotebookId(state.selectedNotebookId);
+      }
+      if (state.selectedSectionId) {
+        setSelectedSectionId(state.selectedSectionId);
+      }
+      if (state.selectedPageId) {
+        setSelectedPageId(state.selectedPageId);
+      }
+      setIsAIAssistantOpen(state.isAIAssistantOpen || false);
+      
+      stateRestoredRef.current = true;
+    } catch (error) {
+      console.error('🔄 Dashboard: Error restoring state:', error);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  // Handle page visibility changes for better session management
+  const handleVisibilityChange = useCallback(async () => {
+    if (document.visibilityState === 'visible') {
+      console.log('👁️ Dashboard: Page became visible, refreshing data');
+      
+      // Refresh session and data when page becomes visible
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && user) {
+          // Optionally refresh data if needed
+          console.log('👁️ Dashboard: Session valid, continuing...');
+        }
+      } catch (error) {
+        console.error('👁️ Dashboard: Error checking session on visibility change:', error);
+      }
+    } else {
+      console.log('👁️ Dashboard: Page became hidden, saving state');
+      saveDashboardState();
+    }
+  }, [supabase, user, saveDashboardState]);
+
+  // Set up page visibility listener
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      visibilityHandlerRef.current = handleVisibilityChange;
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Also save state on beforeunload
+      const handleBeforeUnload = () => {
+        saveDashboardState();
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      return () => {
+        if (visibilityHandlerRef.current) {
+          document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+          visibilityHandlerRef.current = null;
+        }
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [handleVisibilityChange, saveDashboardState]);
+
+  // Save state whenever selections change
+  useEffect(() => {
+    if (stateRestoredRef.current) {
+      saveDashboardState();
+    }
+  }, [selectedNotebookId, selectedSectionId, selectedPageId, isAIAssistantOpen, saveDashboardState]);
 
   // Load user data - memoized to prevent infinite loops
   const loadUserData = useCallback(async () => {
@@ -153,6 +276,12 @@ export default function DashboardPage() {
         sections: sectionsResult.data?.length || 0,
         pages: pagesResult.data?.length || 0,
       });
+
+      // Restore state after data is loaded
+      setTimeout(() => {
+        restoreDashboardState();
+      }, 100);
+
     } catch (error) {
       console.error("🏠 Dashboard: Error loading user data:", error);
       setDataError(
@@ -161,7 +290,7 @@ export default function DashboardPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [user?.id, supabaseTyped]); // Fixed: Only depend on user.id and supabase client
+  }, [user?.id, supabaseTyped, restoreDashboardState]); // Fixed: Only depend on user.id and supabase client
 
   // Load user data when user is available and not loading - with proper dependencies
   useEffect(() => {
@@ -542,6 +671,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Enhanced autosave with better error handling and resilience
   const handleAutoSavePage = async (pageData: {
     id: string;
     title: string;
@@ -556,6 +686,11 @@ export default function DashboardPage() {
       throw new Error("User not authenticated");
     }
 
+    // Clear any existing autosave timeout
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+
     // Validate required data
     if (!pageData.id) {
       console.error("No page ID provided for autosave");
@@ -567,81 +702,39 @@ export default function DashboardPage() {
       throw new Error("Valid content JSON is required");
     }
 
-    try {
-      console.log("Dashboard: Starting autosave for page:", pageData.id);
-      console.log("Dashboard: Update data:", {
-        title: pageData.title,
-        contentLength: pageData.content.length,
-        hasContentJson: !!pageData.contentJson,
-        contentJsonType: typeof pageData.contentJson,
-        contentJsonValid: pageData.contentJson.type === "doc",
-        userId: user.id,
-        timestamp: new Date().toISOString(),
-      });
+    // Debounce autosave to prevent too frequent saves
+    return new Promise<void>((resolve, reject) => {
+      autosaveTimeoutRef.current = setTimeout(async () => {
+        try {
+          console.log("Dashboard: Starting autosave for page:", pageData.id);
+          console.log("Dashboard: Update data:", {
+            title: pageData.title,
+            contentLength: pageData.content.length,
+            hasContentJson: !!pageData.contentJson,
+            contentJsonType: typeof pageData.contentJson,
+            contentJsonValid: pageData.contentJson.type === "doc",
+            userId: user.id,
+            timestamp: new Date().toISOString(),
+          });
 
-      // Validate content JSON structure
-      const validatedContentJson = safeJsonParse(pageData.contentJson);
+          // Validate content JSON structure
+          const validatedContentJson = safeJsonParse(pageData.contentJson);
 
-      const updatePayload = {
-        title: pageData.title || "Untitled Page",
-        content: pageData.content || "",
-        content_json: validatedContentJson,
-        visibility: pageData.visibility || "private",
-        updated_at: new Date().toISOString(),
-      };
+          const updatePayload = {
+            title: pageData.title || "Untitled Page",
+            content: pageData.content || "",
+            content_json: validatedContentJson,
+            visibility: pageData.visibility || "private",
+            updated_at: new Date().toISOString(),
+          };
 
-      console.log("Dashboard: Sending update payload:", {
-        ...updatePayload,
-        content_json: "[JSON Object]", // Don't log the full JSON
-        content_json_size: JSON.stringify(updatePayload.content_json).length,
-      });
+          console.log("Dashboard: Sending update payload:", {
+            ...updatePayload,
+            content_json: "[JSON Object]", // Don't log the full JSON
+            content_json_size: JSON.stringify(updatePayload.content_json).length,
+          });
 
-      const { data, error } = await supabaseTyped
-        .from("pages")
-        .update(updatePayload)
-        .eq("id", pageData.id)
-        .eq("user_id", user.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Dashboard: Supabase error during autosave:", {
-          error,
-          pageId: pageData.id,
-          userId: user.id,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          timestamp: new Date().toISOString(),
-        });
-
-        // Enhanced error handling with specific error types
-        if (error.code === "42703") {
-          throw new Error(
-            `Database schema error: The content_json column is missing from the pages table. Please run the database migration.`,
-          );
-        }
-
-        if (error.code === "PGRST116") {
-          throw new Error(
-            `Page not found or access denied. Page ID: ${pageData.id}`,
-          );
-        }
-
-        if (error.message?.includes("content_json")) {
-          throw new Error(
-            `Content JSON error: ${error.message}. This may indicate a database schema issue.`,
-          );
-        }
-
-        if (error.message?.includes("schema cache")) {
-          // Force a schema refresh by retrying after a short delay
-          console.log("Schema cache error detected, retrying after delay...");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Retry the operation once
-          const { data: retryData, error: retryError } = await supabaseTyped
+          const { data, error } = await supabaseTyped
             .from("pages")
             .update(updatePayload)
             .eq("id", pageData.id)
@@ -649,45 +742,94 @@ export default function DashboardPage() {
             .select()
             .single();
 
-          if (retryError) {
-            throw new Error(
-              `Schema cache error persists: ${retryError.message}`,
-            );
+          if (error) {
+            console.error("Dashboard: Supabase error during autosave:", {
+              error,
+              pageId: pageData.id,
+              userId: user.id,
+              code: error.code,
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              timestamp: new Date().toISOString(),
+            });
+
+            // Enhanced error handling with specific error types
+            if (error.code === "42703") {
+              throw new Error(
+                `Database schema error: The content_json column is missing from the pages table. Please run the database migration.`,
+              );
+            }
+
+            if (error.code === "PGRST116") {
+              throw new Error(
+                `Page not found or access denied. Page ID: ${pageData.id}`,
+              );
+            }
+
+            if (error.message?.includes("content_json")) {
+              throw new Error(
+                `Content JSON error: ${error.message}. This may indicate a database schema issue.`,
+              );
+            }
+
+            if (error.message?.includes("schema cache")) {
+              // Force a schema refresh by retrying after a short delay
+              console.log("Schema cache error detected, retrying after delay...");
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+
+              // Retry the operation once
+              const { data: retryData, error: retryError } = await supabaseTyped
+                .from("pages")
+                .update(updatePayload)
+                .eq("id", pageData.id)
+                .eq("user_id", user.id)
+                .select()
+                .single();
+
+              if (retryError) {
+                throw new Error(
+                  `Schema cache error persists: ${retryError.message}`,
+                );
+              }
+
+              if (retryData) {
+                setPages((currentPages) =>
+                  currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
+                );
+                resolve();
+                return;
+              }
+            }
+
+            throw error;
           }
 
-          if (retryData) {
+          if (data) {
+            console.log("Dashboard: Autosave successful, updating local state");
+            // Update the pages state silently for autosave
             setPages((currentPages) =>
-              currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
+              currentPages.map((p) => (p.id === pageData.id ? data : p)),
             );
-            return;
+            resolve();
+          } else {
+            console.warn("Dashboard: No data returned from autosave");
+            throw new Error("No data returned from database update");
           }
+        } catch (error) {
+          console.error("Dashboard: Error auto-saving page:", {
+            error,
+            pageId: pageData.id,
+            userId: user?.id,
+            errorType: typeof error,
+            errorMessage: error instanceof Error ? error.message : "Unknown error",
+            errorStack: error instanceof Error ? error.stack : "No stack trace",
+            timestamp: new Date().toISOString(),
+          });
+          reject(error);
         }
-
-        throw error;
-      }
-
-      if (data) {
-        console.log("Dashboard: Autosave successful, updating local state");
-        // Update the pages state silently for autosave
-        setPages((currentPages) =>
-          currentPages.map((p) => (p.id === pageData.id ? data : p)),
-        );
-      } else {
-        console.warn("Dashboard: No data returned from autosave");
-        throw new Error("No data returned from database update");
-      }
-    } catch (error) {
-      console.error("Dashboard: Error auto-saving page:", {
-        error,
-        pageId: pageData.id,
-        userId: user?.id,
-        errorType: typeof error,
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-        errorStack: error instanceof Error ? error.stack : "No stack trace",
-        timestamp: new Date().toISOString(),
-      });
-      throw error;
-    }
+      }, 500); // 500ms debounce
+    });
   };
 
   const handleUpdatePage = async (pageId: string, updates: PageUpdate) => {
@@ -835,6 +977,18 @@ export default function DashboardPage() {
   }, []);
 
   const currentPage = getCurrentPage();
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+      }
+      if (dataTimeoutRef.current) {
+        clearTimeout(dataTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Show error screen for authentication errors
   if (error) {

@@ -31,9 +31,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Use refs to prevent infinite re-renders
   const mountedRef = useRef(true);
   const initializingRef = useRef(false);
+  const visibilityHandlerRef = useRef<(() => void) | null>(null);
   
   // Memoize supabase client to prevent recreation
   const supabase = useMemo(() => createClient(), []);
+
+  // Handle page visibility changes to maintain session continuity
+  const handleVisibilityChange = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    // When page becomes visible again, refresh the session
+    if (document.visibilityState === 'visible') {
+      console.log('🔄 AuthProvider: Page became visible, refreshing session');
+      
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!mountedRef.current) return;
+        
+        if (sessionError) {
+          console.error('🔄 AuthProvider: Session refresh error:', sessionError);
+          // Handle session errors gracefully
+          if (sessionError.message.includes('issued in the future')) {
+            console.warn('🔄 AuthProvider: Session time skew detected, clearing session');
+            await supabase.auth.signOut();
+            setUser(null);
+            setIsPro(false);
+            setError(null);
+          } else {
+            setError(sessionError.message);
+          }
+        } else if (session?.user) {
+          // Session is valid, update user state if needed
+          if (!user || user.id !== session.user.id) {
+            console.log('🔄 AuthProvider: Updating user from session refresh');
+            setUser(session.user);
+            setError(null);
+            
+            // Refresh pro status
+            try {
+              const { data: userData } = await supabase
+                .from("users")
+                .select("is_pro")
+                .eq("id", session.user.id)
+                .single();
+              
+              if (userData && mountedRef.current) {
+                setIsPro(userData.is_pro || false);
+              }
+            } catch (err) {
+              console.error('🔄 AuthProvider: Error refreshing pro status:', err);
+            }
+          }
+        } else if (user) {
+          // No session but we have a user - sign out
+          console.log('🔄 AuthProvider: No session found, signing out');
+          setUser(null);
+          setIsPro(false);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('🔄 AuthProvider: Error during visibility change handling:', err);
+      }
+    }
+  }, [supabase, user]);
+
+  // Set up page visibility listener
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      visibilityHandlerRef.current = handleVisibilityChange;
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        if (visibilityHandlerRef.current) {
+          document.removeEventListener('visibilitychange', visibilityHandlerRef.current);
+          visibilityHandlerRef.current = null;
+        }
+      };
+    }
+  }, [handleVisibilityChange]);
 
   // Memoize checkProStatus to prevent recreation
   const checkProStatus = useCallback(async (userId: string) => {
@@ -64,6 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Handle auth state changes
   const handleAuthStateChange = useCallback(async (event: AuthChangeEvent, session: Session | null) => {
     if (!mountedRef.current) return;
+
+    console.log('🔐 AuthProvider: Auth state change:', event, !!session);
 
     try {
       setUser(session?.user ?? null);
@@ -236,6 +314,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
+      // Clear any stored state before signing out
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('scribly_dashboard_state');
+      }
+      
       await supabase.auth.signOut();
       setError(null);
       setIsPro(false);

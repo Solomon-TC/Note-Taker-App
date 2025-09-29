@@ -59,6 +59,7 @@ interface NoteEditorProps {
     sectionId?: string;
     parentPageId?: string;
   }) => Promise<void>;
+  onContentChange?: (content: string, contentJson: TiptapDocument) => void;
 }
 
 const NoteEditor = ({
@@ -72,6 +73,7 @@ const NoteEditor = ({
   onSave = async () => {},
   onTitleChange = () => {},
   onAutoSave,
+  onContentChange,
 }: NoteEditorProps) => {
   const { user } = useAuth();
   const [title, setTitle] = useState(initialTitle);
@@ -514,6 +516,12 @@ const NoteEditor = ({
 
   const handleContentChange = (newContent: TiptapDocument) => {
     setContent(newContent);
+    
+    // Call the onContentChange callback if provided
+    if (onContentChange) {
+      const plainTextContent = extractPlainText(newContent);
+      onContentChange(plainTextContent, newContent);
+    }
   };
 
   const handleEditorTitleChange = (newTitle: string) => {

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { Database } from "@/types/supabase";
+import { useAutosave } from "@/lib/hooks/useAutosave";
 
 import {
   safeJsonParse,
@@ -98,7 +99,7 @@ export default function DashboardPage() {
   const hasInitialized = useRef(false);
   const stateRestoredRef = useRef(false);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
-  const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Removed autosaveTimeoutRef - now handled by useAutosave hook
   const pageWasHiddenRef = useRef(false);
   const lastVisibilityChangeRef = useRef<number>(Date.now());
   const sessionRefreshedRef = useRef(false);
@@ -668,8 +669,172 @@ export default function DashboardPage() {
     }
   };
 
-  // Simplified autosave function that always uses fresh client
-  const handleAutoSavePage = async (pageData: {
+  // Current page data for autosave
+  const currentPageDataRef = useRef<{
+    id: string;
+    title: string;
+    content: string;
+    contentJson: TiptapDocument;
+    visibility: PageVisibility;
+    sectionId?: string;
+    parentPageId?: string;
+  } | null>(null);
+
+  // Autosave function that works with the useAutosave hook
+  const performAutosave = useCallback(async () => {
+    const pageData = currentPageDataRef.current;
+    
+    if (!pageData || !user) {
+      console.log('💾 Dashboard: No page data or user for autosave');
+      return;
+    }
+
+    try {
+      console.log("💾 Dashboard: Starting autosave for page:", pageData.id);
+
+      // CRITICAL: Always create a fresh Supabase client for autosave operations
+      const freshSupabase = createFreshSupabaseClient();
+      
+      // Get current session with fresh client
+      const { data: { session }, error: sessionError } = await freshSupabase.auth.getSession();
+      
+      if (sessionError || !session?.user) {
+        console.error("💾 Dashboard: Session validation failed:", sessionError);
+        throw new Error("Session validation failed - please refresh the page");
+      }
+
+      console.log("💾 Dashboard: Session validated successfully for autosave");
+
+      // Validate content JSON structure
+      const validatedContentJson = safeJsonParse(pageData.contentJson);
+
+      const updatePayload = {
+        title: pageData.title || "Untitled Page",
+        content: pageData.content || "",
+        content_json: validatedContentJson,
+        visibility: pageData.visibility || "private",
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log("💾 Dashboard: Sending update payload:", {
+        ...updatePayload,
+        content_json: "[JSON Object]", // Don't log the full JSON
+        content_json_size: JSON.stringify(updatePayload.content_json).length,
+      });
+
+      // Use the fresh supabase client for the save operation
+      const { data, error } = await (freshSupabase as any)
+        .from("pages")
+        .update(updatePayload)
+        .eq("id", pageData.id)
+        .eq("user_id", session.user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("💾 Dashboard: Supabase error during autosave:", {
+          error,
+          pageId: pageData.id,
+          userId: user.id,
+          sessionUserId: session.user.id,
+          code: error.code,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Handle specific error types
+        if (error.code === "42703") {
+          throw new Error(
+            "Database schema error: The content_json column is missing from the pages table. Please run the database migration.",
+          );
+        }
+
+        if (error.code === "PGRST116") {
+          throw new Error(
+            `Page not found or access denied. Page ID: ${pageData.id}`,
+          );
+        }
+
+        // For JWT/session errors, try one more time with another fresh client
+        if (error.message?.includes("JWT") || error.message?.includes("expired") || error.message?.includes("invalid") || error.message?.includes("token")) {
+          console.log("💾 Dashboard: JWT error detected, attempting one retry with fresh client");
+          
+          try {
+            // Create another completely fresh client
+            const retrySupabase = createFreshSupabaseClient();
+            const { data: { session: retrySession }, error: retrySessionError } = await retrySupabase.auth.getSession();
+            
+            if (retrySessionError || !retrySession) {
+              throw new Error("Session validation failed on retry");
+            }
+            
+            // Retry the save operation
+            const { data: retryData, error: retryError } = await (retrySupabase as any)
+              .from("pages")
+              .update(updatePayload)
+              .eq("id", pageData.id)
+              .eq("user_id", retrySession.user.id)
+              .select()
+              .single();
+            
+            if (retryError) {
+              throw new Error(`Retry save failed: ${retryError.message}`);
+            }
+            
+            if (retryData) {
+              console.log("💾 Dashboard: Autosave successful on retry");
+              setPages((currentPages) =>
+                currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
+              );
+              return;
+            }
+          } catch (retryError) {
+            console.error("💾 Dashboard: Retry attempt failed:", retryError);
+            throw new Error("Session expired - please refresh the page to continue");
+          }
+        }
+
+        if (error.message?.includes("content_json")) {
+          throw new Error(
+            `Content JSON error: ${error.message}. This may indicate a database schema issue.`,
+          );
+        }
+
+        // For any other error, just throw it
+        throw error;
+      }
+
+      if (data) {
+        console.log("💾 Dashboard: Autosave successful, updating local state");
+        // Update the pages state silently for autosave
+        setPages((currentPages) =>
+          currentPages.map((p) => (p.id === pageData.id ? data : p)),
+        );
+      } else {
+        console.warn("💾 Dashboard: No data returned from autosave");
+        throw new Error("No data returned from database update");
+      }
+    } catch (error) {
+      console.error("💾 Dashboard: Error auto-saving page:", {
+        error,
+        pageId: pageData?.id,
+        userId: user?.id,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
+    }
+  }, [user, createFreshSupabaseClient]);
+
+  // Initialize the autosave hook
+  const { manualSave, restartAutosave, isActive } = useAutosave(performAutosave, {
+    interval: 5000, // 5 seconds
+    enabled: !!currentPageDataRef.current && !!user, // Only enable when we have page data and user
+  });
+
+  // Function to update current page data for autosave
+  const updateCurrentPageData = useCallback((pageData: {
     id: string;
     title: string;
     content: string;
@@ -678,171 +843,31 @@ export default function DashboardPage() {
     sectionId?: string;
     parentPageId?: string;
   }) => {
-    if (!user) {
-      console.error("No user found for autosave");
-      throw new Error("User not authenticated");
+    currentPageDataRef.current = pageData;
+    console.log('📝 Dashboard: Updated current page data for autosave:', pageData.id);
+  }, []);
+
+  // Legacy handleAutoSavePage function for compatibility with NoteEditor
+  const handleAutoSavePage = useCallback(async (pageData: {
+    id: string;
+    title: string;
+    content: string;
+    contentJson: TiptapDocument;
+    visibility: PageVisibility;
+    sectionId?: string;
+    parentPageId?: string;
+  }) => {
+    // Update the current page data
+    updateCurrentPageData(pageData);
+    
+    // Trigger manual save immediately for explicit save requests
+    try {
+      await manualSave();
+    } catch (error) {
+      console.error('💾 Dashboard: Manual save failed:', error);
+      throw error;
     }
-
-    // Clear any existing autosave timeout
-    if (autosaveTimeoutRef.current) {
-      clearTimeout(autosaveTimeoutRef.current);
-    }
-
-    // Validate required data
-    if (!pageData.id) {
-      console.error("No page ID provided for autosave");
-      throw new Error("Page ID is required");
-    }
-
-    if (!pageData.contentJson || typeof pageData.contentJson !== "object") {
-      console.error("Invalid content JSON for autosave:", pageData.contentJson);
-      throw new Error("Valid content JSON is required");
-    }
-
-    // Debounce autosave to prevent too frequent saves
-    return new Promise<void>((resolve, reject) => {
-      autosaveTimeoutRef.current = setTimeout(async () => {
-        try {
-          console.log("Dashboard: Starting autosave for page:", pageData.id);
-
-          // CRITICAL: Always create a fresh Supabase client for autosave operations
-          const freshSupabase = createFreshSupabaseClient();
-          
-          // Get current session with fresh client
-          const { data: { session }, error: sessionError } = await freshSupabase.auth.getSession();
-          
-          if (sessionError || !session?.user) {
-            console.error("Dashboard: Session validation failed:", sessionError);
-            throw new Error("Session validation failed - please refresh the page");
-          }
-
-          console.log("Dashboard: Session validated successfully for autosave");
-
-          // Validate content JSON structure
-          const validatedContentJson = safeJsonParse(pageData.contentJson);
-
-          const updatePayload = {
-            title: pageData.title || "Untitled Page",
-            content: pageData.content || "",
-            content_json: validatedContentJson,
-            visibility: pageData.visibility || "private",
-            updated_at: new Date().toISOString(),
-          };
-
-          console.log("Dashboard: Sending update payload:", {
-            ...updatePayload,
-            content_json: "[JSON Object]", // Don't log the full JSON
-            content_json_size: JSON.stringify(updatePayload.content_json).length,
-          });
-
-          // Use the fresh supabase client for the save operation
-          const { data, error } = await (freshSupabase as any)
-            .from("pages")
-            .update(updatePayload)
-            .eq("id", pageData.id)
-            .eq("user_id", session.user.id)
-            .select()
-            .single();
-
-          if (error) {
-            console.error("Dashboard: Supabase error during autosave:", {
-              error,
-              pageId: pageData.id,
-              userId: user.id,
-              sessionUserId: session.user.id,
-              code: error.code,
-              message: error.message,
-              timestamp: new Date().toISOString(),
-            });
-
-            // Handle specific error types
-            if (error.code === "42703") {
-              throw new Error(
-                "Database schema error: The content_json column is missing from the pages table. Please run the database migration.",
-              );
-            }
-
-            if (error.code === "PGRST116") {
-              throw new Error(
-                `Page not found or access denied. Page ID: ${pageData.id}`,
-              );
-            }
-
-            // For JWT/session errors, try one more time with another fresh client
-            if (error.message?.includes("JWT") || error.message?.includes("expired") || error.message?.includes("invalid") || error.message?.includes("token")) {
-              console.log("Dashboard: JWT error detected, attempting one retry with fresh client");
-              
-              try {
-                // Create another completely fresh client
-                const retrySupabase = createFreshSupabaseClient();
-                const { data: { session: retrySession }, error: retrySessionError } = await retrySupabase.auth.getSession();
-                
-                if (retrySessionError || !retrySession) {
-                  throw new Error("Session validation failed on retry");
-                }
-                
-                // Retry the save operation
-                const { data: retryData, error: retryError } = await (retrySupabase as any)
-                  .from("pages")
-                  .update(updatePayload)
-                  .eq("id", pageData.id)
-                  .eq("user_id", retrySession.user.id)
-                  .select()
-                  .single();
-                
-                if (retryError) {
-                  throw new Error(`Retry save failed: ${retryError.message}`);
-                }
-                
-                if (retryData) {
-                  console.log("Dashboard: Autosave successful on retry");
-                  setPages((currentPages) =>
-                    currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
-                  );
-                  resolve();
-                  return;
-                }
-              } catch (retryError) {
-                console.error("Dashboard: Retry attempt failed:", retryError);
-                throw new Error("Session expired - please refresh the page to continue");
-              }
-            }
-
-            if (error.message?.includes("content_json")) {
-              throw new Error(
-                `Content JSON error: ${error.message}. This may indicate a database schema issue.`,
-              );
-            }
-
-            // For any other error, just throw it
-            throw error;
-          }
-
-          if (data) {
-            console.log("Dashboard: Autosave successful, updating local state");
-            // Update the pages state silently for autosave
-            setPages((currentPages) =>
-              currentPages.map((p) => (p.id === pageData.id ? data : p)),
-            );
-            resolve();
-          } else {
-            console.warn("Dashboard: No data returned from autosave");
-            throw new Error("No data returned from database update");
-          }
-        } catch (error) {
-          console.error("Dashboard: Error auto-saving page:", {
-            error,
-            pageId: pageData.id,
-            userId: user?.id,
-            errorType: typeof error,
-            errorMessage: error instanceof Error ? error.message : "Unknown error",
-            timestamp: new Date().toISOString(),
-          });
-          reject(error);
-        }
-      }, 500); // 500ms debounce
-    });
-  };
+  }, [updateCurrentPageData, manualSave]);
 
   const handleUpdatePage = async (pageId: string, updates: PageUpdate) => {
     if (!user) return;
@@ -974,27 +999,40 @@ export default function DashboardPage() {
     setSelectedPageId(null);
   }, []);
 
-  // Enhanced page selection handler with content isolation
+  // Enhanced page selection handler with content isolation and autosave data update
   const handleSelectPage = useCallback((pageId: string) => {
     console.log("Selecting page:", pageId);
 
     // CRITICAL: Clear current page first to prevent content bleeding
     setSelectedPageId(null);
+    currentPageDataRef.current = null; // Clear autosave data
 
     // Then set the new page after a brief delay to ensure clean state
     setTimeout(() => {
       setSelectedPageId(pageId);
+      
+      // Update autosave data with the new page
+      const page = pages.find(p => p.id === pageId);
+      if (page) {
+        updateCurrentPageData({
+          id: page.id,
+          title: page.title,
+          content: page.content || "",
+          contentJson: safeJsonParse(page.content_json),
+          visibility: (page.visibility as PageVisibility) || DEFAULT_PAGE_VISIBILITY,
+          sectionId: page.section_id || undefined,
+          parentPageId: page.parent_page_id || undefined,
+        });
+      }
     }, 10);
-  }, []);
+  }, [pages, updateCurrentPageData]);
 
   const currentPage = getCurrentPage();
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (autosaveTimeoutRef.current) {
-        clearTimeout(autosaveTimeoutRef.current);
-      }
+      // Removed autosaveTimeoutRef cleanup - now handled by useAutosave hook
       if (dataTimeoutRef.current) {
         clearTimeout(dataTimeoutRef.current);
       }
@@ -1334,6 +1372,18 @@ export default function DashboardPage() {
                 onTitleChange={(title) =>
                   handleUpdatePage(currentPage.id, { title })
                 }
+                onContentChange={(content, contentJson) => {
+                  // Update autosave data when content changes
+                  updateCurrentPageData({
+                    id: currentPage.id,
+                    title: currentPage.title,
+                    content: content || "",
+                    contentJson: contentJson,
+                    visibility: (currentPage.visibility as PageVisibility) || DEFAULT_PAGE_VISIBILITY,
+                    sectionId: selectedSectionId || undefined,
+                    parentPageId: currentPage.parent_page_id || undefined,
+                  });
+                }}
                 className="h-full"
               />
             ) : (

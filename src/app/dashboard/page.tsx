@@ -67,8 +67,13 @@ export default function DashboardPage() {
   const { user, loading, error, isPro } = useAuth();
   const router = useRouter();
 
-  // Memoize supabase client to prevent recreation on every render
-  const supabase = useMemo(() => createClient(), []);
+  // Memoize base supabase client for read operations
+  const baseSupabase = useMemo(() => createClient(), []);
+
+  // Function to create fresh supabase client for autosave operations
+  const createFreshSupabaseClient = useCallback(() => {
+    return createClient();
+  }, []);
 
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -80,6 +85,8 @@ export default function DashboardPage() {
     null,
   );
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+
+  // State variables
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [showPageList, setShowPageList] = useState(false);
@@ -96,9 +103,6 @@ export default function DashboardPage() {
   const lastVisibilityChangeRef = useRef<number>(Date.now());
   const sessionRefreshedRef = useRef(false);
   const lastSessionRefreshRef = useRef<number>(Date.now());
-
-  // Use direct type casting to bypass Supabase type inference issues
-  const supabaseTyped = supabase as any;
 
   // Save dashboard state to localStorage
   const saveDashboardState = useCallback(() => {
@@ -157,46 +161,16 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Enhanced page visibility handler with comprehensive session refresh
+  // Simplified page visibility handler
   const handleVisibilityChange = useCallback(async () => {
     if (document.visibilityState === 'visible') {
-      console.log('👁️ Dashboard: Page became visible, performing comprehensive session refresh');
-      
-      // Mark that we need to refresh session for next operations
-      sessionRefreshedRef.current = false;
-      lastSessionRefreshRef.current = Date.now();
-      
-      // When page becomes visible, refresh the session to ensure it's current
-      try {
-        // Force a session refresh to get the latest tokens
-        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError) {
-          console.warn('👁️ Dashboard: Session refresh failed:', refreshError);
-          
-          // Try to get current session as fallback
-          const { data: { session: currentSession }, error: currentError } = await supabase.auth.getSession();
-          
-          if (currentError || !currentSession) {
-            console.error('👁️ Dashboard: No valid session available after refresh failure');
-            return;
-          }
-          
-          console.log('👁️ Dashboard: Using current session as fallback');
-          sessionRefreshedRef.current = true;
-        } else if (session) {
-          console.log('👁️ Dashboard: Session refreshed successfully');
-          sessionRefreshedRef.current = true;
-        }
-      } catch (error) {
-        console.warn('👁️ Dashboard: Session refresh error:', error);
-        sessionRefreshedRef.current = false;
-      }
+      console.log('👁️ Dashboard: Page became visible');
+      // Just log that the page became visible - autosave will handle session validation
     } else {
       console.log('👁️ Dashboard: Page became hidden, saving state');
       saveDashboardState();
     }
-  }, [supabase, saveDashboardState]);
+  }, [saveDashboardState]);
 
   // Set up page visibility listener
   useEffect(() => {
@@ -244,17 +218,17 @@ export default function DashboardPage() {
 
       // Load all data in parallel
       const [notebooksResult, sectionsResult, pagesResult] = await Promise.all([
-        supabaseTyped
+        baseSupabase
           .from("notebooks")
           .select("*")
           .eq("user_id", user.id)
           .order("sort_order", { ascending: true }),
-        supabaseTyped
+        baseSupabase
           .from("sections")
           .select("*")
           .eq("user_id", user.id)
           .order("sort_order", { ascending: true }),
-        supabaseTyped
+        baseSupabase
           .from("pages")
           .select("*")
           .eq("user_id", user.id)
@@ -314,7 +288,7 @@ export default function DashboardPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [user?.id, supabaseTyped, restoreDashboardState]); // Fixed: Only depend on user.id and supabase client
+  }, [user?.id, baseSupabase, restoreDashboardState]); // Fixed: Only depend on user.id and baseSupabase client
 
   // Load user data when user is available and not loading - with proper dependencies
   useEffect(() => {
@@ -361,7 +335,7 @@ export default function DashboardPage() {
         "🏠 Dashboard: Checking onboarding status for pro user:",
         user.id,
       );
-      const { data: notebooks } = await supabaseTyped
+      const { data: notebooks } = await baseSupabase
         .from("notebooks")
         .select("id")
         .eq("user_id", user.id)
@@ -385,7 +359,7 @@ export default function DashboardPage() {
       console.error("🏠 Dashboard: Error checking onboarding status:", error);
       // On error, assume user doesn't need onboarding and stay on dashboard
     }
-  }, [user?.id, loading, isPro, router, supabaseTyped]); // Fixed: Only depend on primitive values
+  }, [user?.id, loading, isPro, router, baseSupabase]); // Fixed: Only depend on primitive values
 
   // Use effect for auth routing with proper dependencies
   useEffect(() => {
@@ -409,7 +383,7 @@ export default function DashboardPage() {
         sort_order: notebooks.length,
       };
 
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("notebooks")
         .insert(insertData)
         .select()
@@ -438,7 +412,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("notebooks")
         .update(updates)
         .eq("id", notebookId)
@@ -463,7 +437,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { error } = await supabaseTyped
+      const { error } = await baseSupabase
         .from("notebooks")
         .delete()
         .eq("id", notebookId)
@@ -503,7 +477,7 @@ export default function DashboardPage() {
           .length,
       };
 
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("sections")
         .insert(insertData)
         .select()
@@ -530,7 +504,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("sections")
         .update(updates)
         .eq("id", sectionId)
@@ -555,7 +529,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { error } = await supabaseTyped
+      const { error } = await baseSupabase
         .from("sections")
         .delete()
         .eq("id", sectionId)
@@ -632,7 +606,7 @@ export default function DashboardPage() {
         ).length,
       };
 
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("pages")
         .insert(insertData)
         .select()
@@ -651,7 +625,6 @@ export default function DashboardPage() {
         setTimeout(() => {
           console.log("Setting new page as selected:", data.id);
           setSelectedPageId(data.id);
-          setIsCreatingPage(true);
         }, 100); // Longer delay to ensure complete state reset
       }
     } catch (error) {
@@ -668,7 +641,7 @@ export default function DashboardPage() {
     if (!user || !selectedPageId) return;
 
     try {
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("pages")
         .update({
           title: pageData.title,
@@ -695,7 +668,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Comprehensive autosave function with session refresh detection
+  // Simplified autosave function that always uses fresh client
   const handleAutoSavePage = async (pageData: {
     id: string;
     title: string;
@@ -732,48 +705,15 @@ export default function DashboardPage() {
         try {
           console.log("Dashboard: Starting autosave for page:", pageData.id);
 
-          // Check if we need to refresh session after page visibility change
-          const timeSinceLastRefresh = Date.now() - lastSessionRefreshRef.current;
-          const needsSessionRefresh = timeSinceLastRefresh < 30000 && !sessionRefreshedRef.current; // Within 30 seconds and not refreshed
-
-          let currentSupabase = supabase;
-          let validSession: any = null;
-
-          if (needsSessionRefresh) {
-            console.log("Dashboard: Page was recently visible, creating fresh client with session refresh");
-            
-            // Create a completely fresh Supabase client
-            currentSupabase = createClient();
-            
-            // Force refresh the session to get latest tokens
-            const { data: { session }, error: refreshError } = await currentSupabase.auth.refreshSession();
-            
-            if (refreshError || !session) {
-              console.warn("Dashboard: Fresh session refresh failed, trying getSession");
-              
-              // Fallback to getting current session
-              const { data: { session: currentSession }, error: currentError } = await currentSupabase.auth.getSession();
-              
-              if (currentError || !currentSession) {
-                throw new Error("Unable to get valid session for autosave");
-              }
-              
-              validSession = currentSession;
-            } else {
-              validSession = session;
-            }
-            
-            console.log("Dashboard: Fresh client created with valid session");
-          } else {
-            // Use existing client but validate session
-            const { data: { session }, error: sessionError } = await currentSupabase.auth.getSession();
-            
-            if (sessionError || !session?.user) {
-              console.error("Dashboard: Session validation failed:", sessionError);
-              throw new Error("Session validation failed - please refresh the page");
-            }
-            
-            validSession = session;
+          // CRITICAL: Always create a fresh Supabase client for autosave operations
+          const freshSupabase = createFreshSupabaseClient();
+          
+          // Get current session with fresh client
+          const { data: { session }, error: sessionError } = await freshSupabase.auth.getSession();
+          
+          if (sessionError || !session?.user) {
+            console.error("Dashboard: Session validation failed:", sessionError);
+            throw new Error("Session validation failed - please refresh the page");
           }
 
           console.log("Dashboard: Session validated successfully for autosave");
@@ -793,15 +733,14 @@ export default function DashboardPage() {
             ...updatePayload,
             content_json: "[JSON Object]", // Don't log the full JSON
             content_json_size: JSON.stringify(updatePayload.content_json).length,
-            usingFreshClient: needsSessionRefresh,
           });
 
-          // Use the appropriate supabase client (fresh or existing)
-          const { data, error } = await (currentSupabase as any)
+          // Use the fresh supabase client for the save operation
+          const { data, error } = await (freshSupabase as any)
             .from("pages")
             .update(updatePayload)
             .eq("id", pageData.id)
-            .eq("user_id", validSession.user.id)
+            .eq("user_id", session.user.id)
             .select()
             .single();
 
@@ -810,10 +749,9 @@ export default function DashboardPage() {
               error,
               pageId: pageData.id,
               userId: user.id,
-              sessionUserId: validSession.user.id,
+              sessionUserId: session.user.id,
               code: error.code,
               message: error.message,
-              usingFreshClient: needsSessionRefresh,
               timestamp: new Date().toISOString(),
             });
 
@@ -830,17 +768,17 @@ export default function DashboardPage() {
               );
             }
 
-            // For JWT/session errors, try one more time with a fresh client
+            // For JWT/session errors, try one more time with another fresh client
             if (error.message?.includes("JWT") || error.message?.includes("expired") || error.message?.includes("invalid") || error.message?.includes("token")) {
               console.log("Dashboard: JWT error detected, attempting one retry with fresh client");
               
               try {
-                // Create completely fresh client and refresh session
-                const retrySupabase = createClient();
-                const { data: { session: retrySession }, error: retryRefreshError } = await retrySupabase.auth.refreshSession();
+                // Create another completely fresh client
+                const retrySupabase = createFreshSupabaseClient();
+                const { data: { session: retrySession }, error: retrySessionError } = await retrySupabase.auth.getSession();
                 
-                if (retryRefreshError || !retrySession) {
-                  throw new Error("Session refresh failed on retry");
+                if (retrySessionError || !retrySession) {
+                  throw new Error("Session validation failed on retry");
                 }
                 
                 // Retry the save operation
@@ -861,7 +799,6 @@ export default function DashboardPage() {
                   setPages((currentPages) =>
                     currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
                   );
-                  sessionRefreshedRef.current = true; // Mark session as refreshed
                   resolve();
                   return;
                 }
@@ -887,12 +824,6 @@ export default function DashboardPage() {
             setPages((currentPages) =>
               currentPages.map((p) => (p.id === pageData.id ? data : p)),
             );
-            
-            // Mark session as refreshed if we used a fresh client
-            if (needsSessionRefresh) {
-              sessionRefreshedRef.current = true;
-            }
-            
             resolve();
           } else {
             console.warn("Dashboard: No data returned from autosave");
@@ -917,7 +848,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabaseTyped
+      const { data, error } = await baseSupabase
         .from("pages")
         .update(updates)
         .eq("id", pageId)
@@ -942,7 +873,7 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const { error } = await supabaseTyped
+      const { error } = await baseSupabase
         .from("pages")
         .delete()
         .eq("id", pageId)
@@ -1017,7 +948,6 @@ export default function DashboardPage() {
 
         if (!currentPageBelongsToSection) {
           setSelectedPageId(sectionPages[0].id);
-          setShowPageList(true); // Show page list when there are pages
         }
       } else {
         setSelectedPageId(null);
@@ -1212,11 +1142,11 @@ export default function DashboardPage() {
 
                     // Check session before navigating
                     try {
-                      const supabase = createClient();
+                      const freshSupabase = createFreshSupabaseClient();
                       const {
                         data: { session },
                         error: sessionError,
-                      } = await supabase.auth.getSession();
+                      } = await freshSupabase.auth.getSession();
 
                       console.log(
                         "🔍 Dashboard: Session check for friends navigation:",

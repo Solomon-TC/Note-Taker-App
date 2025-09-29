@@ -155,17 +155,30 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Simplified page visibility handler
+  // Enhanced page visibility handler with session refresh
   const handleVisibilityChange = useCallback(async () => {
     if (document.visibilityState === 'visible') {
-      console.log('👁️ Dashboard: Page became visible');
-      // Just log that the page became visible - don't force session refresh
-      // The autosave function will handle session validation when needed
+      console.log('👁️ Dashboard: Page became visible, refreshing session');
+      
+      // When page becomes visible, refresh the session to ensure it's current
+      try {
+        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) {
+          console.warn('👁️ Dashboard: Session refresh failed, but continuing:', refreshError);
+          // Don't throw error - just log and continue
+        } else if (session) {
+          console.log('👁️ Dashboard: Session refreshed successfully');
+        }
+      } catch (error) {
+        console.warn('👁️ Dashboard: Session refresh error:', error);
+        // Don't throw error - just log and continue
+      }
     } else {
       console.log('👁️ Dashboard: Page became hidden, saving state');
       saveDashboardState();
     }
-  }, [saveDashboardState]);
+  }, [supabase, saveDashboardState]);
 
   // Set up page visibility listener
   useEffect(() => {

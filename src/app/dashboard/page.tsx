@@ -150,57 +150,22 @@ export default function DashboardPage() {
       
       stateRestoredRef.current = true;
     } catch (error) {
-      console.error('�� Dashboard: Error restoring state:', error);
+      console.error('💾 Dashboard: Error restoring state:', error);
       localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
-  // Handle page visibility changes for better session management
+  // Simplified page visibility handler
   const handleVisibilityChange = useCallback(async () => {
     if (document.visibilityState === 'visible') {
-      console.log('👁️ Dashboard: Page became visible, refreshing session and data');
-      
-      // Mark that we need to refresh session for next save operation
-      if (pageWasHiddenRef.current) {
-        console.log('👁️ Dashboard: Page was previously hidden, marking for session refresh');
-        lastVisibilityChangeRef.current = Date.now();
-      }
-      pageWasHiddenRef.current = false;
-      
-      // Force a session refresh to ensure we have the latest session
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-        
-        if (sessionError) {
-          console.error('👁️ Dashboard: Session refresh error on visibility change:', sessionError);
-          
-          // If refresh fails, try to get the current session
-          const { data: { session: currentSession }, error: currentSessionError } = await supabase.auth.getSession();
-          
-          if (currentSessionError || !currentSession) {
-            console.error('👁️ Dashboard: No valid session found, user may need to re-authenticate');
-            return;
-          }
-          
-          console.log('👁️ Dashboard: Using current session after refresh failure');
-        } else if (session?.user && user) {
-          console.log('👁️ Dashboard: Session refreshed successfully on visibility change');
-          
-          if (session.user.id !== user.id) {
-            console.warn('👁️ Dashboard: Session user mismatch detected on visibility change');
-          }
-        } else {
-          console.warn('👁️ Dashboard: No session returned from refresh on visibility change');
-        }
-      } catch (error) {
-        console.error('👁️ Dashboard: Error during visibility change handling:', error);
-      }
+      console.log('👁️ Dashboard: Page became visible');
+      // Just log that the page became visible - don't force session refresh
+      // The autosave function will handle session validation when needed
     } else {
       console.log('👁️ Dashboard: Page became hidden, saving state');
-      pageWasHiddenRef.current = true;
       saveDashboardState();
     }
-  }, [supabase, user, saveDashboardState]);
+  }, [saveDashboardState]);
 
   // Set up page visibility listener
   useEffect(() => {
@@ -699,7 +664,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Enhanced autosave with session validation and better error handling
+  // Simplified and reliable autosave function
   const handleAutoSavePage = async (pageData: {
     id: string;
     title: string;
@@ -735,76 +700,16 @@ export default function DashboardPage() {
       autosaveTimeoutRef.current = setTimeout(async () => {
         try {
           console.log("Dashboard: Starting autosave for page:", pageData.id);
-          
-          // Check if page was previously hidden and force session refresh
-          const wasPageHidden = pageWasHiddenRef.current || 
-            (Date.now() - lastVisibilityChangeRef.current < 30000); // Within last 30 seconds
-          
-          if (wasPageHidden) {
-            console.log("Dashboard: Page was recently hidden, forcing complete session refresh...");
-            
-            // Force a complete session refresh
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (refreshError) {
-              console.error("Dashboard: Forced session refresh failed:", refreshError);
-              throw new Error(`Session refresh required but failed: ${refreshError.message}`);
-            }
-            
-            if (!refreshData.session?.user) {
-              console.error("Dashboard: No session returned from forced refresh");
-              throw new Error("Session refresh required but no session returned");
-            }
-            
-            console.log("Dashboard: Forced session refresh successful");
-          }
-          
-          // CRITICAL: Always validate session before attempting save
-          console.log("Dashboard: Validating session before autosave...");
+
+          // Simple session check - don't over-complicate it
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
-          if (sessionError) {
-            console.error("Dashboard: Session error during autosave:", sessionError);
-            throw new Error(`Session validation failed: ${sessionError.message}`);
+          if (sessionError || !session?.user) {
+            console.error("Dashboard: Session validation failed:", sessionError);
+            throw new Error("Session validation failed - please refresh the page");
           }
-          
-          if (!session || !session.user) {
-            console.error("Dashboard: No valid session found during autosave");
-            throw new Error("No valid session - user may need to re-authenticate");
-          }
-          
-          if (session.user.id !== user.id) {
-            console.error("Dashboard: Session user ID mismatch during autosave", {
-              sessionUserId: session.user.id,
-              contextUserId: user.id
-            });
-            throw new Error("Session user mismatch - please refresh the page");
-          }
-          
+
           console.log("Dashboard: Session validated successfully for autosave");
-          
-          // Create a completely fresh supabase client instance to ensure latest session
-          const freshSupabase = createClient();
-          
-          // Force the fresh client to use the current session
-          await freshSupabase.auth.setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token
-          });
-          
-          console.log("Dashboard: Fresh Supabase client created with current session");
-          
-          console.log("Dashboard: Update data:", {
-            title: pageData.title,
-            contentLength: pageData.content.length,
-            hasContentJson: !!pageData.contentJson,
-            contentJsonType: typeof pageData.contentJson,
-            contentJsonValid: pageData.contentJson.type === "doc",
-            userId: user.id,
-            sessionUserId: session.user.id,
-            wasPageHidden,
-            timestamp: new Date().toISOString(),
-          });
 
           // Validate content JSON structure
           const validatedContentJson = safeJsonParse(pageData.contentJson);
@@ -823,12 +728,12 @@ export default function DashboardPage() {
             content_json_size: JSON.stringify(updatePayload.content_json).length,
           });
 
-          // Use the fresh supabase client for the save operation
-          const { data, error } = await (freshSupabase as any)
+          // Use the existing supabase client - keep it simple
+          const { data, error } = await supabaseTyped
             .from("pages")
             .update(updatePayload)
             .eq("id", pageData.id)
-            .eq("user_id", session.user.id) // Use session user ID for consistency
+            .eq("user_id", session.user.id)
             .select()
             .single();
 
@@ -840,16 +745,13 @@ export default function DashboardPage() {
               sessionUserId: session.user.id,
               code: error.code,
               message: error.message,
-              details: error.details,
-              hint: error.hint,
-              wasPageHidden,
               timestamp: new Date().toISOString(),
             });
 
-            // Enhanced error handling with specific error types
+            // Handle specific error types without over-engineering
             if (error.code === "42703") {
               throw new Error(
-                `Database schema error: The content_json column is missing from the pages table. Please run the database migration.`,
+                "Database schema error: The content_json column is missing from the pages table. Please run the database migration.",
               );
             }
 
@@ -859,70 +761,9 @@ export default function DashboardPage() {
               );
             }
 
-            // Handle JWT/session related errors with more aggressive refresh
+            // For JWT/session errors, just throw a clear error message
             if (error.message?.includes("JWT") || error.message?.includes("expired") || error.message?.includes("invalid") || error.message?.includes("token")) {
-              console.log("Dashboard: JWT/Session error detected, attempting aggressive session refresh...");
-              
-              try {
-                // Multiple refresh attempts
-                let refreshAttempts = 0;
-                let refreshSuccess = false;
-                
-                while (refreshAttempts < 3 && !refreshSuccess) {
-                  refreshAttempts++;
-                  console.log(`Dashboard: Session refresh attempt ${refreshAttempts}/3`);
-                  
-                  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-                  
-                  if (!refreshError && refreshData.session) {
-                    refreshSuccess = true;
-                    console.log(`Dashboard: Session refresh successful on attempt ${refreshAttempts}`);
-                    
-                    // Create another fresh client with the new session
-                    const retrySupabase = createClient();
-                    await retrySupabase.auth.setSession({
-                      access_token: refreshData.session.access_token,
-                      refresh_token: refreshData.session.refresh_token
-                    });
-                    
-                    // Retry the save operation with refreshed session
-                    const { data: retryData, error: retryError } = await (retrySupabase as any)
-                      .from("pages")
-                      .update(updatePayload)
-                      .eq("id", pageData.id)
-                      .eq("user_id", refreshData.session.user.id)
-                      .select()
-                      .single();
-                    
-                    if (retryError) {
-                      console.error(`Dashboard: Save failed on refresh attempt ${refreshAttempts}:`, retryError);
-                      if (refreshAttempts === 3) {
-                        throw new Error(`Save failed after ${refreshAttempts} session refresh attempts: ${retryError.message}`);
-                      }
-                    } else if (retryData) {
-                      console.log("Dashboard: Autosave successful after session refresh");
-                      setPages((currentPages) =>
-                        currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
-                      );
-                      resolve();
-                      return;
-                    }
-                  } else {
-                    console.error(`Dashboard: Session refresh attempt ${refreshAttempts} failed:`, refreshError);
-                    if (refreshAttempts < 3) {
-                      // Wait before next attempt
-                      await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
-                  }
-                }
-                
-                if (!refreshSuccess) {
-                  throw new Error(`Session refresh failed after ${refreshAttempts} attempts`);
-                }
-              } catch (refreshError) {
-                console.error("Dashboard: All session refresh attempts failed:", refreshError);
-                throw new Error(`Session expired and all refresh attempts failed: ${refreshError instanceof Error ? refreshError.message : 'Unknown error'}`);
-              }
+              throw new Error("Session expired - please refresh the page to continue");
             }
 
             if (error.message?.includes("content_json")) {
@@ -931,35 +772,7 @@ export default function DashboardPage() {
               );
             }
 
-            if (error.message?.includes("schema cache")) {
-              // Force a schema refresh by retrying after a short delay
-              console.log("Schema cache error detected, retrying after delay...");
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-
-              // Retry the operation once
-              const { data: retryData, error: retryError } = await (freshSupabase as any)
-                .from("pages")
-                .update(updatePayload)
-                .eq("id", pageData.id)
-                .eq("user_id", session.user.id)
-                .select()
-                .single();
-
-              if (retryError) {
-                throw new Error(
-                  `Schema cache error persists: ${retryError.message}`,
-                );
-              }
-
-              if (retryData) {
-                setPages((currentPages) =>
-                  currentPages.map((p) => (p.id === pageData.id ? retryData : p)),
-                );
-                resolve();
-                return;
-              }
-            }
-
+            // For any other error, just throw it
             throw error;
           }
 
@@ -969,10 +782,6 @@ export default function DashboardPage() {
             setPages((currentPages) =>
               currentPages.map((p) => (p.id === pageData.id ? data : p)),
             );
-            
-            // Reset the page hidden flag after successful save
-            pageWasHiddenRef.current = false;
-            
             resolve();
           } else {
             console.warn("Dashboard: No data returned from autosave");
@@ -985,8 +794,6 @@ export default function DashboardPage() {
             userId: user?.id,
             errorType: typeof error,
             errorMessage: error instanceof Error ? error.message : "Unknown error",
-            errorStack: error instanceof Error ? error.stack : "No stack trace",
-            wasPageHidden: pageWasHiddenRef.current,
             timestamp: new Date().toISOString(),
           });
           reject(error);

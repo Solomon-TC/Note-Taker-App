@@ -99,21 +99,26 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newClass, setNewClass] = useState("");
 
-  // Load onboarding data from localStorage and handle URL step
+  // Load onboarding data from localStorage on component mount (highest priority)
   useEffect(() => {
-    // Load saved data first
+    console.log("📚 Onboarding: Loading saved data from localStorage...");
     const savedData = localStorage.getItem("scribly-onboarding-data");
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
+        console.log("📚 Onboarding: Found saved data:", parsedData);
         setOnboardingData(parsedData);
-        console.log("📚 Onboarding: Loaded saved data from localStorage");
+        console.log("📚 Onboarding: Successfully loaded saved data from localStorage");
       } catch (error) {
         console.error("📚 Onboarding: Error parsing saved data:", error);
       }
+    } else {
+      console.log("📚 Onboarding: No saved data found in localStorage");
     }
+  }, []); // Run only once on mount
 
-    // Set step from URL parameter if provided
+  // Handle URL step changes (after data is loaded)
+  useEffect(() => {
     if (urlStep) {
       console.log("📚 Onboarding: Setting step from URL:", urlStep);
       setCurrentStep(urlStep);
@@ -124,7 +129,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     try {
       localStorage.setItem("scribly-onboarding-data", JSON.stringify(onboardingData));
-      console.log("📚 Onboarding: Saved data to localStorage");
+      console.log("📚 Onboarding: Saved data to localStorage:", onboardingData);
     } catch (error) {
       console.error("📚 Onboarding: Error saving data to localStorage:", error);
     }

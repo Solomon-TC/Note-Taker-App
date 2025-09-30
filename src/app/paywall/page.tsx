@@ -97,8 +97,8 @@ export default function PaywallPage() {
 
   // Handle back to onboarding
   const handleBackToOnboarding = () => {
-    // Navigate back to step 11 (feedbackDemo) instead of complete to avoid auto-redirect
-    router.push("/onboarding?step=feedbackDemo");
+    // Navigate back to step 12 (complete) as requested
+    router.push("/onboarding?step=complete");
   };
 
   // Fetch subscription data

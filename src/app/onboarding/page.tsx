@@ -99,8 +99,9 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newClass, setNewClass] = useState("");
 
-  // Load onboarding data from localStorage on mount
+  // Load onboarding data from localStorage and handle URL step
   useEffect(() => {
+    // Load saved data first
     const savedData = localStorage.getItem("scribly-onboarding-data");
     if (savedData) {
       try {
@@ -113,18 +114,23 @@ export default function OnboardingPage() {
     }
 
     // Set step from URL parameter if provided
-    if (urlStep && urlStep !== currentStep) {
+    if (urlStep) {
+      console.log("📚 Onboarding: Setting step from URL:", urlStep);
       setCurrentStep(urlStep);
-      console.log("📚 Onboarding: Set step from URL:", urlStep);
     }
-  }, [urlStep, currentStep]);
+  }, [urlStep]);
 
   // Save onboarding data to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("scribly-onboarding-data", JSON.stringify(onboardingData));
+    try {
+      localStorage.setItem("scribly-onboarding-data", JSON.stringify(onboardingData));
+      console.log("📚 Onboarding: Saved data to localStorage");
+    } catch (error) {
+      console.error("📚 Onboarding: Error saving data to localStorage:", error);
+    }
   }, [onboardingData]);
 
-  // Handle authentication and onboarding status
+  // Handle authentication and onboarding status (separate from URL handling)
   useEffect(() => {
     if (loading) {
       console.log("📚 Onboarding: Auth still loading, waiting...");
@@ -143,7 +149,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Check if user has already completed onboarding and pro status
+    // Only check onboarding status if no URL step is provided
     const checkOnboardingStatus = async () => {
       try {
         console.log(
@@ -200,7 +206,12 @@ export default function OnboardingPage() {
     ];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1]);
+      const nextStep = steps[currentIndex + 1];
+      console.log("📚 Onboarding: Navigating to next step:", nextStep);
+      setCurrentStep(nextStep);
+      // Update URL to reflect the new step without triggering a full page reload
+      const newUrl = `/onboarding?step=${nextStep}`;
+      window.history.replaceState({}, '', newUrl);
     }
   };
 
@@ -221,7 +232,12 @@ export default function OnboardingPage() {
     ];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1]);
+      const prevStep = steps[currentIndex - 1];
+      console.log("📚 Onboarding: Navigating to previous step:", prevStep);
+      setCurrentStep(prevStep);
+      // Update URL to reflect the new step without triggering a full page reload
+      const newUrl = `/onboarding?step=${prevStep}`;
+      window.history.replaceState({}, '', newUrl);
     }
   };
 
@@ -247,6 +263,8 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     try {
+      console.log("📚 Onboarding: Starting completion process with data:", onboardingData);
+      
       // Create notebooks for each class
       for (const className of onboardingData.classes) {
         const { data: notebook, error: notebookError } = await supabaseTyped
@@ -315,8 +333,15 @@ export default function OnboardingPage() {
         }
       }
 
+      console.log("📚 Onboarding: Successfully completed setup");
+      
       // Clear saved onboarding data since we're completing
-      localStorage.removeItem("scribly-onboarding-data");
+      try {
+        localStorage.removeItem("scribly-onboarding-data");
+        console.log("📚 Onboarding: Cleared localStorage data");
+      } catch (error) {
+        console.error("📚 Onboarding: Error clearing localStorage:", error);
+      }
 
       // After completing onboarding, redirect to paywall with onboarding parameter
       router.push("/paywall?from=onboarding");

@@ -815,13 +815,13 @@ export default function PaywallPage() {
                   poster="/video-poster.png"
                 >
                   <source
-                    src="/uploads/Tour Demo Video - Made with Clipchamp.mp4"
+                    src="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4"
                     type="video/mp4"
                   />
                   <p className="text-white p-4">
                     Your browser doesn't support video playback.
                     <a
-                      href="/uploads/Tour Demo Video - Made with Clipchamp.mp4"
+                      href="/uploads/Landing Page Demo Video - Made with Clipchamp (1).mp4"
                       className="underline ml-1"
                     >
                       Download the video instead

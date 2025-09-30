@@ -13,12 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  Loader2, 
-  Check, 
-  Zap, 
-  Crown, 
-  Sparkles, 
+import {
+  Loader2,
+  Check,
+  Zap,
+  Crown,
+  Sparkles,
   Calendar,
   CreditCard,
   Download,
@@ -26,7 +26,7 @@ import {
   Settings,
   ExternalLink,
   ArrowLeft,
-  Play
+  Play,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import {
@@ -86,7 +86,8 @@ export default function PaywallPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [subscriptionData, setSubscriptionData] =
+    useState<SubscriptionData | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const supabase = createClient();
@@ -105,7 +106,9 @@ export default function PaywallPage() {
     if (!user) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const response = await fetch("/api/stripe/subscription-info", {
@@ -223,7 +226,9 @@ export default function PaywallPage() {
     if (!user) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const response = await fetch("/api/stripe/manage-billing", {
@@ -256,7 +261,9 @@ export default function PaywallPage() {
     setCancelingSubscription(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const response = await fetch("/api/stripe/cancel-subscription", {
@@ -272,8 +279,10 @@ export default function PaywallPage() {
 
       if (response.ok) {
         toast({
-          title: cancelImmediately ? "Subscription Cancelled" : "Subscription Will Cancel",
-          description: cancelImmediately 
+          title: cancelImmediately
+            ? "Subscription Cancelled"
+            : "Subscription Will Cancel",
+          description: cancelImmediately
             ? "Your subscription has been cancelled immediately."
             : "Your subscription will cancel at the end of the current billing period.",
         });
@@ -323,7 +332,9 @@ export default function PaywallPage() {
               <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
                 <Crown className="h-6 w-6 text-primary-foreground" />
               </div>
-              <h1 className="text-3xl font-bold text-foreground">Subscription Management</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                Subscription Management
+              </h1>
             </div>
             <p className="text-lg text-muted-foreground">
               Manage your Scribly Pro subscription and billing
@@ -340,7 +351,9 @@ export default function PaywallPage() {
                     Scribly Pro {isYearly ? "Yearly" : "Monthly"}
                   </CardTitle>
                   <CardDescription>
-                    {isActive ? "Active subscription" : `Status: ${subscription.status}`}
+                    {isActive
+                      ? "Active subscription"
+                      : `Status: ${subscription.status}`}
                   </CardDescription>
                 </div>
                 <Badge variant={isActive ? "default" : "secondary"}>
@@ -353,7 +366,9 @@ export default function PaywallPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Plan</h4>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">
+                      Plan
+                    </h4>
                     <p className="text-lg font-semibold">
                       ${subscription.plan.amount}/{subscription.plan.interval}
                       {isYearly && (
@@ -375,10 +390,15 @@ export default function PaywallPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Features</h4>
+                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">
+                      Features
+                    </h4>
                     <ul className="space-y-1">
                       {features.map((feature, index) => (
-                        <li key={index} className="flex items-center gap-2 text-sm">
+                        <li
+                          key={index}
+                          className="flex items-center gap-2 text-sm"
+                        >
                           <Check className="h-4 w-4 text-primary" />
                           {feature}
                         </li>
@@ -396,8 +416,9 @@ export default function PaywallPage() {
                     <p className="font-semibold">Subscription will cancel</p>
                   </div>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                    Your subscription will end on {nextBillingDate.toLocaleDateString()}. 
-                    You'll lose access to Pro features after this date.
+                    Your subscription will end on{" "}
+                    {nextBillingDate.toLocaleDateString()}. You'll lose access
+                    to Pro features after this date.
                   </p>
                 </div>
               )}
@@ -408,11 +429,14 @@ export default function PaywallPage() {
                   <Settings className="h-4 w-4 mr-2" />
                   Manage Billing
                 </Button>
-                
+
                 {!willCancel && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="text-destructive hover:text-destructive">
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                      >
                         Cancel Subscription
                       </Button>
                     </AlertDialogTrigger>
@@ -420,8 +444,10 @@ export default function PaywallPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to cancel your subscription? You'll lose access to Pro features 
-                          at the end of your current billing period ({nextBillingDate.toLocaleDateString()}).
+                          Are you sure you want to cancel your subscription?
+                          You'll lose access to Pro features at the end of your
+                          current billing period (
+                          {nextBillingDate.toLocaleDateString()}).
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -463,14 +489,18 @@ export default function PaywallPage() {
               <CardContent>
                 <div className="space-y-4">
                   {invoices.map((invoice) => (
-                    <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <CreditCard className="h-5 w-5 text-primary" />
                         </div>
                         <div>
                           <p className="font-semibold">
-                            ${invoice.amount_paid.toFixed(2)} {invoice.currency.toUpperCase()}
+                            ${invoice.amount_paid.toFixed(2)}{" "}
+                            {invoice.currency.toUpperCase()}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(invoice.created).toLocaleDateString()}
@@ -478,14 +508,20 @@ export default function PaywallPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant={invoice.status === "paid" ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            invoice.status === "paid" ? "default" : "secondary"
+                          }
+                        >
                           {invoice.status}
                         </Badge>
                         {invoice.hosted_invoice_url && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(invoice.hosted_invoice_url, "_blank")}
+                            onClick={() =>
+                              window.open(invoice.hosted_invoice_url, "_blank")
+                            }
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
                             View
@@ -495,7 +531,9 @@ export default function PaywallPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(invoice.invoice_pdf, "_blank")}
+                            onClick={() =>
+                              window.open(invoice.invoice_pdf, "_blank")
+                            }
                           >
                             <Download className="h-4 w-4 mr-1" />
                             PDF
@@ -517,22 +555,27 @@ export default function PaywallPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Back Button for Onboarding Users */}
-        {fromOnboarding && (
-          <div className="mb-8">
-            <Button
-              variant="outline"
-              onClick={handleBackToOnboarding}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Review Features
-            </Button>
+        {/* Back Button - Always visible in top left */}
+        <div className="absolute top-4 left-4 z-10">
+          <Button
+            variant="outline"
+            onClick={handleBackToOnboarding}
+            className="flex items-center gap-2 shadow-lg"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Onboarding
+          </Button>
+        </div>
+
+        {/* Debug info - remove this after testing */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-2 bg-yellow-100 dark:bg-yellow-900 rounded text-xs">
+            Debug: fromOnboarding = {fromOnboarding.toString()}, searchParams = {searchParams.toString()}
           </div>
         )}
 
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 pt-12">
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
               <Crown className="h-6 w-6 text-primary-foreground" />
@@ -751,7 +794,8 @@ export default function PaywallPage() {
                 See Scribly in Action
               </CardTitle>
               <CardDescription className="text-lg">
-                Watch how Scribly transforms your study workflow in under 2 minutes
+                Watch how Scribly transforms your study workflow in under 2
+                minutes
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -779,7 +823,8 @@ export default function PaywallPage() {
               </div>
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  See how students are already using Scribly to improve their grades and save time studying
+                  See how students are already using Scribly to improve their
+                  grades and save time studying
                 </p>
               </div>
             </CardContent>
@@ -792,8 +837,7 @@ export default function PaywallPage() {
             Cancel anytime. No hidden fees. 30-day money-back guarantee.
           </p>
           <p className="text-xs text-muted-foreground">
-            Join thousands of students already improving their grades with
-            Scribly Pro
+            Join other students already improving their grades with Scribly Pro
           </p>
         </div>
       </div>

@@ -233,9 +233,9 @@ export default function LandingPage() {
     },
     {
       icon: <Target className="h-5 w-5" />,
-      title: "Practice Questions",
+      title: "Practice Questions & Flashcards",
       description:
-        "Create custom quizzes and practice problems from your notes",
+        "Create custom quizzes, practice problems, and flashcards from your notes",
     },
     {
       icon: <Lightbulb className="h-5 w-5" />,

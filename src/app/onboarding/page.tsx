@@ -789,7 +789,7 @@ export default function OnboardingPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Target className="h-4 w-4 text-primary" />
-                    <span>Create practice questions and quizzes</span>
+                    <span>Create practice questions, quizzes, and flashcards</span>
                   </div>
                 </div>
               </div>

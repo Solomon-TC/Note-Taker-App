@@ -48,7 +48,7 @@ const YEARLY_SAVINGS = "$35";
 
 const features = [
   "Unlimited notes",
-  "AI study assistant",
+  "AI study assistant with flashcards",
   "Friend note sharing",
 ];
 
@@ -759,7 +759,7 @@ export default function PaywallPage() {
               </div>
               <h4 className="font-semibold mb-2">AI Study Assistant</h4>
               <p className="text-sm text-muted-foreground">
-                Turn any note into summaries and practice questions instantly.
+                Turn any note into summaries, practice questions, and flashcards instantly.
                 <span className="block mt-1 font-medium text-primary">
                   Save 5+ hours per week
                 </span>

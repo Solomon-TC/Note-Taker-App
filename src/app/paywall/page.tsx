@@ -139,6 +139,14 @@ export default function PaywallPage() {
     const checkout = searchParams.get("checkout");
 
     if (checkout === "success") {
+      // Clear onboarding data from localStorage since user has successfully subscribed
+      try {
+        localStorage.removeItem("scribly-onboarding-data");
+        console.log("🎉 Paywall: Cleared onboarding data after successful subscription");
+      } catch (error) {
+        console.error("🎉 Paywall: Error clearing onboarding data:", error);
+      }
+
       toast({
         title: "Welcome to Scribly Pro! 🎉",
         description:

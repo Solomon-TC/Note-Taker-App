@@ -340,13 +340,9 @@ export default function OnboardingPage() {
 
       console.log("📚 Onboarding: Successfully completed setup");
       
-      // Clear saved onboarding data since we're completing
-      try {
-        localStorage.removeItem("scribly-onboarding-data");
-        console.log("📚 Onboarding: Cleared localStorage data");
-      } catch (error) {
-        console.error("📚 Onboarding: Error clearing localStorage:", error);
-      }
+      // DON'T clear localStorage data yet - keep it until user subscribes
+      // This allows them to return to onboarding from paywall with data intact
+      console.log("📚 Onboarding: Keeping localStorage data for potential return from paywall");
 
       // After completing onboarding, redirect to paywall with onboarding parameter
       router.push("/paywall?from=onboarding");

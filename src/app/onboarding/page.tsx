@@ -28,6 +28,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 type OnboardingStep =
   | "welcome"
@@ -78,11 +79,15 @@ const getStepNumber = (step: OnboardingStep): number => {
 export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   // Use direct type casting to bypass Supabase type inference issues
   const supabaseTyped = supabase as any;
 
+  // Check for step parameter in URL
+  const urlStep = searchParams.get("step") as OnboardingStep | null;
+  
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     persona: null,
@@ -93,6 +98,31 @@ export default function OnboardingPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newClass, setNewClass] = useState("");
+
+  // Load onboarding data from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem("scribly-onboarding-data");
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setOnboardingData(parsedData);
+        console.log("📚 Onboarding: Loaded saved data from localStorage");
+      } catch (error) {
+        console.error("📚 Onboarding: Error parsing saved data:", error);
+      }
+    }
+
+    // Set step from URL parameter if provided
+    if (urlStep && urlStep !== currentStep) {
+      setCurrentStep(urlStep);
+      console.log("📚 Onboarding: Set step from URL:", urlStep);
+    }
+  }, [urlStep, currentStep]);
+
+  // Save onboarding data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("scribly-onboarding-data", JSON.stringify(onboardingData));
+  }, [onboardingData]);
 
   // Handle authentication and onboarding status
   useEffect(() => {
@@ -279,8 +309,11 @@ export default function OnboardingPage() {
         }
       }
 
-      // After completing onboarding, redirect to paywall for subscription
-      router.push("/paywall");
+      // Clear saved onboarding data since we're completing
+      localStorage.removeItem("scribly-onboarding-data");
+
+      // After completing onboarding, redirect to paywall with onboarding parameter
+      router.push("/paywall?from=onboarding");
     } catch (error) {
       console.error("Error completing onboarding:", error);
     } finally {

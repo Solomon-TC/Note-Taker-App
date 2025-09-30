@@ -24,7 +24,9 @@ import {
   Download,
   AlertTriangle,
   Settings,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft,
+  Play
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import {
@@ -88,6 +90,15 @@ export default function PaywallPage() {
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
   const supabase = createClient();
+
+  // Check if user came from onboarding
+  const fromOnboarding = searchParams.get("from") === "onboarding";
+
+  // Handle back to onboarding
+  const handleBackToOnboarding = () => {
+    // Navigate back to the last step of onboarding (complete step)
+    router.push("/onboarding?step=complete");
+  };
 
   // Fetch subscription data
   const fetchSubscriptionData = async () => {
@@ -506,6 +517,20 @@ export default function PaywallPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Back Button for Onboarding Users */}
+        {fromOnboarding && (
+          <div className="mb-8">
+            <Button
+              variant="outline"
+              onClick={handleBackToOnboarding}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Review Features
+            </Button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-2 mb-6">
@@ -672,7 +697,7 @@ export default function PaywallPage() {
         </div>
 
         {/* Features Highlight */}
-        <div className="text-center">
+        <div className="text-center mb-16">
           <h3 className="text-2xl font-bold text-foreground mb-4">
             Everything you need in one place
           </h3>
@@ -715,6 +740,50 @@ export default function PaywallPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Tour Video Section */}
+        <div className="mb-16">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
+                <Play className="h-6 w-6 text-primary" />
+                See Scribly in Action
+              </CardTitle>
+              <CardDescription className="text-lg">
+                Watch how Scribly transforms your study workflow in under 2 minutes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative bg-black rounded-lg overflow-hidden aspect-video mb-4">
+                <video
+                  className="w-full h-full object-cover"
+                  controls
+                  preload="metadata"
+                  poster="/video-poster.png"
+                >
+                  <source
+                    src="/uploads/Tour Demo Video - Made with Clipchamp.mp4"
+                    type="video/mp4"
+                  />
+                  <p className="text-white p-4">
+                    Your browser doesn't support video playback.
+                    <a
+                      href="/uploads/Tour Demo Video - Made with Clipchamp.mp4"
+                      className="underline ml-1"
+                    >
+                      Download the video instead
+                    </a>
+                  </p>
+                </video>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  See how students are already using Scribly to improve their grades and save time studying
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Footer */}

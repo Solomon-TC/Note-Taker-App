@@ -137,6 +137,12 @@ export default function OnboardingPage() {
       return;
     }
 
+    // If user is explicitly navigating to a specific step, allow them to stay
+    if (urlStep) {
+      console.log("📚 Onboarding: URL step provided, allowing user to stay:", urlStep);
+      return;
+    }
+
     // Check if user has already completed onboarding and pro status
     const checkOnboardingStatus = async () => {
       try {
@@ -175,7 +181,7 @@ export default function OnboardingPage() {
     };
 
     checkOnboardingStatus();
-  }, [user, loading, router, supabaseTyped]);
+  }, [user, loading, router, supabaseTyped, urlStep]);
 
   const handleNext = () => {
     const steps: OnboardingStep[] = [

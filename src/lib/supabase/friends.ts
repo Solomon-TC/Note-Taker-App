@@ -741,11 +741,11 @@ export async function debugSharedPagesAccess(
 
     const debug: any = {
       step1_comprehensive_debug: null,
-      step2_test_pages_access: null,
+      step2_new_debug_function: null,
       step3_direct_function_test: null,
     };
 
-    // Step 1: Run comprehensive debug
+    // Step 1: Run old comprehensive debug (if it exists)
     const { data: debugResult, error: debugError } = await supabase
       .rpc("debug_friend_pages_access", {
         requesting_user_id: currentUserId,
@@ -758,16 +758,17 @@ export async function debugSharedPagesAccess(
       result: debugResult,
     };
 
-    // Step 2: Test pages access directly
-    const { data: testResult, error: testError } = await supabase
-      .rpc("test_pages_access", {
+    // Step 2: Run new debug function
+    const { data: newDebugResult, error: newDebugError } = await supabase
+      .rpc("debug_friends_sharing", {
+        requesting_user_id: currentUserId,
         friend_user_id: friendId,
       });
 
-    debug.step2_test_pages_access = {
-      success: !testError,
-      error: testError?.message,
-      result: testResult,
+    debug.step2_new_debug_function = {
+      success: !newDebugError,
+      error: newDebugError?.message,
+      result: newDebugResult,
     };
 
     // Step 3: Test the direct function

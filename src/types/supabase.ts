@@ -683,6 +683,10 @@ export type Database = {
         Args: { p_current_user_id: string; p_friend_user_id: string }
         Returns: Json
       }
+      debug_friends_sharing: {
+        Args: { friend_user_id: string; requesting_user_id: string }
+        Returns: Json
+      }
       debug_user_friendships: {
         Args: { p_user_id: string }
         Returns: Json

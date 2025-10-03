@@ -706,7 +706,6 @@ const NoteEditor = ({
               <Switch
                 checked={visibility === "friends"}
                 onCheckedChange={handleVisibilityChange}
-                disabled={true} // Disable during maintenance
               />
               
               {/* Maintenance Banner - Only visible on hover */}

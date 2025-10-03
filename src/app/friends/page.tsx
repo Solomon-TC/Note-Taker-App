@@ -972,14 +972,6 @@ export default function FriendsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Maintenance Banner */}
-                  <Alert className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-950/20">
-                    <Construction className="h-4 w-4 text-orange-500" />
-                    <AlertDescription className="text-orange-700 dark:text-orange-300">
-                      <strong>Note Sharing Under Maintenance</strong> - We're working to improve the note sharing experience. This feature will be available again soon.
-                    </AlertDescription>
-                  </Alert>
-
                   {loadingSharedPages ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -1005,25 +997,13 @@ export default function FriendsPage() {
                         shares notes with you, they'll appear here for
                         collaborative learning.
                       </p>
-
-                      {/* Debug Information - Hide during maintenance */}
-                      <div className="mt-6 p-4 bg-muted/20 rounded-lg text-left max-w-md mx-auto opacity-50">
-                        <h5 className="text-xs font-medium text-muted-foreground mb-2">
-                          Feature temporarily unavailable
-                        </h5>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <p>• Note sharing is currently under maintenance</p>
-                          <p>• We're working to improve the experience</p>
-                          <p>• Check back soon for updates</p>
-                        </div>
-                      </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {sharedPages.map((page) => (
                         <div
                           key={page.id}
-                          className="rounded-lg border border-border/50 p-4 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer group opacity-50"
+                          className="rounded-lg border border-border/50 p-4 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer group"
                           onClick={() => handleViewSharedPage(page)}
                         >
                           <div className="flex items-start justify-between">
@@ -1071,7 +1051,6 @@ export default function FriendsPage() {
                                 e.stopPropagation();
                                 handleViewSharedPage(page);
                               }}
-                              disabled
                             >
                               <Eye className="h-4 w-4" />
                             </Button>

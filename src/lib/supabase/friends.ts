@@ -67,151 +67,34 @@ export interface GetSharedPagesResult {
  */
 export async function sendFriendRequest(senderId: string, receiverEmail: string) {
   try {
-    console.log('🔍 Looking up user by email:', receiverEmail);
+    console.log('🔍 Sending friend request via API:', { senderId, receiverEmail });
     
-    // Check if admin client is available
-    if (!isAdminClientAvailable()) {
-      console.error('❌ Admin client not available for friend request functionality');
-      return {
-        success: false,
-        error: 'Friend request functionality is currently unavailable. Please contact support.',
-      };
-    }
-
-    const adminClient = getAdminClient();
-    
-    // First, look up the user by email in auth.users
-    const { data: receiverUser, error: lookupError } = await adminClient.auth.admin.listUsers();
-    
-    const foundUser = receiverUser?.users?.find((user: any) => user.email === receiverEmail);
-    
-    console.log('📊 Friend request debug info:', {
-      senderUserId: senderId,
-      receiverEmail,
-      foundUser: foundUser ? {
-        id: foundUser.id,
-        email: foundUser.email,
-        fullName: foundUser.user_metadata?.full_name
-      } : null,
-      userId: foundUser?.id,
-      userEmail: foundUser?.email,
-      finalError: lookupError?.message,
+    // Call the API route instead of using admin client directly
+    const response = await fetch('/api/friends/send-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        senderId,
+        receiverEmail,
+      }),
     });
 
-    // Check if user lookup failed for reasons other than "not found"
-    if (lookupError && (lookupError as any).code !== "PGRST116") {
-      console.error('❌ Database error during user lookup:', lookupError);
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ API request failed:', result);
       return {
         success: false,
-        error: `Database error: ${(lookupError as any).message}. Please try again.`,
+        error: result.error || 'Failed to send friend request',
       };
     }
 
-    // If no user found, return appropriate error
-    if (!foundUser) {
-      console.log('❌ User not found with email:', receiverEmail);
-      return {
-        success: false,
-        error: 'No user found with that email address. Please check the email and try again.',
-      };
-    }
-
-    // Create receiver user object for further processing
-    const receiverUserData = {
-      id: foundUser.id,
-      email: foundUser.email,
-      fullName: foundUser.user_metadata?.full_name,
-    };
-
-    // Check if trying to send friend request to self
-    if (receiverUserData.id === senderId) {
-      return {
-        success: false,
-        error: "You cannot send a friend request to yourself.",
-      };
-    }
-
-    console.log('✅ Found receiver user:', receiverUserData);
-
-    // Check if they're already friends or have pending requests
-    const { data: existingRelation, error: relationError } = await adminClient
-      .from('friend_requests')
-      .select('*')
-      .or(
-        `and(sender_id.eq.${senderId},receiver_id.eq.${receiverUserData.id}),and(sender_id.eq.${receiverUserData.id},receiver_id.eq.${senderId})`,
-      )
-      .maybeSingle();
-
-    if (relationError) {
-      console.error('❌ Error checking existing relations:', relationError);
-      return {
-        success: false,
-        error: 'Failed to check existing friend requests. Please try again.',
-      };
-    }
-
-    if (existingRelation) {
-      if (existingRelation.status === 'accepted') {
-        return {
-          success: false,
-          error: 'You are already friends with this user.',
-        };
-      } else if (existingRelation.status === 'pending') {
-        if (existingRelation.sender_id === senderId) {
-          return {
-            success: false,
-            error: 'You have already sent a friend request to this user.',
-          };
-        } else {
-          return {
-            success: false,
-            error: 'This user has already sent you a friend request. Check your pending requests.',
-          };
-        }
-      }
-    }
-
-    // Create the friend request
-    console.log('📤 Creating friend request...');
-    const { data: friendRequest, error: createError } = await adminClient
-      .from('friend_requests')
-      .insert({
-        sender_id: senderId,
-        receiver_id: receiverUserData.id,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('❌ Error creating friend request:', createError);
-      return {
-        success: false,
-        error: 'Failed to send friend request. Please try again.',
-      };
-    }
-
-    console.log('✅ Friend request created successfully:', friendRequest);
-
-    return {
-      success: true,
-      message: `Friend request sent to ${receiverEmail}!`,
-      data: {
-        friendRequest,
-        receiverUser: receiverUserData,
-      },
-    };
+    console.log('✅ Friend request sent successfully:', result);
+    return result;
   } catch (error) {
     console.error('❌ Unexpected error in sendFriendRequest:', error);
-    
-    // Check if this is the admin client error
-    if (error instanceof Error && error.message.includes('admin client is not available')) {
-      return {
-        success: false,
-        error: 'Friend request functionality is currently unavailable. Please ensure all required environment variables are configured.',
-      };
-    }
-    
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',

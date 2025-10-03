@@ -114,6 +114,23 @@ export async function getPendingFriendRequests(
   );
 
   try {
+    console.log('📥 [DEBUG] getPendingFriendRequests called:', { userId });
+    
+    // First, try to get friend_requests without joins to see if data exists
+    const { data: rawRequests, error: rawError } = await supabase
+      .from("friend_requests")
+      .select("*")
+      .eq("receiver_id", userId)
+      .eq("status", "pending");
+    
+    console.log('📥 [DEBUG] Raw friend_requests query:', {
+      success: !rawError,
+      error: rawError,
+      count: rawRequests?.length || 0,
+      requests: rawRequests
+    });
+
+    // Now try with joins
     const { data, error } = await supabase
       .from("friend_requests")
       .select(
@@ -133,14 +150,22 @@ export async function getPendingFriendRequests(
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
+    console.log('📥 [DEBUG] Friend requests with joins:', {
+      success: !error,
+      error: error,
+      count: data?.length || 0,
+      data: data
+    });
+
     if (error) {
-      console.error("Error fetching pending requests:", error);
+      console.error("❌ Error fetching pending requests:", error);
       return [];
     }
 
+    console.log('✅ [DEBUG] Returning pending requests:', data?.length || 0);
     return data || [];
   } catch (error) {
-    console.error("Unexpected error in getPendingFriendRequests:", error);
+    console.error("❌ Unexpected error in getPendingFriendRequests:", error);
     return [];
   }
 }
@@ -157,6 +182,23 @@ export async function getSentFriendRequests(
   );
 
   try {
+    console.log('📤 [DEBUG] getSentFriendRequests called:', { userId });
+    
+    // First, try to get friend_requests without joins to see if data exists
+    const { data: rawRequests, error: rawError } = await supabase
+      .from("friend_requests")
+      .select("*")
+      .eq("sender_id", userId)
+      .eq("status", "pending");
+    
+    console.log('📤 [DEBUG] Raw friend_requests query:', {
+      success: !rawError,
+      error: rawError,
+      count: rawRequests?.length || 0,
+      requests: rawRequests
+    });
+
+    // Now try with joins
     const { data, error } = await supabase
       .from("friend_requests")
       .select(
@@ -176,14 +218,22 @@ export async function getSentFriendRequests(
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
+    console.log('📤 [DEBUG] Friend requests with joins:', {
+      success: !error,
+      error: error,
+      count: data?.length || 0,
+      data: data
+    });
+
     if (error) {
-      console.error("Error fetching sent requests:", error);
+      console.error("❌ Error fetching sent requests:", error);
       return [];
     }
 
+    console.log('✅ [DEBUG] Returning sent requests:', data?.length || 0);
     return data || [];
   } catch (error) {
-    console.error("Unexpected error in getSentFriendRequests:", error);
+    console.error("❌ Unexpected error in getSentFriendRequests:", error);
     return [];
   }
 }

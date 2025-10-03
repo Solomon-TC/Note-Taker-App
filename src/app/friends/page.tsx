@@ -103,6 +103,9 @@ export default function FriendsPage() {
   const [pendingRequests, setPendingRequests] = useState<
     FriendRequestWithUser[]
   >([]);
+  const [sentRequests, setSentRequests] = useState<
+    FriendRequestWithUser[]
+  >([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
@@ -138,6 +141,7 @@ export default function FriendsPage() {
   useEffect(() => {
     if (user) {
       loadPendingRequests();
+      loadSentRequests();
       loadFriends();
     }
   }, [user]);
@@ -147,12 +151,27 @@ export default function FriendsPage() {
 
     try {
       setLoadingRequests(true);
+      console.log('📥 Loading pending requests (received)...');
       const requests = await getPendingFriendRequests(user.id);
+      console.log('📥 Pending requests loaded:', requests);
       setPendingRequests(requests);
     } catch (error) {
       console.error("Error loading pending requests:", error);
     } finally {
       setLoadingRequests(false);
+    }
+  };
+
+  const loadSentRequests = async () => {
+    if (!user) return;
+
+    try {
+      console.log('📤 Loading sent requests...');
+      const requests = await getSentFriendRequests(user.id);
+      console.log('📤 Sent requests loaded:', requests);
+      setSentRequests(requests);
+    } catch (error) {
+      console.error("Error loading sent requests:", error);
     }
   };
 
@@ -319,8 +338,9 @@ export default function FriendsPage() {
           text: "Friend request sent successfully!",
         });
         setEmailToAdd("");
-        // Refresh pending requests in case there were any changes
+        // Refresh both pending and sent requests
         loadPendingRequests();
+        loadSentRequests();
       } else {
         setMessage({
           type: "error",
@@ -521,9 +541,9 @@ export default function FriendsPage() {
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       Requests
-                      {pendingRequests.length > 0 && (
+                      {(pendingRequests.length + sentRequests.length) > 0 && (
                         <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                          {pendingRequests.length}
+                          {pendingRequests.length + sentRequests.length}
                         </span>
                       )}
                     </Button>
@@ -773,73 +793,129 @@ export default function FriendsPage() {
                 </div>
               </div>
               {showFriendRequests && (
-                <div className="p-4">
-                  {loadingRequests ? (
-                    <div className="text-center py-4">
-                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">
-                        Loading requests...
-                      </p>
-                    </div>
-                  ) : pendingRequests.length === 0 ? (
-                    <div className="text-center py-4">
-                      <div className="stats-card-icon mx-auto mb-2 opacity-50">
-                        <UserPlus className="h-4 w-4" />
+                <div className="p-4 space-y-4">
+                  {/* Received Requests */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">
+                      Received ({pendingRequests.length})
+                    </h4>
+                    {loadingRequests ? (
+                      <div className="text-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Loading requests...
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        No pending requests
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {pendingRequests.map((request) => (
-                        <div
-                          key={request.id}
-                          className="rounded-lg border border-border/50 p-3 bg-card/50 space-y-2"
-                        >
-                          <div>
-                            <span className="text-xs font-medium">
-                              {request.sender?.full_name ||
-                                request.sender?.email}
-                            </span>
-                            {request.sender?.full_name && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {request.sender.email}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleAcceptRequest(request.id)}
-                              disabled={processingRequests.has(request.id)}
-                              className="flex-1 h-7 text-xs hover-glow"
-                            >
-                              {processingRequests.has(request.id) ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                "Accept"
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeclineRequest(request.id)}
-                              disabled={processingRequests.has(request.id)}
-                              className="flex-1 h-7 text-xs sleek-button"
-                            >
-                              {processingRequests.has(request.id) ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                "Decline"
-                              )}
-                            </Button>
-                          </div>
+                    ) : pendingRequests.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="stats-card-icon mx-auto mb-2 opacity-50">
+                          <UserPlus className="h-4 w-4" />
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <p className="text-xs text-muted-foreground">
+                          No pending requests
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {pendingRequests.map((request) => (
+                          <div
+                            key={request.id}
+                            className="rounded-lg border border-border/50 p-3 bg-card/50 space-y-2"
+                          >
+                            <div>
+                              <span className="text-xs font-medium">
+                                {request.sender?.full_name ||
+                                  request.sender?.email}
+                              </span>
+                              {request.sender?.full_name && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {request.sender.email}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleAcceptRequest(request.id)}
+                                disabled={processingRequests.has(request.id)}
+                                className="flex-1 h-7 text-xs hover-glow"
+                              >
+                                {processingRequests.has(request.id) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  "Accept"
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeclineRequest(request.id)}
+                                disabled={processingRequests.has(request.id)}
+                                className="flex-1 h-7 text-xs sleek-button"
+                              >
+                                {processingRequests.has(request.id) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  "Decline"
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Sent Requests */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">
+                      Sent ({sentRequests.length})
+                    </h4>
+                    {loadingRequests ? (
+                      <div className="text-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Loading requests...
+                        </p>
+                      </div>
+                    ) : sentRequests.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="stats-card-icon mx-auto mb-2 opacity-50">
+                          <UserPlus className="h-4 w-4" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          No sent requests
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sentRequests.map((request) => (
+                          <div
+                            key={request.id}
+                            className="rounded-lg border border-border/50 p-3 bg-card/50 space-y-2"
+                          >
+                            <div>
+                              <span className="text-xs font-medium">
+                                {request.receiver?.full_name ||
+                                  request.receiver?.email}
+                              </span>
+                              {request.receiver?.full_name && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {request.receiver.email}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Pending since {new Date(request.created_at || '').toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

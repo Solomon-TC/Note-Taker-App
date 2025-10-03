@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import UserMenu from "@/components/auth/UserMenu";
 import { useAuth } from "@/components/auth/AuthProvider";
+import TiptapEditor from "@/components/editor/TiptapEditor";
 import {
   sendFriendRequest,
   acceptFriendRequest,
@@ -1194,133 +1195,25 @@ export default function FriendsPage() {
                   <CardTitle className="text-lg">Note Content</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    {selectedSharedPage.content_json ? (
-                      <div
-                        className="ProseMirror prose-lists"
-                        dangerouslySetInnerHTML={{
-                          __html: (() => {
-                            try {
-                              // Simple JSON to HTML conversion for display
-                              const content =
-                                typeof selectedSharedPage.content_json ===
-                                "string"
-                                  ? JSON.parse(selectedSharedPage.content_json)
-                                  : selectedSharedPage.content_json;
-
-                              if (content && content.content) {
-                                return content.content
-                                  .map((node: any) => {
-                                    if (node.type === "paragraph") {
-                                      const text =
-                                        node.content
-                                          ?.map((textNode: any) => {
-                                            if (textNode.type === "text") {
-                                              let html = textNode.text || "";
-                                              if (textNode.marks) {
-                                                textNode.marks.forEach(
-                                                  (mark: any) => {
-                                                    if (mark.type === "bold") {
-                                                      html = `<strong>${html}</strong>`;
-                                                    } else if (
-                                                      mark.type === "italic"
-                                                    ) {
-                                                      html = `<em>${html}</em>`;
-                                                    } else if (
-                                                      mark.type === "underline"
-                                                    ) {
-                                                      html = `<u>${html}</u>`;
-                                                    } else if (
-                                                      mark.type ===
-                                                        "textStyle" &&
-                                                      mark.attrs?.color
-                                                    ) {
-                                                      html = `<span style="color: ${mark.attrs.color}">${html}</span>`;
-                                                    } else if (
-                                                      mark.type ===
-                                                        "highlight" &&
-                                                      mark.attrs?.color
-                                                    ) {
-                                                      html = `<mark style="background-color: ${mark.attrs.color}">${html}</mark>`;
-                                                    }
-                                                  },
-                                                );
-                                              }
-                                              return html;
-                                            }
-                                            return "";
-                                          })
-                                          .join("") || "";
-                                      return `<p>${text}</p>`;
-                                    } else if (node.type === "heading") {
-                                      const level = node.attrs?.level || 1;
-                                      const text =
-                                        node.content
-                                          ?.map(
-                                            (textNode: any) =>
-                                              textNode.text || "",
-                                          )
-                                          .join("") || "";
-                                      return `<h${level}>${text}</h${level}>`;
-                                    } else if (node.type === "bulletList") {
-                                      const items =
-                                        node.content
-                                          ?.map((item: any) => {
-                                            const text =
-                                              item.content?.[0]?.content
-                                                ?.map(
-                                                  (textNode: any) =>
-                                                    textNode.text || "",
-                                                )
-                                                .join("") || "";
-                                            return `<li>${text}</li>`;
-                                          })
-                                          .join("") || "";
-                                      return `<ul>${items}</ul>`;
-                                    } else if (node.type === "orderedList") {
-                                      const items =
-                                        node.content
-                                          ?.map((item: any) => {
-                                            const text =
-                                              item.content?.[0]?.content
-                                                ?.map(
-                                                  (textNode: any) =>
-                                                    textNode.text || "",
-                                                )
-                                                .join("") || "";
-                                            return `<li>${text}</li>`;
-                                          })
-                                          .join("") || "";
-                                      return `<ol>${items}</ol>`;
-                                    }
-                                    return "";
-                                  })
-                                  .join("");
-                              }
-                              return (
-                                selectedSharedPage.content ||
-                                "No content available"
-                              );
-                            } catch (error) {
-                              console.error("Error parsing content:", error);
-                              return (
-                                selectedSharedPage.content ||
-                                "Error displaying content"
-                              );
-                            }
-                          })(),
-                        }}
+                  {selectedSharedPage.content_json ? (
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <TiptapEditor
+                        content={selectedSharedPage.content_json}
+                        noteId={selectedSharedPage.id}
+                        readOnly={true}
+                        onChange={() => {}}
+                        className="border-0"
                       />
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-muted-foreground">
-                          {selectedSharedPage.content ||
-                            "This note appears to be empty."}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-muted-foreground">
+                        {selectedSharedPage.content ||
+                          "This note appears to be empty."}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

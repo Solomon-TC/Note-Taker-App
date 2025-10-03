@@ -329,6 +329,7 @@ interface TiptapEditorProps {
   noteId: string;
   placeholder?: string;
   className?: string;
+  readOnly?: boolean;
 }
 
 const TiptapEditor = ({
@@ -338,6 +339,7 @@ const TiptapEditor = ({
   noteId,
   placeholder = "Start typing...",
   className = "",
+  readOnly = false,
 }: TiptapEditorProps) => {
   const { user } = useAuth();
   const [isDrawingModalOpen, setIsDrawingModalOpen] = useState(false);
@@ -362,6 +364,7 @@ const TiptapEditor = ({
 
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       // Base extensions first
       StarterKit.configure({}),
@@ -479,6 +482,11 @@ const TiptapEditor = ({
     onUpdate: ({ editor }) => {
       // Prevent onChange during programmatic content setting
       if (isSettingContentRef.current) {
+        return;
+      }
+
+      // Don't trigger onChange in read-only mode
+      if (readOnly) {
         return;
       }
 
@@ -926,27 +934,31 @@ const TiptapEditor = ({
 
   return (
     <div className={`w-full ${className}`}>
-      <Toolbar
-        editor={editor}
-        onInsertImage={handleInsertImage}
-        onInsertDrawing={handleInsertDrawing}
-      />
+      {!readOnly && (
+        <Toolbar
+          editor={editor}
+          onInsertImage={handleInsertImage}
+          onInsertDrawing={handleInsertDrawing}
+        />
+      )}
 
-      <div className={`border-x border-b rounded-b-lg ${className.includes('flex-1') ? 'flex flex-col' : ''}`}>
+      <div className={`${!readOnly ? 'border-x border-b rounded-b-lg' : ''} ${className.includes('flex-1') ? 'flex flex-col' : ''}`}>
         <EditorContent 
           editor={editor} 
-          className={`min-h-[400px] ${className.includes('flex-1') ? 'flex-1 overflow-auto' : ''}`} 
+          className={`${!readOnly ? 'min-h-[400px]' : ''} ${className.includes('flex-1') ? 'flex-1 overflow-auto' : ''}`} 
         />
       </div>
 
-      <StatusBar editor={editor} />
+      {!readOnly && <StatusBar editor={editor} />}
 
-      <DrawingModal
-        isOpen={isDrawingModalOpen}
-        onClose={handleDrawingModalClose}
-        onInserted={handleDrawingInserted}
-        noteId={noteId}
-      />
+      {!readOnly && (
+        <DrawingModal
+          isOpen={isDrawingModalOpen}
+          onClose={handleDrawingModalClose}
+          onInserted={handleDrawingInserted}
+          noteId={noteId}
+        />
+      )}
     </div>
   );
 };

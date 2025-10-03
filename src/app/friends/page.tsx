@@ -139,39 +139,59 @@ export default function FriendsPage() {
 
   // Load pending friend requests and friends list
   useEffect(() => {
+    console.log('🔄 [DEBUG] useEffect triggered:', { 
+      hasUser: !!user, 
+      userId: user?.id 
+    });
+    
     if (user) {
+      console.log('✅ [DEBUG] User authenticated, loading data...');
       loadPendingRequests();
       loadSentRequests();
       loadFriends();
+    } else {
+      console.log('❌ [DEBUG] No user found, skipping data load');
     }
   }, [user]);
 
   const loadPendingRequests = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ [DEBUG] loadPendingRequests: No user');
+      return;
+    }
 
     try {
       setLoadingRequests(true);
-      console.log('📥 Loading pending requests (received)...');
+      console.log('📥 [DEBUG] loadPendingRequests: Starting...', { userId: user.id });
       const requests = await getPendingFriendRequests(user.id);
-      console.log('📥 Pending requests loaded:', requests);
+      console.log('📥 [DEBUG] loadPendingRequests: Received data:', { 
+        count: requests.length,
+        requests 
+      });
       setPendingRequests(requests);
     } catch (error) {
-      console.error("Error loading pending requests:", error);
+      console.error("❌ [DEBUG] Error loading pending requests:", error);
     } finally {
       setLoadingRequests(false);
     }
   };
 
   const loadSentRequests = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ [DEBUG] loadSentRequests: No user');
+      return;
+    }
 
     try {
-      console.log('📤 Loading sent requests...');
+      console.log('📤 [DEBUG] loadSentRequests: Starting...', { userId: user.id });
       const requests = await getSentFriendRequests(user.id);
-      console.log('📤 Sent requests loaded:', requests);
+      console.log('📤 [DEBUG] loadSentRequests: Received data:', { 
+        count: requests.length,
+        requests 
+      });
       setSentRequests(requests);
     } catch (error) {
-      console.error("Error loading sent requests:", error);
+      console.error("❌ [DEBUG] Error loading sent requests:", error);
     }
   };
 

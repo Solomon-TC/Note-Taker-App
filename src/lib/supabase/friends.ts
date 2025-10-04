@@ -114,23 +114,8 @@ export async function getPendingFriendRequests(
   );
 
   try {
-    console.log('📥 [DEBUG] getPendingFriendRequests called:', { userId });
+    console.log('📥 [getPendingFriendRequests] Starting query for userId:', userId);
     
-    // First, try to get friend_requests without joins to see if data exists
-    const { data: rawRequests, error: rawError } = await supabase
-      .from("friend_requests")
-      .select("*")
-      .eq("receiver_id", userId)
-      .eq("status", "pending");
-    
-    console.log('📥 [DEBUG] Raw friend_requests query:', {
-      success: !rawError,
-      error: rawError,
-      count: rawRequests?.length || 0,
-      requests: rawRequests
-    });
-
-    // Now try with joins
     const { data, error } = await supabase
       .from("friend_requests")
       .select(
@@ -140,9 +125,7 @@ export async function getPendingFriendRequests(
           id,
           email,
           full_name,
-          avatar_url,
-          created_at,
-          updated_at
+          avatar_url
         )
       `,
       )
@@ -150,22 +133,20 @@ export async function getPendingFriendRequests(
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    console.log('📥 [DEBUG] Friend requests with joins:', {
-      success: !error,
-      error: error,
-      count: data?.length || 0,
-      data: data
-    });
-
     if (error) {
-      console.error("❌ Error fetching pending requests:", error);
+      console.error("❌ [getPendingFriendRequests] Error:", error);
+      console.error("❌ [getPendingFriendRequests] Error details:", JSON.stringify(error, null, 2));
       return [];
     }
 
-    console.log('✅ [DEBUG] Returning pending requests:', data?.length || 0);
+    console.log('✅ [getPendingFriendRequests] Success:', {
+      count: data?.length || 0,
+      data: data
+    });
+    
     return data || [];
   } catch (error) {
-    console.error("❌ Unexpected error in getPendingFriendRequests:", error);
+    console.error("❌ [getPendingFriendRequests] Unexpected error:", error);
     return [];
   }
 }
@@ -182,23 +163,8 @@ export async function getSentFriendRequests(
   );
 
   try {
-    console.log('📤 [DEBUG] getSentFriendRequests called:', { userId });
+    console.log('📤 [getSentFriendRequests] Starting query for userId:', userId);
     
-    // First, try to get friend_requests without joins to see if data exists
-    const { data: rawRequests, error: rawError } = await supabase
-      .from("friend_requests")
-      .select("*")
-      .eq("sender_id", userId)
-      .eq("status", "pending");
-    
-    console.log('📤 [DEBUG] Raw friend_requests query:', {
-      success: !rawError,
-      error: rawError,
-      count: rawRequests?.length || 0,
-      requests: rawRequests
-    });
-
-    // Now try with joins
     const { data, error } = await supabase
       .from("friend_requests")
       .select(
@@ -208,9 +174,7 @@ export async function getSentFriendRequests(
           id,
           email,
           full_name,
-          avatar_url,
-          created_at,
-          updated_at
+          avatar_url
         )
       `,
       )
@@ -218,22 +182,20 @@ export async function getSentFriendRequests(
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    console.log('📤 [DEBUG] Friend requests with joins:', {
-      success: !error,
-      error: error,
-      count: data?.length || 0,
-      data: data
-    });
-
     if (error) {
-      console.error("❌ Error fetching sent requests:", error);
+      console.error("❌ [getSentFriendRequests] Error:", error);
+      console.error("❌ [getSentFriendRequests] Error details:", JSON.stringify(error, null, 2));
       return [];
     }
 
-    console.log('✅ [DEBUG] Returning sent requests:', data?.length || 0);
+    console.log('✅ [getSentFriendRequests] Success:', {
+      count: data?.length || 0,
+      data: data
+    });
+    
     return data || [];
   } catch (error) {
-    console.error("❌ Unexpected error in getSentFriendRequests:", error);
+    console.error("❌ [getSentFriendRequests] Unexpected error:", error);
     return [];
   }
 }

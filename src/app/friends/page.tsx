@@ -353,14 +353,22 @@ export default function FriendsPage() {
       const result = await sendFriendRequest(user.id, emailToAdd.trim());
 
       if (result.success) {
-        setMessage({
-          type: "success",
-          text: "Friend request sent successfully!",
-        });
+        if (result.autoAccepted) {
+          setMessage({
+            type: "success",
+            text: result.message || "Friend request accepted! You are now friends!",
+          });
+        } else {
+          setMessage({
+            type: "success",
+            text: "Friend request sent successfully!",
+          });
+        }
         setEmailToAdd("");
-        // Refresh both pending and sent requests
+        // Refresh both pending and sent requests, and friends list
         loadPendingRequests();
         loadSentRequests();
+        loadFriends();
       } else {
         setMessage({
           type: "error",

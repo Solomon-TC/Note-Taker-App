@@ -105,10 +105,114 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         } else {
-          return NextResponse.json(
-            { success: false, error: 'This user has already sent you a friend request.' },
-            { status: 400 }
-          );
+          // AUTO-ACCEPT: The other user has already sent a request to this user
+          // Instead of returning an error, accept the existing request and create friendship
+          console.log('🤝 API: Auto-accepting existing friend request:', existingRelation.id);
+          
+          // Check if friendship already exists
+          const { data: existingFriendship, error: friendshipCheckError } = await adminClient
+            .from('friends')
+            .select('*')
+            .or(
+              `and(user_id.eq.${senderId},friend_id.eq.${receiverUserData.id}),and(user_id.eq.${receiverUserData.id},friend_id.eq.${senderId})`
+            )
+            .maybeSingle();
+
+          if (friendshipCheckError && friendshipCheckError.code !== 'PGRST116') {
+            console.error('❌ API: Error checking existing friendship:', friendshipCheckError);
+            return NextResponse.json(
+              { success: false, error: 'Failed to check existing friendship.' },
+              { status: 500 }
+            );
+          }
+
+          if (existingFriendship) {
+            console.log('🤝 API: Friendship already exists, just updating request status');
+            // Just update the request status
+            const { error: updateError } = await adminClient
+              .from('friend_requests')
+              .update({ status: 'accepted' })
+              .eq('id', existingRelation.id);
+
+            if (updateError) {
+              console.error('�� API: Error updating request status:', updateError);
+              return NextResponse.json(
+                { success: false, error: 'Failed to update friend request.' },
+                { status: 500 }
+              );
+            }
+
+            return NextResponse.json({
+              success: true,
+              autoAccepted: true,
+              message: `You are now friends with ${receiverEmail}!`,
+              data: {
+                friendRequest: existingRelation,
+                receiverUser: receiverUserData,
+              },
+            });
+          }
+
+          // Update the existing request to 'accepted'
+          const { error: updateError } = await adminClient
+            .from('friend_requests')
+            .update({ status: 'accepted' })
+            .eq('id', existingRelation.id);
+
+          if (updateError) {
+            console.error('❌ API: Error updating friend request:', updateError);
+            return NextResponse.json(
+              { success: false, error: 'Failed to accept friend request.' },
+              { status: 500 }
+            );
+          }
+
+          // Create the friendship record
+          const { error: friendshipError } = await adminClient
+            .from('friends')
+            .insert({
+              user_id: senderId,
+              friend_id: receiverUserData.id,
+            });
+
+          if (friendshipError) {
+            console.error('❌ API: Error creating friendship:', friendshipError);
+            
+            // Try to revert the request status
+            await adminClient
+              .from('friend_requests')
+              .update({ status: 'pending' })
+              .eq('id', existingRelation.id);
+
+            if (friendshipError.code === '23505') {
+              // Duplicate key - friendship already exists
+              return NextResponse.json({
+                success: true,
+                autoAccepted: true,
+                message: `You are now friends with ${receiverEmail}!`,
+                data: {
+                  friendRequest: existingRelation,
+                  receiverUser: receiverUserData,
+                },
+              });
+            }
+
+            return NextResponse.json(
+              { success: false, error: 'Failed to create friendship.' },
+              { status: 500 }
+            );
+          }
+
+          console.log('✅ API: Auto-accepted friend request and created friendship');
+          return NextResponse.json({
+            success: true,
+            autoAccepted: true,
+            message: `You are now friends with ${receiverEmail}!`,
+            data: {
+              friendRequest: existingRelation,
+              receiverUser: receiverUserData,
+            },
+          });
         }
       }
     }

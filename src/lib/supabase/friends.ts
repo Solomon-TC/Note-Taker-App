@@ -11,6 +11,8 @@ export interface SendFriendRequestResult {
   success: boolean;
   error?: string;
   data?: FriendRequest;
+  autoAccepted?: boolean;
+  message?: string;
 }
 
 export interface FriendRequestWithUser extends FriendRequest {

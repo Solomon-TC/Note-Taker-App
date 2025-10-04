@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -27,14 +28,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
+  const { toast } = useToast();
   
   // Use refs to prevent infinite re-renders
   const mountedRef = useRef(true);
   const initializingRef = useRef(false);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
+  const sessionRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Memoize supabase client to prevent recreation
   const supabase = useMemo(() => createClient(), []);
+
+  // Proactive session refresh - check every 5 minutes
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔄 AuthProvider: Setting up proactive session refresh');
+    
+    const refreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 AuthProvider: Running proactive session check');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('🔄 AuthProvider: Session check error:', sessionError);
+          return;
+        }
+        
+        if (session) {
+          // Check if token is close to expiring (within 10 minutes)
+          const expiresAt = session.expires_at;
+          if (expiresAt) {
+            const expiresIn = expiresAt - Math.floor(Date.now() / 1000);
+            
+            if (expiresIn < 600) { // Less than 10 minutes
+              console.log('🔄 AuthProvider: Token expiring soon, refreshing proactively');
+              const { error: refreshError } = await supabase.auth.refreshSession();
+              
+              if (refreshError) {
+                console.error('🔄 AuthProvider: Proactive refresh failed:', refreshError);
+                toast({
+                  title: "Session Refresh",
+                  description: "Your session is being refreshed. Please wait...",
+                  variant: "default",
+                });
+              } else {
+                console.log('✅ AuthProvider: Session refreshed proactively');
+              }
+            }
+          }
+        } else {
+          console.warn('⚠️ AuthProvider: No session found during proactive check');
+        }
+      } catch (err) {
+        console.error('🔄 AuthProvider: Error in proactive session refresh:', err);
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+
+    sessionRefreshIntervalRef.current = refreshInterval;
+
+    return () => {
+      if (sessionRefreshIntervalRef.current) {
+        clearInterval(sessionRefreshIntervalRef.current);
+        sessionRefreshIntervalRef.current = null;
+      }
+    };
+  }, [user, supabase, toast]);
 
   // Handle page visibility changes to maintain session continuity
   const handleVisibilityChange = useCallback(async () => {
@@ -42,10 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // When page becomes visible again, refresh the session
     if (document.visibilityState === 'visible') {
-      console.log('🔄 AuthProvider: Page became visible, refreshing session');
+      console.log('🔄 AuthProvider: Page became visible, validating session');
       
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Use refreshSession instead of getSession for more reliable refresh
+        const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
         
         if (!mountedRef.current) return;
         
@@ -58,6 +118,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setIsPro(false);
             setError(null);
+            toast({
+              title: "Session Error",
+              description: "Your session has expired. Please sign in again.",
+              variant: "destructive",
+            });
+          } else if (sessionError.message.includes('refresh_token_not_found')) {
+            console.warn('🔄 AuthProvider: Refresh token not found, user needs to re-authenticate');
+            setUser(null);
+            setIsPro(false);
+            setError('Session expired. Please sign in again.');
+            toast({
+              title: "Session Expired",
+              description: "Please sign in again to continue.",
+              variant: "destructive",
+            });
           } else {
             setError(sessionError.message);
           }
@@ -83,18 +158,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('🔄 AuthProvider: Error refreshing pro status:', err);
             }
           }
+          
+          // Show success toast if user was previously null
+          if (!user) {
+            toast({
+              title: "Welcome Back",
+              description: "Your session has been restored.",
+              variant: "default",
+            });
+          }
         } else if (user) {
           // No session but we have a user - sign out
           console.log('🔄 AuthProvider: No session found, signing out');
           setUser(null);
           setIsPro(false);
           setError(null);
+          toast({
+            title: "Session Ended",
+            description: "Please sign in again to continue.",
+            variant: "destructive",
+          });
         }
       } catch (err) {
         console.error('🔄 AuthProvider: Error during visibility change handling:', err);
       }
     }
-  }, [supabase, user]);
+  }, [supabase, user, toast]);
 
   // Set up page visibility listener
   useEffect(() => {

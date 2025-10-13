@@ -25,6 +25,7 @@ import {
   Globe,
   Play,
 } from "lucide-react";
+import PricingSection from "@/components/pricing/PricingSection";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -681,6 +682,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Pricing Section */}
+      <PricingSection />
 
       {/* CTA Section */}
       <section className="py-20 bg-primary">
